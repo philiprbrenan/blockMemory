@@ -57,6 +57,12 @@ public class Test                                                               
     return s.toString();
    }
 
+  static String joinStringBuilders(Stack<StringBuilder> S, String join)         // Perl join
+   {final Stack<String> t = new Stack<>();
+    for(StringBuilder s: S) t.push(s.toString());
+    return joinStrings(t, join);
+   }
+
   static String joinStrings(Set<String> S, String join)                         // Perl join
    {final StringBuilder t = new StringBuilder();
     final int N = S.size();
@@ -792,6 +798,32 @@ public class Test                                                               
     say(b);
    }
 
+  static void squeezeVerticalSpaces(Stack<StringBuilder>S)                      // Squeeze common vertical spaces out of a stack of strong builders
+   {int m = 0; for(StringBuilder s: S) if (s.length() > m) m = s.length();      // Maximum length
+
+    for(int j = 0; j < S.size(); j++)                                           // Pad each row to the maximum length
+     {S.elementAt(j).append(" ".repeat(m - S.elementAt(j).length()));
+     }
+
+    columns: for(int i = m; i >= 2; i--)                                        // Each solumn working backwards through each string
+     {for(StringBuilder s: S)                                                   // Check there are two spaces that can be squeezed to one in all rows in this column
+       {if (!s.substring(i-2, i).equals("  ")) continue columns;
+       }
+
+      for(int j = 0; j < S.size(); j++)                                         // Squeeze common spaces in column
+       {final String s = S.elementAt(j).toString();
+        S.setElementAt(new StringBuilder(s.substring(0, i-2)+s.substring(i)), j);
+       }
+     }
+
+    for(int j = 0; j < S.size(); j++)                                           // Remove trailing padding
+     {final StringBuilder s = S.elementAt(j);
+      for(;s.length() > 0 && s.charAt(s.length()-1) == ' ';)
+       {s.setLength(s.length()-1);
+       }
+     }
+   }
+
 //D1 Testing                                                                    // Test expected output against got output
 
   static int testsPassed = 0, testsFailed = 0;                                  // Number of tests passed and failed
@@ -1174,6 +1206,21 @@ BBBB
     ok(testsExecuted, "[executed]");
    }
 
+  static void test_squeezeVerticalSpaces()
+   {final Stack<StringBuilder>S = new Stack<>();
+    S.push(new StringBuilder("a   aa           aaa"));
+    S.push(new StringBuilder("bb  bbb          bbbb"));
+    S.push(new StringBuilder("ccc cccc         ccccc"));
+    squeezeVerticalSpaces(S);
+    final String s = joinStringBuilders(S, "\n")+"\n";
+    //say(s);
+    ok(s, """
+a   aa   aaa
+bb  bbb  bbbb
+ccc cccc ccccc
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_log_two();
     test_power_two();
@@ -1191,6 +1238,7 @@ BBBB
     test_methodology();
     test_fileNames();
     test_executed();
+    test_squeezeVerticalSpaces();
    }
 
   static void newTests()                                                        // Tests being worked on

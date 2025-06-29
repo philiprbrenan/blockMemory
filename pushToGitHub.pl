@@ -22,7 +22,7 @@ my @otherJava = qw(../btreeBlock/Test.java);                                    
 say STDERR timeStamp,  " push to github $repo";
 
 for my $j(@otherJava)                                                           # Link to crucial files defined else where
- {say STDERR qx(cp $j);
+ {say STDERR qx(cp $j .);
  }
 
 push my @files, searchDirectoryTreesForMatchingFiles($home, @ext);              # Files to upload

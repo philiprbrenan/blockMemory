@@ -13,7 +13,7 @@ class Layout extends Test                                                       
 
   Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
    {source = Source;
-    parseFields(source);
+    parseFields();
    }
 
   class Field                                                                   // The fields in the layout
@@ -33,23 +33,52 @@ class Layout extends Test                                                       
       this.name   = name;
       this.cmd    = cmd;
       this.rep    = rep;
-      array       = cmd.lowerCase().equals("array");
-      bit         = cmd.lowerCase().equals("bit");
-      struct      = cmd.lowerCase().equals("struct");
-      union       = cmd.lowerCase().equals("union");
-      var         = cmd.lowerCase().equals("var");
+      this.parent = parent;
+      array       = cmd.equals("array");
+      bit         = cmd.equals("bit");
+      struct      = cmd.equals("struct");
+      union       = cmd.equals("union");
+      var         = cmd.equals("var");
       spacer      = bit || var;
       fields.push(this);
+     }
+
+    Field getParent()                                                           // Paent of a field
+     {if (parent == null) return null;
+      return fields.elementAt(parent);
+     }
+
+    public String toString()                                                    // Dump a field
+     {final StringBuilder s = new StringBuilder();
+      s.append("Field(line="+line);
+      s.append(", indent="  +indent);
+      s.append(", name="    +name);
+      s.append(", cmd="     +cmd);
+      if (rep    != null) s.append(", rep="   +rep);
+      if (parent != null) s.append(", parent="+getParent().name);
+      return ""+s+")";
+     }
+
+    String dimensions()                                                         // The dimensions as a string
+     {final Stack<String> s = new Stack<>();
+      for(Field d : dimensions) s.push(""+d.rep);
+      return joinStrings(s, ", ");
+     }
+
+    String children()                                                           // The name sof the children as a string
+     {final Stack<String> s = new Stack<>();
+      for(Field c : children) s.push(""+c.name);
+      return joinStrings(s, ", ");
      }
    }
 
   Integer locatePreviousElement(int indent, String location)                    // The index of the previous field ignoring the dependencies of the previous field
-   {if (indent >= fields.lastElement().indent + 2) return fields.length()-1;    // Deeper indentation acceptable so the previous field is the last one parsed
+   {if (indent >= fields.lastElement().indent + 2) return fields.size()-1;      // Deeper indentation acceptable so the previous field is the last one parsed
     if (indent >  fields.lastElement().indent)
       stop("Minimum indentation of 2 spaces required", location);
-    for(int i = fields.size(); i > 0; ++i)                                      // Each prior layout
-     {final int in = fields.elementAt(i).indent;                                // Indentation of prior layout
-      if (in == indent) return i;                                               // Matched indentation of a prior layout
+    for(int i = fields.size(); i > 0; --i)                                      // Each prior layout
+     {final int in = fields.elementAt(i-1).indent;                              // Indentation of prior layout
+      if (in == indent) return i-1;                                             // Matched indentation of a prior layout
      }
     stop("Indentation does not match that of any previous line", location);     // No matching previous layout
     return null;
@@ -65,45 +94,46 @@ class Layout extends Test                                                       
       final String[]words = line.trim().split("\\s+");                          // Words in line
       if (words.length < 2) stop("Not enough operands", E);                     // Need at least a name and a type
       final String name   = words[0];                                           // First word is the name
-      final String cmd    = $words[1].lowerCase();                              // Command is the second word
-      final String rep    = words.length == 2 ? null : $words[2];               // Repetition or width
+      final String cmd    = words[1].toLowerCase();                             // Command is the second word
+      final String Rep    = words.length == 2 ? null : words[2];                // Repetition or width as string
 
-      if (names.has(name)) stop("Duplicate name:", name, E);                    // Require names to be unique
+      if (names.containsKey(name)) stop("Duplicate name:", name, E);            // Require names to be unique
       if (!cmd.matches("array|bit|struct|var|union"))                           // Check command
-        stop("Expected one of: array, bit, struct, union, var", $E);
-      if (!(rep != null && rep.matches("\\A\\d+\\Z")))                          // Repetition if present must be numeric
-        stop("Repetition:", rep, "should be an integer", $E);
+        stop("Expected one of: array, bit, struct, union, var", E);
+      if (Rep != null && !Rep.matches("\\A\\d+\\Z"))                            // Repetition if present must be numeric
+        stop("Repetition:", Rep, "should be an integer", E);
 
-      if (fields.length == 0)                                                   // First line parsed
-       {new Field(l, indent, name, cmd, $rep, null);                            // Details of the first line parsed
+      final Integer rep   = Rep == null ? null : Integer.parseInt(Rep);         // Repetition or width as integer
+
+      if (fields.size() == 0)                                                   // First line parsed
+       {new Field(l, indent, name, cmd, rep, null);                             // Details of the first line parsed
         continue;
        }
 
-      final Integer prev = locatePreviousElement(l, E);                         // Previous field
+      final Integer prev = locatePreviousElement(indent, E);                    // Previous field
 
       final Field p = fields.elementAt(prev);                                   // Previous field
       if (indent > p.indent)                                                    // Indenting further
-       {final Field f = new Field(l, indent, name, cmd, rep, p);                // Details of the fields of this line
+       {final Field f = new Field(l, indent, name, cmd, rep, prev);             // Details of the fields of this line
         p.children.push(f);                                                     // The children associated with each parent
         continue;
        }
 
-      final Field prevParent = p.parent;                                        // This field has the same parent as the previous field
-      final Field F = new Field(l, indent, name, cmd, rep, prevParent);         // Details of the fields
-      p.children.push(F);                                                       // The children associated with each parent
+      final Field F = new Field(l, indent, name, cmd, rep, p.parent);           // Indenting at the same level as a previous field
+      p.getParent().children.push(F);                                           // The children associated with each parent
      }
 
     for(Field p : fields)                                                       // Dimensions of each spacer
      {if (!p.spacer) continue;                                                  // Items which have dimensions
       final Stack<Field>d = p.dimensions;
-      for(Field q = p.parent; q != null; q = q.parent)                          // Up through parents
+      for(Field q = p.getParent(); q != null; q = q.getParent())                // Up through parents
        {if (!q.array) continue;                                                 // Find arrays
-        d.insertElementAt(q, 0);                                                // unshift containing arrays
+        d.insertElementAt(q, 0);                                                // Unshift containing arrays
        }
      }
 
     for(Field p : fields)                                                        // Check children counts
-     {final String line = p.line + 1;
+     {final int    line = p.line + 1;
       final String name = p.name;
       final String cmd  = p.cmd;
       final int    k    = p.children.size();
@@ -117,27 +147,35 @@ class Layout extends Test                                                       
    }
 
   public String toString()                                                      // Print the fields of the input lines
-   {final Stack<StringBuilder> S = new Stack<>();                                // Print of fields
+   {final Stack<StringBuilder> S = new Stack<>();                               // Print of fields
     final String t = String.format
-       ("%-4s  %-11s  %-32s  %-8s  %-8s  %-8s  %-8s  %-8s",
-"Indentation",
+       ("%4s  %11s  %-32s  %-8s  %8s  %8s  %-32s  %-32s",
+"#",
+"Indent",
 "Name",
 "Command",
-"Repetition",
+"Rep",
 "Parent",
-"Dimensions",
+"Size",
 "Children");
-
-    S.push(t);
+    S.push(new StringBuilder(t));
 
     for (int i = 0; i < fields.size(); i++)
      {final Field  f = fields.elementAt(i);
+      final String c = f.cmd;
+      final String C = f.children();
+      final String D = f.dimensions();
+      final int    d = f.indent;
+      final String n = " ".repeat(d)+f.name;
+      final String p = f.parent != null ? String.format("%8d", f.getParent().line) : "";
+      final String r = f.rep    != null ? String.format("%8d", f.rep)              : "";
       final String s = String.format
-       ("%4d  %11d  %32s  %8s  %8d  %8d",
-        i, f.indent, f.name, f.cmd, f.rep, fields.indexOf(f.parent));
-      S.push(s);
+       ("%4d  %11d  %-32s  %-8s  %8s  %8s  %-32s  %-32s",
+        i,    d,    n,    c,   r,   p, D, C);
+      S.push(new StringBuilder(s));
      }
-    return squeezeVerticalSpaces(S);
+    squeezeVerticalSpaces(S);
+    return joinStringBuilders(S, "\n")+"\n";
    }
 
   protected static void test_parse()
@@ -157,11 +195,28 @@ A array 2
           b2 var 5
 """);
 
-    say(l);
+    //stop(l);
+    ok(l, """
+   #  Indent  Name          Command  Rep  Parent  Size  Children
+   0       0  A             array      2                S
+   1       2    S           struct             0        a, b, u
+   2       4      a         var        4       1  2
+   3       4      b         bit                1  2
+   4       4      u         union              1        B, C
+   5       6        B       array      4       4        S1
+   6       8          S1    struct             5        a1, b1
+   7      10            a1  bit                6  2, 4
+   8      10            b1  var        2       6  2, 4
+   9       6        C       array      2       4        S2
+  10       8          S2    struct             9        a2, b2
+  11      10            a2  bit               10  2, 2
+  12      10            b2  var        5      10  2, 2
+""");
    }
 
   protected static void oldTests()                                              // Tests thought to be in good shape
-   {}
+   {test_parse();
+   }
 
   protected static void newTests()                                              // Tests being worked on
    {//oldTests();

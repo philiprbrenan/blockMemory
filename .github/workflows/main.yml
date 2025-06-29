@@ -1,4 +1,4 @@
-# Test 2025-06-29 at 08:53:16
+# Test 2025-06-29 at 09:58:52
 
 name: Test
 run-name: blockMemory
@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        task: [Test]
+        task: [Layout]
 
     steps:
     - uses: actions/checkout@v4
@@ -45,8 +45,8 @@ jobs:
       run: |
         javac -g -d Classes -cp Classes com/AppaApps/Silicon/*.java
 
-    - name: Test Test
-      if: matrix.task == 'Test'
+    - name: Test Layout
+      if: matrix.task == 'Layout'
       run: |
-        java -cp Classes com/AppaApps/Silicon/Test
+        java -cp Classes com/AppaApps/Silicon/Layout
 

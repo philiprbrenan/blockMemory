@@ -799,20 +799,21 @@ public class Test                                                               
    }
 
   static void squeezeVerticalSpaces(Stack<StringBuilder>S)                      // Squeeze common vertical spaces out of a stack of strong builders
-   {int m = 0; for(StringBuilder s: S) if (s.length() > m) m = s.length();      // Maximum length
+   {final int collapse = 3;
+    int m = 0; for(StringBuilder s: S) if (s.length() > m) m = s.length();      // Maximum length
 
     for(int j = 0; j < S.size(); j++)                                           // Pad each row to the maximum length
      {S.elementAt(j).append(" ".repeat(m - S.elementAt(j).length()));
      }
 
-    columns: for(int i = m; i >= 2; i--)                                        // Each solumn working backwards through each string
+    columns: for(int i = m; i >= collapse; i--)                                 // Each solumn working backwards through each string
      {for(StringBuilder s: S)                                                   // Check there are two spaces that can be squeezed to one in all rows in this column
-       {if (!s.substring(i-2, i).equals("  ")) continue columns;
+       {if (!s.substring(i-collapse, i).equals(" ".repeat(collapse))) continue columns;
        }
 
       for(int j = 0; j < S.size(); j++)                                         // Squeeze common spaces in column
        {final String s = S.elementAt(j).toString();
-        S.setElementAt(new StringBuilder(s.substring(0, i-2)+s.substring(i)), j);
+        S.setElementAt(new StringBuilder(s.substring(0, i-collapse)+s.substring(i-collapse+1)), j);
        }
      }
 
@@ -1213,11 +1214,11 @@ BBBB
     S.push(new StringBuilder("ccc cccc         ccccc"));
     squeezeVerticalSpaces(S);
     final String s = joinStringBuilders(S, "\n")+"\n";
-    //say(s);
+    //stop(s);
     ok(s, """
-a   aa   aaa
-bb  bbb  bbbb
-ccc cccc ccccc
+a   aa    aaa
+bb  bbb   bbbb
+ccc cccc  ccccc
 """);
    }
 

@@ -7,155 +7,141 @@ package com.AppaApps.Silicon;                                                   
 import java.util.*;
 
 class Layout extends Test                                                       // Manipulate a btree using static methods and memory
- {final String source;                                                          // The source string we are going to parse
-  final TreeMap<String,Field> names = new TreeMap<>();                          // Names of each field
+ {final String                source;                                           // The source string we are going to fields
+  final Stack<Field>          fields = new Stack<>();                           // Each field parsed from the input string
+  final TreeMap<String,Field> names  = new TreeMap<>();                         // Names of each field
+
+  Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
+   {source = Source;
+    parseFields(source);
+   }
 
   class Field                                                                   // The fields in the layout
-   {final int    line;                                                          // Line at which the layout was parsed
-    final int    indent;                                                        // Indentation
-    final String name;                                                          // Name
-    final String cmd;                                                           // Command
-    final int    rep;                                                           // Optional repetition
-    final int    parent;                                                        // Parent
-    final Stack<Field>dims = new Stack<>();                                     // Dimensions of element
-    final Stack<Field>kids = new Stack<>();                                     // Children of an item
+   {final int     line;                                                         // Line at which the layout was parsed
+    final int     indent;                                                       // Indentation
+    final String  name;                                                         // Name
+    final String  cmd;                                                          // Command
+    final Integer rep;                                                          // Optional repetition
+    final Integer parent;                                                       // Parent
+    final Stack<Field>dimensions = new Stack<>();                               // Dimensions of field
+    final Stack<Field>children   = new Stack<>();                               // Children of an item
+    final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
 
-    Field(int line, int indent, String name, String cmd, int rep, int parent)   // Constructor
+    Field(int line, int indent, String name, String cmd, Integer rep, Integer parent) // Constructor
      {this.line   = line;
       this.indent = indent;
       this.name   = name;
       this.cmd    = cmd;
       this.rep    = rep;
-      this.parent = parent;
+      array       = cmd.lowerCase().equals("array");
+      bit         = cmd.lowerCase().equals("bit");
+      struct      = cmd.lowerCase().equals("struct");
+      union       = cmd.lowerCase().equals("union");
+      var         = cmd.lowerCase().equals("var");
+      spacer      = bit || var;
+      fields.push(this);
      }
    }
-sub parseLayout($lines)                                                         // Parse the layout of description
- {my @lines = split /\n/, $lines;                                               // Split the lines
 
-  my @parse;                                                                    // Parse of each line
-  my %names;                                                                    // Check that each name is unique
-
-  for my $l(keys @lines)                                                        // Lines
-   {my $line   = $lines[$l];                                                    // Each line
-    my $E      = "on line: ".($l + 1)."\n$line";                                // Error line, 1 based
-    my $indent = length $line =~ s(\S.*\Z) ()r;                                 // Indentation depth
-    my @words  = split /\s+/, substr $line, $indent;                            // Words on the line
-    confess "Not enough operands $E" if @words < 2;                             // Need at least a name and a type
-    my $name =    $words[0];                                                    // First word is the name
-    my $cmd  = lc $words[1];                                                    // Command is the second word
-    my $rep  = @words == 2 ? undef : $words[2];                                 // Repetition or width
-    confess "Duplicate name: $name $E" if $names{$name}++;                      // Require names to be unique
-    confess "Expected one of: array, bit, struct, union, var $E" unless $cmd =~ m(\A(array|bit|struct|union|var)\Z)is;
-    confess "Repetition: $rep should be an integer $E" if defined($rep) and $rep !~ m(\A\d+\Z);
-
-    if (!@parse)                                                                // First line parsed
-     {push @parse, [$l, $indent, $name, $cmd, $rep, undef];                     // Details of the first line parsed
-      next;
+  Integer locatePreviousElement(int indent, String location)                    // The index of the previous field ignoring the dependencies of the previous field
+   {if (indent >= fields.lastElement().indent + 2) return fields.length()-1;    // Deeper indentation acceptable so the previous field is the last one parsed
+    if (indent >  fields.lastElement().indent)
+      stop("Minimum indentation of 2 spaces required", location);
+    for(int i = fields.size(); i > 0; ++i)                                      // Each prior layout
+     {final int in = fields.elementAt(i).indent;                                // Indentation of prior layout
+      if (in == indent) return i;                                               // Matched indentation of a prior layout
      }
+    stop("Indentation does not match that of any previous line", location);     // No matching previous layout
+    return null;
+   }
 
-    my $prev = sub                                                              // Previous element
-     {return $#parse if $indent > $parse[-1][indent()] + 1;                     // Deeper indentation acceptable
-      confess "Minimum indentation of 2 spaces required $E" if $indent > $parse[-1][indent()]; # Deeper indentation insufficient
-      my $found;
-      for my $i(reverse keys @parse)
-       {my $ip = $parse[$i][indent()];                                          // Indentation of prior layout
-        return $i if $parse[$i][indent()] == $indent;                           // Indentation of previous layout
+  private void parseFields()                                                    // Parse the layout description into fields
+   {final String[]lines = source.split("\n");                                   // Split source into lines
+
+    for(int l = 0; l < lines.length; ++l)                                       // Lines
+     {final String line   = lines[l];                                           // Each line
+      final String E      = "on line: "+(l + 1)+"\n"+line;                      // Error line, 1 based
+      final int indent    = line.length() - line.stripLeading().length();       // Indentation depth
+      final String[]words = line.trim().split("\\s+");                          // Words in line
+      if (words.length < 2) stop("Not enough operands", E);                     // Need at least a name and a type
+      final String name   = words[0];                                           // First word is the name
+      final String cmd    = $words[1].lowerCase();                              // Command is the second word
+      final String rep    = words.length == 2 ? null : $words[2];               // Repetition or width
+
+      if (names.has(name)) stop("Duplicate name:", name, E);                    // Require names to be unique
+      if (!cmd.matches("array|bit|struct|var|union"))                           // Check command
+        stop("Expected one of: array, bit, struct, union, var", $E);
+      if (!(rep != null && rep.matches("\\A\\d+\\Z")))                          // Repetition if present must be numeric
+        stop("Repetition:", rep, "should be an integer", $E);
+
+      if (fields.length == 0)                                                   // First line parsed
+       {new Field(l, indent, name, cmd, $rep, null);                            // Details of the first line parsed
+        continue;
        }
-      confess "Indentation does not match that of any previous line $E" unless $found;
-     }->();
 
-    my $pi = $parse[$prev][indent()];                                           // Indentation of parent
-    if ($indent > $pi)                                                          // Indenting further
-     {push @parse, [$l, $indent, $name, $cmd, $rep, $#parse];                   // Details of the parse
-      push $parse[$prev][kids()]->@*, $#parse;                                  // The children associated with each parent
-      next;
-     }
+      final Integer prev = locatePreviousElement(l, E);                         // Previous field
 
-    my $prevParent = $parse[$prev][parent()];                                   // This item has the same parent as the previous item
-    push @parse, [$l, $indent, $name, $cmd, $rep, $parse[$prev][parent()]];     // Details of the parse
-    push $parse[$prevParent][kids()]->@*, $#parse;                              // The children associated with each parent
-   }
-
-  for my $p(keys @parse)                                                        // Dimensions
-   {my @p = $parse[$p]->@*;                                                     // Each parsed line
-    next unless $p[cmd()] =~ m(\A(bit|var)\Z);                                  // Items which have dimensions
-    my @d;                                                                      // Dimensions of an item
-    for(my $q = $p[parent()]; defined $q; $q = $parse[$q][parent()])
-     {my @q = $parse[$q]->@*;
-      next unless $q[cmd()] =~ m(\A(array)\Z);                                  // Arrays give dimensions to items
-      push @d, $q;                                                              // Push repetitions
-     }
-    $parse[$p][dims()] = [reverse @d];                                          // Reverse the dimensions to get the outermost array first
-   }
-
-  for my $p(keys @parse)                                                        // Check children counts
-   {my @p = $parse[$p]->@*;                                                     // Each parsed layout
-    my $line = $p[line()] + 1;
-    my $name = $p[name()];
-    my $cmd  = $p[cmd()];
-    my $k = $p[kids()];
-    my @k = $k ? @$k : ();
-    if ($cmd =~ m(\Abit\Z))                                                     // Bit
-     {confess"Bit: $name from line: $line cannot have child layouts" if @k;
-     }
-    if ($cmd =~ m(\Avar\Z))                                                     // Variable
-     {confess"Var: $name from line: $line cannot have child layouts" if @k;
-     }
-    if ($cmd =~ m(\array\Z))                                                    // Array
-     {confess"Array: $name from line: $line must have exactly one child layouts" if @k != 1;
-     }
-    if ($cmd =~ m(\Astruct\Z))                                                  // Struct
-     {confess"Struct: $name from line: $line must have two or more child layouts" if @k < 2;
-     }
-    if ($cmd =~ m(\Aunion\Z))                                                   // Union
-     {confess"Union: $name from line: $line must have two or more child layouts" if @k < 2;
-     }
-   }
-
-  return [@parse]                                                               // Return the parse
- }
-
-sub printParse($parse)                                                          // Print the parse of the input lines
- {my @p = @$parse;
-  for my $p(@p)
-   {$$p[name()] = (" " x $$p[indent()]).$$p[name()];                            // Indent the names to show structure more effectively
-    $$p[parent()] = sub                                                         // Parent
-     {if (defined(my $d = $$p[parent()]))
-       {return $d+1;
+      final Field p = fields.elementAt(prev);                                   // Previous field
+      if (indent > p.indent)                                                    // Indenting further
+       {final Field f = new Field(l, indent, name, cmd, rep, p);                // Details of the fields of this line
+        p.children.push(f);                                                     // The children associated with each parent
+        continue;
        }
-      ""
-     }->();
-    $$p[dims()] = sub                                                           // Dimensions
-     {if (my $d = $$p[dims()])
-       {return join(", ", map {$_+1} @$d).".";
-       }
-      ""
-     }->();
-    $$p[kids()] = sub                                                           // Children
-     {if (my $c = $$p[kids()])
-       {return join(", ", map {$_+1} @$c).".";
-       }
-      ""
-     }->();
 
-    shift @$p;                                                                  // Remove the line number at the front as format table will add one automatically
+      final Field prevParent = p.parent;                                        // This field has the same parent as the previous field
+      final Field F = new Field(l, indent, name, cmd, rep, prevParent);         // Details of the fields
+      p.children.push(F);                                                       // The children associated with each parent
+     }
+
+    for(Field p : fields)                                                       // Dimensions of each spacer
+     {if (!p.spacer) continue;                                                  // Items which have dimensions
+      final Stack<Field>d = p.dimensions;
+      for(Field q = p.parent; q != null; q = q.parent)                          // Up through parents
+       {if (!q.array) continue;                                                 // Find arrays
+        d.insertElementAt(q, 0);                                                // unshift containing arrays
+       }
+     }
+
+    for(Field p : fields)                                                        // Check children counts
+     {final String line = p.line + 1;
+      final String name = p.name;
+      final String cmd  = p.cmd;
+      final int    k    = p.children.size();
+      final String loc = name+" from line: "+line;
+      if (p.bit    && k >  0) stop("Bit:",    loc, "cannot have child layouts");
+      if (p.var    && k >  0) stop("Var:",    loc, "cannot have child layouts");
+      if (p.array  && k != 1) stop("Array:",  loc, "must have exactly one child layout");
+      if (p.struct && k < 2)  stop("Struct:", loc, "must have two or more child layouts");
+      if (p.union  && k < 2)  stop("Union:",  loc, "must have two or more child layouts");
+     }
    }
 
-  formatTable \@p, <<END;
-Indentation
-Name
-Command
-Repetition
-Parent
-Dimensions
-Children
-END
- }
+  public String toString()                                                      // Print the fields of the input lines
+   {final Stack<StringBuilder> S = new Stack<>();                                // Print of fields
+    final String t = String.format
+       ("%-4s  %-11s  %-32s  %-8s  %-8s  %-8s  %-8s  %-8s",
+"Indentation",
+"Name",
+"Command",
+"Repetition",
+"Parent",
+"Dimensions",
+"Children");
 
+    S.push(t);
 
+    for (int i = 0; i < fields.size(); i++)
+     {final Field  f = fields.elementAt(i);
+      final String s = String.format
+       ("%4d  %11d  %32s  %8s  %8d  %8d",
+        i, f.indent, f.name, f.cmd, f.rep, fields.indexOf(f.parent));
+      S.push(s);
+     }
+    return squeezeVerticalSpaces(S);
+   }
 
-if (1)
- {my $lines = <<END;
+  protected static void test_parse()
+   {Layout l = new Layout("""
 A array 2
   S struct
     a var 4
@@ -169,36 +155,17 @@ A array 2
         S2 struct
           a2 bit
           b2 var 5
-END
+""");
 
-  #say STDERR printParse parseLayout $lines; exit;
-  is_deeply [split /\n/, printParse parseLayout $lines],
-            [split /\n/, <<END];
-    Indentation  Name          Command  Repetition  Parent  Dimensions  Children
- 1            0  A             array             2                      2.
- 2            2    S           struct                    1              3, 4, 5.
- 3            4      a         var               4       2  1.
- 4            4      b         bit                       2  1.
- 5            4      u         union                     2              6, 10.
- 6            6        B       array             4       5              7.
- 7            8          S1    struct                    6              8, 9.
- 8           10            a1  bit                       7  1, 6.
- 9           10            b1  var               2       7  1, 6.
-10            6        C       array             2       5              11.
-11            8          S2    struct                   10              12, 13.
-12           10            a2  bit                      11  1, 10.
-13           10            b2  var               5      11  1, 10.
-END
- }
-
-done_testing;
-
+    say(l);
+   }
 
   protected static void oldTests()                                              // Tests thought to be in good shape
    {}
 
   protected static void newTests()                                              // Tests being worked on
    {//oldTests();
+    test_parse();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

@@ -49,9 +49,10 @@ writeFileUsingSavedToken($user, $repo, q(.config/geany/keybindings.conf),       
                   readFile(q(//home/phil/.config/geany/keybindings.conf)));
 
 if (@java)                                                                      # Write workflow to test java files
- {my $d = dateTimeStamp;
+ {my @j = map {fn $_} @java;
+  my $d = dateTimeStamp;
   my $c = q(com/AppaApps/Silicon);                                              # Package to classes folder
-  my $j = join ', ', @java;                                                     # Java files
+  my $j = join ', ', @j;                                                        # Java files
   my $y = <<"END";
 # Test $d
 
@@ -101,7 +102,7 @@ jobs:
         javac -g -d Classes -cp Classes $c/*.java
 END
 
-  for my $j(@java)                                                              # Java files
+  for my $j(@j)                                                                 # Java files
    {$y .= <<END;
 
     - name: Test $j

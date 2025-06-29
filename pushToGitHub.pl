@@ -14,7 +14,7 @@ use GitHub::Crud qw(:all);
 my $repo      = q(blockMemory);                                                 # Repo
 my $user      = q(philiprbrenan);                                               # User
 my $home      = fpd q(/home/phil), $repo;                                       # Home folder
-my $shaFile   = fpe $home, q(.sha);                                             # Sh256 file sums for each known file to detect changes
+my $shaFile   = fpe $home, q(sha);                                              # Sh256 file sums for each known file to detect changes
 my $wf        = q(.github/workflows/main.yml);                                  # Work flow on Ubuntu
 my @ext       = qw(.java .pl);                                                  # Extensions of files to upload to github
 my @otherJava = qw(../btreeBlock/Test.java);                                    # Java files from other folders

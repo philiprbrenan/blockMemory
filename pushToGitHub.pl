@@ -27,7 +27,6 @@ for my $j(@otherJava)                                                           
 
 push my @files, searchDirectoryTreesForMatchingFiles($home, @ext);              # Files to upload
         @files = changedFiles $shaFile,  @files;                                # Filter out files that have not changed
-my @java = grep {m/\.java\Z/} @files;                                           # Changed java files
 
 if (!@files)                                                                    # No new files
  {say "Everything up to date";
@@ -49,9 +48,11 @@ if  (1)                                                                         
 writeFileUsingSavedToken($user, $repo, q(.config/geany/snippets.conf),          # Save the snippets file as this was the thing I missed most after a rebuild
                    readFile(q(/home/phil/.config/geany/snippets.conf)));
 writeFileUsingSavedToken($user, $repo, q(.config/geany/keybindings.conf),       # Save the keybindings file for the same reason
-                  readFile(q(//home/phil/.config/geany/keybindings.conf)));
+                  readFile(q(/home/phil/.config/geany/keybindings.conf)));
+writeFileUsingSavedToken($user, $repo, q(.config/MakeWithPerl.pm),              # Save make with perl for the same reason
+                  readFile(q(/home/phil/perl/cpan/MakeWithPerl/lib/MakeWithPerl.pm)));
 
-if (@java)                                                                      # Write workflow to test java files
+if (my @java = grep {m/\.java\Z/} @files)                                       # Write workflow to test java files
  {my @j = map {fn $_} @java;
   my $d = dateTimeStamp;
   my $c = q(com/AppaApps/Silicon);                                              # Package to classes folder

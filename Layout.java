@@ -10,6 +10,7 @@ class Layout extends Test                                                       
  {final String                source;                                           // The source string we are going to fields
   final Stack<Field>          fields = new Stack<>();                           // Each field parsed from the input string
   final TreeMap<String,Field> names  = new TreeMap<>();                         // Names of each field
+  final Stack<Instruction>    code   = new Stack<>();                           // The code that manipulates the fields
 
   Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
    {source = Source;
@@ -26,6 +27,8 @@ class Layout extends Test                                                       
     final Stack<Field>dimensions = new Stack<>();                               // Dimensions of field
     final Stack<Field>children   = new Stack<>();                               // Children of an item
     final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
+    BitSet[]memory;                                                             // Memory for this field
+    int t, s, T, S;                                                             // Target index, source index, target value at target index, source value at source index
 
     Field(int line, int indent, String name, String cmd, Integer rep, Integer parent) // Constructor
      {this.line   = line;
@@ -41,9 +44,14 @@ class Layout extends Test                                                       
       var         = cmd.equals("var");
       spacer      = bit || var;
       fields.push(this);
+      names.put(name, this);                                                    // Already checked that the name is non unique when we had access to the location of this field in the source
      }
 
-    Field getParent()                                                           // Paent of a field
+    boolean hasParent()                                                         // Whether a field has a parent.  Variables that do not are top most variables
+     {return getParent() != null;
+     }
+
+    Field getParent()                                                           // Parent of a field
      {if (parent == null) return null;
       return fields.elementAt(parent);
      }
@@ -59,17 +67,87 @@ class Layout extends Test                                                       
       return ""+s+")";
      }
 
-    String dimensions()                                                         // The dimensions as a string
-     {final Stack<String> s = new Stack<>();
-      for(Field d : dimensions) s.push(""+d.rep);
-      return joinStrings(s, ", ");
+    int rep()                                                                   // The width of the elemenbt in bits
+     {if (bit) return 1;
+      if (var) return rep;
+      stop("Only bit or var can have a rep count");
+      return 0;
      }
 
-    String children()                                                           // The name sof the children as a string
+    int dimProduct()                                                            // The product of the dimensions
+     {if (dimensions.size() == 0) return 1;                                     // No dimensions
+      if (dimensions.size() == 1) return dimensions.firstElement().rep;         // One dimension
+      int n = 1;
+      for(Field d : dimensions) n *= d.rep;                                     // Multiple dimensions
+      return n;
+     }
+
+    String dimensions()                                                         // The dimensions as a string
+     {final Stack<String> s = new Stack<>();
+      if (dimensions.size() == 0) return "";                                    // No dimensions
+      if (dimensions.size() == 1) return ""+dimensions.firstElement().rep;      // One dimension
+      for(Field d : dimensions) s.push(""+d.rep);                               // Several dimensions
+      int n = 1;
+      for(Field d : dimensions) n *= d.rep;
+      return joinStrings(s, "*")+" = "+n;
+     }
+
+    String children()                                                           // The names of the children as a string
      {final Stack<String> s = new Stack<>();
       for(Field c : children) s.push(""+c.name);
       return joinStrings(s, ", ");
      }
+
+    void allocateMemory()                                                       // Allocate memory for this field
+     {if (rep == null) return;
+      final int N = dimProduct();
+      memory = new BitSet[N];
+      for (int i = 0; i < N; i++) memory[i] = new BitSet(rep);
+     }
+
+    Field checkBitOrVar()                                                       // Check that this is a field that this field is a bit or var and thus can be directly manipulated
+     {if (spacer) return this;
+      stop("Can only operate on bit or var, not:", cmd, "with name", name);
+      return null;
+     }
+
+    int get(BitSet b)                                                           // Get the value from memory for this field indexed by the source index
+     {return b.length() == 0 ? 0 : (int) b.toLongArray()[0];
+     }
+
+    void set(BitSet b, int value)                                               // Set a bit set to as much of an integer as it can accept
+     {final int l = min(b.length(), Integer.SIZE-1);
+      b.clear();
+      for (int i = 0; i < l; i++) if (((value >> i) & 1) != 0) b.set(i);
+     }
+
+    void zeroSourceIndex()                                                      // Zero the source index for this field
+     {final Field f = checkBitOrVar();
+      new Instruction()
+       {void action() {f.s = 0; f.S = f.get(memory[f.s]);}
+       };
+     }
+
+    void incSourceIndex()                                                       // Increment the source index for this field
+     {final Field f = checkBitOrVar();
+      new Instruction()
+       {void action() {f.s++;}
+       };
+     }
+   }
+
+  Field locateFieldByName(String name) {return names.get(name);}                // Locate a field by name
+
+  abstract class Instruction                                                    // Instructions used to manipulate the fields
+   {final String traceBack = traceBack();                                       // Line at which this instruction was created
+
+    Instruction() {code.push(this);}                                            // Add the instruction to the code
+
+    abstract void action();                                                     // Override this method to specify what this instruction does
+   }
+
+  void allocateMemory()                                                         // Allocate memory for all fields
+   {for(Field f: fields) f.allocateMemory();
    }
 
   Integer locatePreviousElement(int indent, String location)                    // The index of the previous field ignoring the dependencies of the previous field
@@ -120,7 +198,7 @@ class Layout extends Test                                                       
        }
 
       final Field F = new Field(l, indent, name, cmd, rep, p.parent);           // Indenting at the same level as a previous field
-      p.getParent().children.push(F);                                           // The children associated with each parent
+      if (p.hasParent()) p.getParent().children.push(F);                        // The children associated with each parent
      }
 
     for(Field p : fields)                                                       // Dimensions of each spacer
@@ -156,8 +234,8 @@ class Layout extends Test                                                       
 "Command",
 "Rep",
 "Parent",
-"Size",
-"Children");
+"Children",
+"Dimension");
     S.push(new StringBuilder(t));
 
     for (int i = 0; i < fields.size(); i++)
@@ -167,15 +245,21 @@ class Layout extends Test                                                       
       final String D = f.dimensions();
       final int    d = f.indent;
       final String n = " ".repeat(d)+f.name;
-      final String p = f.parent != null ? String.format("%8d", f.getParent().line) : "";
+      final String p = f.parent != null ? f.getParent().name : "";
       final String r = f.rep    != null ? String.format("%8d", f.rep)              : "";
       final String s = String.format
        ("%4d  %11d  %-32s  %-8s  %8s  %8s  %-32s  %-32s",
-        i,    d,    n,    c,   r,   p, D, C);
+        i,    d,    n,    c,     r,   p,   C,     D);
       S.push(new StringBuilder(s));
      }
     squeezeVerticalSpaces(S);
     return joinStringBuilders(S, "\n")+"\n";
+   }
+
+  void run()                                                                    // Run the code
+   {for (int i = 0; i < code.size(); i++)
+     {code.elementAt(i).action();
+     }
    }
 
   protected static void test_parse()
@@ -197,21 +281,54 @@ A array 2
 
     //stop(l);
     ok(l, """
-   #  Indent  Name          Command  Rep  Parent  Size  Children
-   0       0  A             array      2                S
-   1       2    S           struct             0        a, b, u
-   2       4      a         var        4       1  2
-   3       4      b         bit                1  2
-   4       4      u         union              1        B, C
-   5       6        B       array      4       4        S1
-   6       8          S1    struct             5        a1, b1
-   7      10            a1  bit                6  2, 4
-   8      10            b1  var        2       6  2, 4
-   9       6        C       array      2       4        S2
-  10       8          S2    struct             9        a2, b2
-  11      10            a2  bit               10  2, 2
-  12      10            b2  var        5      10  2, 2
+   #  Indent  Name          Command  Rep  Parent  Children  Dimension
+   0       0  A             array      2          S
+   1       2    S           struct             A  a, b, u
+   2       4      a         var        4       S            2
+   3       4      b         bit                S            2
+   4       4      u         union              S  B, C
+   5       6        B       array      4       u  S1
+   6       8          S1    struct             B  a1, b1
+   7      10            a1  bit               S1            2*4 = 8
+   8      10            b1  var        2      S1            2*4 = 8
+   9       6        C       array      2       u  S2
+  10       8          S2    struct             C  a2, b2
+  11      10            a2  bit               S2            2*2 = 4
+  12      10            b2  var        5      S2            2*2 = 4
 """);
+
+    Field b1 = l.locateFieldByName("b1");
+    ok(b1.dimProduct(), 8);
+    l.allocateMemory();
+   }
+
+  protected static void test_parse_top()
+   {Layout l = new Layout("""
+a var 4
+b bit
+S struct
+  a1 bit
+  b1 var 5
+c var 2
+""");
+
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Command  Rep  Parent  Children  Dimension
+  0       0  a     var        4
+  1       0  b     bit
+  2       0  S     struct                a1, b1
+  3       2    a1  bit                S
+  4       2    b1  var        5       S
+  5       0  c     var        2
+""");
+
+    Field a = l.locateFieldByName("a");
+    Field b = l.locateFieldByName("b");
+    Field c = l.locateFieldByName("c");
+    ok(a.rep(), 4);
+    ok(b.rep(), 1);
+    ok(c.rep(), 2);
    }
 
   protected static void oldTests()                                              // Tests thought to be in good shape
@@ -220,7 +337,7 @@ A array 2
 
   protected static void newTests()                                              // Tests being worked on
    {//oldTests();
-    test_parse();
+    test_parse_top();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

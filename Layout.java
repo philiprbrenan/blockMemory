@@ -7,10 +7,10 @@ package com.AppaApps.Silicon;                                                   
 import java.util.*;
 
 class Layout extends Test                                                       // Manipulate a btree using static methods and memory
- {final String                source;                                           // The source string we are going to fields
+ {final String                source;                                           // The source string we are going to parse into fields  describing the memory layout
   final Stack<Field>          fields = new Stack<>();                           // Each field parsed from the input string
-  final TreeMap<String,Field> names  = new TreeMap<>();                         // Names of each field
-  final Stack<Instruction>    code   = new Stack<>();                           // The code that manipulates the fields
+  final TreeMap<String,Field>  names = new TreeMap<>();                         // Names of each field
+  final Stack<Instruction>      code = new Stack<>();                           // The code that manipulates the fields
 
   Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
    {source = Source;
@@ -28,7 +28,7 @@ class Layout extends Test                                                       
     final Stack<Field>children   = new Stack<>();                               // Children of an item
     final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
     BitSet[]memory;                                                             // Memory for this field
-    int t, s, T, S;                                                             // Target index, source index, target value at target index, source value at source index
+    int     value;                                                              // The last value read from the memory of this field
 
     Field(int line, int indent, String name, String cmd, Integer rep, Integer parent) // Constructor
      {this.line   = line;
@@ -105,34 +105,34 @@ class Layout extends Test                                                       
       for (int i = 0; i < N; i++) memory[i] = new BitSet(rep);
      }
 
-    Field checkBitOrVar()                                                       // Check that this is a field that this field is a bit or var and thus can be directly manipulated
-     {if (spacer) return this;
-      stop("Can only operate on bit or var, not:", cmd, "with name", name);
+    Field checkVar()                                                            // Check that this is a var field
+     {if (var) return this;
+      stop("Expected a var  but got a:", cmd, "called", name);
       return null;
      }
 
-    int get(BitSet b)                                                           // Get the value from memory for this field indexed by the source index
+    int getIntFromBits(BitSet b)                                                // Get the value of a bitset as an integer to the extent that the integer can accept
      {return b.length() == 0 ? 0 : (int) b.toLongArray()[0];
      }
 
-    void set(BitSet b, int value)                                               // Set a bit set to as much of an integer as it can accept
+    void setBitsFromInt(BitSet b, int value)                                    // Set a bit set to as much of an integer as it can accept
      {final int l = min(b.length(), Integer.SIZE-1);
       b.clear();
       for (int i = 0; i < l; i++) if (((value >> i) & 1) != 0) b.set(i);
      }
 
-    void zeroSourceIndex()                                                      // Zero the source index for this field
-     {final Field f = checkBitOrVar();
+    void iReadAt(int i)                                                         // Read the indicated element of this field making it the current value of this field
+     {final Field f = checkVar();
       new Instruction()
-       {void action() {f.s = 0; f.S = f.get(memory[f.s]);}
+       {void action() {f.value = f.getIntFromBits(memory[i]);}
        };
      }
 
-    void incSourceIndex()                                                       // Increment the source index for this field
-     {final Field f = checkBitOrVar();
-      new Instruction()
-       {void action() {f.s++;}
-       };
+    int convolute(Field...j)                                                    // Convolute the dimensions of this field with the supplied top level vars acting as array indices
+     {int i = j[0].getIntFromBits(memory[0]);                                   // We can read out the value of the var without indexing becuase it is a top var
+      final int J = j.length;
+      for (int c = 1; c < J; c++) i = i * dimensions.elementAt(c).rep + getIntFromBits(memory[0]);
+      return i;
      }
    }
 
@@ -143,7 +143,7 @@ class Layout extends Test                                                       
 
     Instruction() {code.push(this);}                                            // Add the instruction to the code
 
-    abstract void action();                                                     // Override this method to specify what this instruction does
+    abstract void action();                                                     // Override this method to specify what the instruction does
    }
 
   void allocateMemory()                                                         // Allocate memory for all fields
@@ -198,7 +198,7 @@ class Layout extends Test                                                       
        }
 
       final Field F = new Field(l, indent, name, cmd, rep, p.parent);           // Indenting at the same level as a previous field
-      if (p.hasParent()) p.getParent().children.push(F);                        // The children associated with each parent
+      if (p.hasParent()) p.getParent().children.push(F);                        // The children associated with each parent. I f a field hass no parent then it is a top field and can be used for indexing fields under arrays
      }
 
     for(Field p : fields)                                                       // Dimensions of each spacer
@@ -227,10 +227,11 @@ class Layout extends Test                                                       
   public String toString()                                                      // Print the fields of the input lines
    {final Stack<StringBuilder> S = new Stack<>();                               // Print of fields
     final String t = String.format
-       ("%4s  %11s  %-32s  %-8s  %8s  %8s  %-32s  %-32s",
+       ("%4s  %11s  %-32s  %-8s  %-8s  %8s  %8s  %-32s  %-32s",
 "#",
 "Indent",
 "Name",
+"Value___",
 "Command",
 "Rep",
 "Parent",
@@ -247,9 +248,10 @@ class Layout extends Test                                                       
       final String n = " ".repeat(d)+f.name;
       final String p = f.parent != null ? f.getParent().name : "";
       final String r = f.rep    != null ? String.format("%8d", f.rep)              : "";
+      final String v = String.format("%8d", f.value);
       final String s = String.format
-       ("%4d  %11d  %-32s  %-8s  %8s  %8s  %-32s  %-32s",
-        i,    d,    n,    c,     r,   p,   C,     D);
+       ("%4d  %11d  %-32s  %-8s  %-8s  %8s  %8s  %-32s  %-32s",
+        i,    d,    n,    v, c,     r,   p,   C,     D);
       S.push(new StringBuilder(s));
      }
     squeezeVerticalSpaces(S);
@@ -281,20 +283,20 @@ A array 2
 
     //stop(l);
     ok(l, """
-   #  Indent  Name          Command  Rep  Parent  Children  Dimension
-   0       0  A             array      2          S
-   1       2    S           struct             A  a, b, u
-   2       4      a         var        4       S            2
-   3       4      b         bit                S            2
-   4       4      u         union              S  B, C
-   5       6        B       array      4       u  S1
-   6       8          S1    struct             B  a1, b1
-   7      10            a1  bit               S1            2*4 = 8
-   8      10            b1  var        2      S1            2*4 = 8
-   9       6        C       array      2       u  S2
-  10       8          S2    struct             C  a2, b2
-  11      10            a2  bit               S2            2*2 = 4
-  12      10            b2  var        5      S2            2*2 = 4
+   #  Indent  Name          Value___  Command  Rep  Parent  Children  Dimension
+   0       0  A                    0  array      2          S
+   1       2    S                  0  struct             A  a, b, u
+   2       4      a                0  var        4       S            2
+   3       4      b                0  bit                S            2
+   4       4      u                0  union              S  B, C
+   5       6        B              0  array      4       u  S1
+   6       8          S1           0  struct             B  a1, b1
+   7      10            a1         0  bit               S1            2*4 = 8
+   8      10            b1         0  var        2      S1            2*4 = 8
+   9       6        C              0  array      2       u  S2
+  10       8          S2           0  struct             C  a2, b2
+  11      10            a2         0  bit               S2            2*2 = 4
+  12      10            b2         0  var        5      S2            2*2 = 4
 """);
 
     Field b1 = l.locateFieldByName("b1");
@@ -314,13 +316,13 @@ c var 2
 
     //stop(l);
     ok(l, """
-  #  Indent  Name  Command  Rep  Parent  Children  Dimension
-  0       0  a     var        4
-  1       0  b     bit
-  2       0  S     struct                a1, b1
-  3       2    a1  bit                S
-  4       2    b1  var        5       S
-  5       0  c     var        2
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  a            0  var        4
+  1       0  b            0  bit
+  2       0  S            0  struct                a1, b1
+  3       2    a1         0  bit                S
+  4       2    b1         0  var        5       S
+  5       0  c            0  var        2
 """);
 
     Field a = l.locateFieldByName("a");
@@ -336,7 +338,7 @@ c var 2
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {//oldTests();
+   {oldTests();
     test_parse_top();
    }
 

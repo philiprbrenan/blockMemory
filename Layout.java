@@ -101,11 +101,11 @@ class Layout extends Test                                                       
       return joinStrings(s, ", ");
      }
 
-    void allocateMemory()                                                       // Allocate memory for this field if is a var ior bit and part of an array. Otherwise it is just temporary
+    void allocateMemory()                                                       // Allocate memory for this field if is a var or bit and part of an array. Otherwise it is just temporary
      {if (rep() == null || dims() == 0) return;                                 // Only vars and bits are allocated memeory and even then only if they are part of an array
       final int N = dimProduct();
-      memory = new BitSet[N];
-      for (int i = 0; i < N; i++) memory[i] = new BitSet(rep());
+      memory = new BitSet[N];                                                   // Array of bit sets.  This is inefficient for representing bit fields in Java but not a problem in Verilog and, ultimately, it is the Verilog that counts.
+      for (int i = 0; i < N; i++) memory[i] = new BitSet(rep());                // Memory at each index
      }
 
     Field checkVar()                                                            // Check that this is a bit or var field - a bit is a var containing just one bit
@@ -115,29 +115,29 @@ class Layout extends Test                                                       
      }
 
     int getIntFromBits(BitSet b)                                                // Get the value of a bitset as an integer to the extent that the integer can accept
-     {return b.length() == 0 ? 0 : (int) b.toLongArray()[0];
+     {return b.length() == 0 ? 0 : (int) b.toLongArray()[0];                    // Relying on the fact that the Java is only ever test code unlike the Verilog.
      }
 
     void setBitsFromInt(BitSet b, int value)                                    // Set a bit set to as much of an integer as it can accept
      {final int l = min(rep(), Integer.SIZE-1);
-      b.clear();
-      for (int i = 0; i < l; i++)
+      b.clear();                                                                // Zero the memory
+      for (int i = 0; i < l; i++)                                               // Set each bit in the bitset if the corresponding bit in the value is set
        {if (((value >> i) & 1) != 0)
          {b.set(i);
          }
        }
      }
 
-    int convolute(Field...j)                                                    // Convolute the dimensions of this field with the supplied top level vars acting as array indices
+    int convolute(Field...j)                                                    // Convolute the dimensions of this field with the supplied top level vars acting as array indices to locat the index of an element in an array
      {int i = j[0].value;                                                       // Current value of var
       final int J = j.length;
-      for (int c = 1; c < J; c++)
+      for (int c = 1; c < J; c++)                                               // Each dimension beyond the forst one contributes to the indes.  The first dimension determines the size but not the location of an element in the array
        {final int    d = dimensions.elementAt(c).rep();
         final Field  f = j[c];
         final int    v = f.value;
         final String m = "Index: "+v+"from: "+f.name+" is";
-        if (v <  0) stop(m, "negative");
-        if (v >= d) stop(m, "is greater than or equal to:", d);
+        if (v <  0) stop(m, "negative");                                        // Index out of range low
+        if (v >= d) stop(m, "is greater than or equal to:", d);                 // Index out of range high
         i = i * d + v;                                                          // Move up one dimension
        }
       return i;

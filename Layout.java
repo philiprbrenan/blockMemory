@@ -6,17 +6,21 @@ package com.AppaApps.Silicon;                                                   
 
 import java.util.*;
 
-class Layout extends Test                                                       // Manipulate a btree using static methods and memory
+class Layout extends Test                                                       // Descriobe and manipulate the memory containing the btree
  {final String                source;                                           // The source string we are going to parse into fields  describing the memory layout
   final Stack<Field>          fields = new Stack<>();                           // Each field parsed from the input string
   final TreeMap<String,Field>  names = new TreeMap<>();                         // Names of each field
   final Stack<Instruction>      code = new Stack<>();                           // The code that manipulates the fields
 
+//D1 Layout                                                                     // Describe a memory layout
+
   Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
    {source = Source;
     parseFields();
-    allocateMemory();                                                            // Allocate memory for all fields
+    allocateMemory();                                                           // Allocate memory for all fields
    }
+
+//D1 Fields                                                                     // Describe a field in a memory layout
 
   class Field                                                                   // The fields in the layout
    {final int     line;                                                         // Line at which the layout was parsed
@@ -143,14 +147,16 @@ class Layout extends Test                                                       
       return i;
      }
 
-    void iRead(int index)                                                       // Create an instruction that loads the value of this field from the indexed  element of the memory associated with this field
+//D2 Read                                                                       // Read values from memory
+
+    void iRead(int index)                                                       // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {final Field f = checkVar();
       new Instruction()
        {void action() {f.value = f.getIntFromBits(memory[index]);}
        };
      }
 
-    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the indexed  element of the memory associated with this field
+    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the variable indexed element of the memory associated with this field
      {final Field f = checkVar();
       new Instruction()
        {void action()
@@ -160,7 +166,9 @@ class Layout extends Test                                                       
        };
      }
 
-    void iWrite(int value)                                                      // Create an instruction that sets the value of this field butthe does not modify the memory backing the field
+//D2 Write                                                                      // Write values into memory
+
+    void iWrite(int value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
      {final Field  f = checkVar();
       final BitSet b = new BitSet(f.rep());
       new Instruction()
@@ -171,7 +179,7 @@ class Layout extends Test                                                       
        };
      }
 
-    void iWrite(int value, int index)                                           // Create an instruction that sets the value of this field and updates the indexed element of the memory associated with this field with the same value
+    void iWrite(int value, int index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       new Instruction()
        {void action()
@@ -182,7 +190,7 @@ class Layout extends Test                                                       
        };
      }
 
-    void iWrite(Field source, Field...indices)                                  // Create an instruction that sets the value of this field and updates the indexed element of the memory associated with this field with the same value
+    void iWrite(Field source, Field...indices)                                  // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       new Instruction()
        {void action()
@@ -194,7 +202,44 @@ class Layout extends Test                                                       
          }
        };
      }
+
+//D2 Instructions                                                               // Instructions that can be executed against memory
+
+    void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write ino backing mmeory as well call iWrite() as well
+
+    void iInc()                                                                 // Increment the value of this field
+     {final Field f = checkVar();
+      new Instruction()
+       {void action() {f.value++;}
+       };
+     }
+
+    void iAdd(Field...Source)                                                   // Add the values of the source fields and store in the target. If no source fields are supplied trhe source is zeroed.  IF one field is supplied the source value is copied in to the target.  Otherwise the source fields are summed and the result stored in the target value
+     {final Field t = checkVar();
+      switch(Source.length)
+       {case 0: new Instruction()
+         {void action() {t.value = 0;}
+         };
+        break;
+        case 1: new Instruction()
+         {void action() {t.value = Source[0].value;}
+         };
+        break;
+        case 2: new Instruction()
+         {void action() {t.value = Source[0].value + Source[1].value;}
+         };
+        break;
+        default: new Instruction()
+         {void action()
+           {t.value = 0; for(Field s : Source) t.value += s.value;
+           }
+         };
+        break;
+       };
+     }
    }
+
+//D1 Execute                                                                    // Execute instructions in a program to modify the memory described by the layout
 
   Field locateFieldByName(String name) {return names.get(name);}                // Locate a field by name
 
@@ -207,8 +252,18 @@ class Layout extends Test                                                       
    }
 
   void allocateMemory()                                                         // Allocate memory for all fields that actually use memory
-   {for(Field f: fields) if (f.spacer) f.allocateMemory();
+   {for(Field f: fields) if (f.spacer && f.dims() > 0) f.allocateMemory();
    }
+
+  void clearProgram() {code.clear();}                                           // Clear the program code
+
+  void runProgram()                                                             // Run the program code
+   {for (int i = 0; i < code.size(); i++)
+     {code.elementAt(i).action();
+     }
+   }
+
+//D1 Parsing                                                                    // Parse the source description of a memory layout
 
   Integer locatePreviousElement(int indent, String location)                    // The index of the previous field ignoring the dependencies of the previous field
    {if (indent >= fields.lastElement().indent + 2) return fields.size()-1;      // Deeper indentation acceptable so the previous field is the last one parsed
@@ -284,6 +339,8 @@ class Layout extends Test                                                       
      }
    }
 
+//D2 Printing                                                                   // Print the results if parsing a memory layout
+
   public String toString()                                                      // Print the fields of the input lines
    {final Stack<StringBuilder> S = new Stack<>();                               // Print of fields
     final String t = String.format
@@ -318,13 +375,7 @@ class Layout extends Test                                                       
     return joinStringBuilders(S, "\n")+"\n";
    }
 
-  void clearProgram() {code.clear();}                                           // Clear the program code
-
-  void runProgram()                                                             // Run the program code
-   {for (int i = 0; i < code.size(); i++)
-     {code.elementAt(i).action();
-     }
-   }
+//D1 Tests                                                                      // Test memory layouts
 
   protected static void test_parse()
    {Layout l = new Layout("""
@@ -477,16 +528,53 @@ v var 4
      }
    }
 
+  protected static void test_add()
+   {Layout l = new Layout("""
+a var 4
+b var 4
+c var 4
+d var 4
+e var 4
+f var 4
+""");
+
+    Field a = l.locateFieldByName("a");
+    Field b = l.locateFieldByName("b");
+    Field c = l.locateFieldByName("c");
+    Field d = l.locateFieldByName("d");
+    Field e = l.locateFieldByName("e");
+    Field f = l.locateFieldByName("f");
+
+    a.iWrite(1);
+    b.iWrite(1); b.iInc();
+    c.iAdd();
+    d.iAdd(b);
+    e.iAdd(a, b);
+    f.iAdd(a, b, c, d, e);
+    l.runProgram();
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  a            1  var        4
+  1       0  b            2  var        4
+  2       0  c            0  var        4
+  3       0  d            2  var        4
+  4       0  e            3  var        4
+  5       0  f            8  var        4
+""");
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
     test_vars();
     test_array();
+    test_add();
    }
 
   protected static void newTests()                                              // Tests being worked on
    {oldTests();
-    test_array();
+    test_add();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

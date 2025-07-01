@@ -68,16 +68,18 @@ class Layout extends Test                                                       
       return ""+s+")";
      }
 
-    Integer rep()                                                               // The width of the element in bits
+    Integer rep()                                                               // The width of the element in bits or the array dimension
      {if (bit) return 1;
       if (var || array) return rep;
       stop("Only array, bit or var can have a rep count, not:", cmd, "with name:", name);
       return null;
      }
 
+    int dims() {return dimensions.size();}                                      // The number if containing arrays - if there are nonw the field has no backing memory only its cirrent value
+
     int dimProduct()                                                            // The product of the dimensions
-     {if (dimensions.size() == 0) return 1;                                     // No dimensions
-      if (dimensions.size() == 1) return dimensions.firstElement().rep;         // One dimension
+     {if (dims() == 0) return 1;                                                // No dimensions
+      if (dims() == 1) return dimensions.firstElement().rep;                    // One dimension
       int n = 1;
       for(Field d : dimensions) n *= d.rep;                                     // Multiple dimensions
       return n;
@@ -85,8 +87,8 @@ class Layout extends Test                                                       
 
     String dimensions()                                                         // The dimensions as a string
      {final Stack<String> s = new Stack<>();
-      if (dimensions.size() == 0) return "";                                    // No dimensions
-      if (dimensions.size() == 1) return ""+dimensions.firstElement().rep;      // One dimension
+      if (dims() == 0) return "";                                               // No dimensions
+      if (dims() == 1) return ""+dimensions.firstElement().rep;                 // One dimension
       for(Field d : dimensions) s.push(""+d.rep);                               // Several dimensions
       int n = 1;
       for(Field d : dimensions) n *= d.rep;
@@ -99,8 +101,8 @@ class Layout extends Test                                                       
       return joinStrings(s, ", ");
      }
 
-    void allocateMemory()                                                       // Allocate memory for this field
-     {if (rep() == null) return;
+    void allocateMemory()                                                       // Allocate memory for this field if is a var ior bit and part of an array. Otherwise it is just temporary
+     {if (rep() == null || dims() == 0) return;                                 // Only vars and bits are allocated memeory and even then only if they are part of an array
       final int N = dimProduct();
       memory = new BitSet[N];
       for (int i = 0; i < N; i++) memory[i] = new BitSet(rep());
@@ -141,8 +143,6 @@ class Layout extends Test                                                       
       return i;
      }
 
-    void iRead() {iRead(0);}                                                    // Create an instruction that loads the value of this field from the first element of the memory associated with this field
-
     void iRead(int index)                                                       // Create an instruction that loads the value of this field from the indexed  element of the memory associated with this field
      {final Field f = checkVar();
       new Instruction()
@@ -160,7 +160,16 @@ class Layout extends Test                                                       
        };
      }
 
-    void iWrite(int value) {iWrite(value, 0);}                                  // Create an instruction that sets the value of this field and updates the first element of the memory associated with this field with the same value
+    void iWrite(int value)                                                      // Create an instruction that sets the value of this field butthe does not modify the memory backing the field
+     {final Field  f = checkVar();
+      final BitSet b = new BitSet(f.rep());
+      new Instruction()
+       {void action()
+         {f.setBitsFromInt(b, value);
+          f.value = f.getIntFromBits(b);                                        // So the value matches what would actually be written into memory
+         }
+       };
+     }
 
     void iWrite(int value, int index)                                           // Create an instruction that sets the value of this field and updates the indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
@@ -453,7 +462,7 @@ v var 4
 
     for   (int x = 0; x < A.rep; x++)
      {for (int y = 0; y < B.rep; y++)
-       {i.iWrite(x); j.iWrite(y); v.iWrite(2 * x + y); b.iWrite(v, i, j);
+       {i.iWrite(x); j.iWrite(y); b.iWrite(2 * x + y); b.iWrite(b, i, j);
        }
      }
     l.runProgram();
@@ -476,7 +485,7 @@ v var 4
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {//oldTests();
+   {oldTests();
     test_array();
    }
 

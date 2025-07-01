@@ -198,7 +198,7 @@ class Layout extends Test                                                       
    }
 
   void allocateMemory()                                                         // Allocate memory for all fields
-   {for(Field f: fields) f.allocateMemory();
+   {for(Field f: fields) if (f.spacer) f.allocateMemory();
    }
 
   Integer locatePreviousElement(int indent, String location)                    // The index of the previous field ignoring the dependencies of the previous field
@@ -440,11 +440,12 @@ v var 4
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
+    test_vars();
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {//oldTests();
-    test_vars();
+   {oldTests();
+    //test_vars();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

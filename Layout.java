@@ -12,7 +12,7 @@ class Layout extends Test                                                       
   final TreeMap<String,Field>  names = new TreeMap<>();                         // Names of each field
   final Stack<Instruction>      code = new Stack<>();                           // The code that manipulates the fields
   final Stack<Label>          labels = new Stack<>();                           // The code that manipulates the fields
-  final int                 maxSteps = 20;                                      // Maximum number of steps to execute
+  final int                 maxSteps = 200;                                      // Maximum number of steps to execute
   int                             pc = 0;                                       // The index of the next instruction to be executed
 
 //D1 Layout                                                                     // Describe a memory layout
@@ -319,13 +319,14 @@ class Layout extends Test                                                       
    {for(Field f: fields) if (f.spacer && f.dims() > 0) f.allocateMemory();
    }
 
-  void clearProgram() {code.clear();}                                           // Clear the program code
+  void clearProgram() {code.clear(); pc = 0;}                                   // Clear the program code
 
   void runProgram()                                                             // Run the program code
    {int  i = 0;
     for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
      {code.elementAt(pc).action();
      }
+    if (pc < code.size()) stop("Out of steps after :", i);
    }
 
 //D1 Parsing                                                                    // Parse the source description of a memory layout
@@ -576,6 +577,7 @@ v var 4
     Field b = l.locateFieldByName("b");
     Field v = l.locateFieldByName("v");
 
+    l.clearProgram();
     for   (int x = 0; x < A.rep; x++)
      {for (int y = 0; y < B.rep; y++)
        {i.iWrite(x); j.iWrite(y); b.iWrite(2 * x + y); b.iWrite(b, i, j);
@@ -707,8 +709,8 @@ d var 4
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {//oldTests();
-    test_block();
+   {oldTests();
+    //test_block();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

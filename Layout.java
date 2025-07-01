@@ -15,6 +15,7 @@ class Layout extends Test                                                       
   Layout(String Source)                                                         // A source description of the layout to be parsed into fieldsd
    {source = Source;
     parseFields();
+    allocateMemory();                                                            // Allocate memory for all fields
    }
 
   class Field                                                                   // The fields in the layout
@@ -67,11 +68,11 @@ class Layout extends Test                                                       
       return ""+s+")";
      }
 
-    int rep()                                                                   // The width of the elemenbt in bits
+    Integer rep()                                                               // The width of the element in bits
      {if (bit) return 1;
-      if (var) return rep;
-      stop("Only bit or var can have a rep count");
-      return 0;
+      if (var || array) return rep;
+      stop("Only array, bit or var can have a rep count, not:", cmd, "with name:", name);
+      return null;
      }
 
     int dimProduct()                                                            // The product of the dimensions
@@ -99,15 +100,15 @@ class Layout extends Test                                                       
      }
 
     void allocateMemory()                                                       // Allocate memory for this field
-     {if (rep == null) return;
+     {if (rep() == null) return;
       final int N = dimProduct();
       memory = new BitSet[N];
-      for (int i = 0; i < N; i++) memory[i] = new BitSet(rep);
+      for (int i = 0; i < N; i++) memory[i] = new BitSet(rep());
      }
 
-    Field checkVar()                                                            // Check that this is a var field
-     {if (var) return this;
-      stop("Expected a var  but got a:", cmd, "called", name);
+    Field checkVar()                                                            // Check that this is a bit or var field - a bit is a var containing just one bit
+     {if (bit || var) return this;
+      stop("Expected a bit or a var but got a:", cmd, "called", name);
       return null;
      }
 
@@ -116,23 +117,73 @@ class Layout extends Test                                                       
      }
 
     void setBitsFromInt(BitSet b, int value)                                    // Set a bit set to as much of an integer as it can accept
-     {final int l = min(b.length(), Integer.SIZE-1);
+     {final int l = min(rep(), Integer.SIZE-1);
       b.clear();
-      for (int i = 0; i < l; i++) if (((value >> i) & 1) != 0) b.set(i);
-     }
-
-    void iReadAt(int i)                                                         // Read the indicated element of this field making it the current value of this field
-     {final Field f = checkVar();
-      new Instruction()
-       {void action() {f.value = f.getIntFromBits(memory[i]);}
-       };
+      for (int i = 0; i < l; i++)
+       {if (((value >> i) & 1) != 0)
+         {b.set(i);
+         }
+       }
      }
 
     int convolute(Field...j)                                                    // Convolute the dimensions of this field with the supplied top level vars acting as array indices
-     {int i = j[0].getIntFromBits(memory[0]);                                   // We can read out the value of the var without indexing becuase it is a top var
+     {int i = j[0].value;                                                       // Current value of var
       final int J = j.length;
-      for (int c = 1; c < J; c++) i = i * dimensions.elementAt(c).rep + getIntFromBits(memory[0]);
+      for (int c = 1; c < J; c++)
+       {final int    d = dimensions.elementAt(c).rep();
+        final Field  f = j[c];
+        final int    v = f.value;
+        final String m = "Index: "+v+"from: "+f.name+" is";
+        if (v <  0) stop(m, "negative");
+        if (v >= d) stop(m, "is greater than or equal to:", d);
+        i = i * d + v;                                                          // Move up one dimension
+       }
       return i;
+     }
+
+    void iRead() {iRead(0);}                                                    // Create an instruction that loads the value of this field from the first element of the memory associated with this field
+
+    void iRead(int index)                                                       // Create an instruction that loads the value of this field from the indexed  element of the memory associated with this field
+     {final Field f = checkVar();
+      new Instruction()
+       {void action() {f.value = f.getIntFromBits(memory[index]);}
+       };
+     }
+
+    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the indexed  element of the memory associated with this field
+     {final Field f = checkVar();
+      new Instruction()
+       {void action()
+         {final int index = convolute(indices);
+          f.value = f.getIntFromBits(memory[index]);
+         }
+       };
+     }
+
+    void iWrite(int value) {iWrite(value, 0);}                                  // Create an instruction that sets the value of this field and updates the first element of the memory associated with this field with the same value
+
+    void iWrite(int value, int index)                                           // Create an instruction that sets the value of this field and updates the indexed element of the memory associated with this field with the same value
+     {final Field f = checkVar();
+      new Instruction()
+       {void action()
+         {final BitSet b = f.memory[index];                                     // Bit set in memory holding value at this index
+          f.setBitsFromInt(b, value);
+          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         }
+       };
+     }
+
+    void iWrite(Field source, Field...indices)                                  // Create an instruction that sets the value of this field and updates the indexed element of the memory associated with this field with the same value
+     {final Field f = checkVar();
+      new Instruction()
+       {void action()
+         {final int index = convolute(indices);
+          final int value = source.value;
+          final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
+          f.setBitsFromInt(b, value);
+          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         }
+       };
      }
    }
 
@@ -258,7 +309,9 @@ class Layout extends Test                                                       
     return joinStringBuilders(S, "\n")+"\n";
    }
 
-  void run()                                                                    // Run the code
+  void clearProgram() {code.clear();}                                           // Clear the program code
+
+  void runProgram()                                                             // Run the program code
    {for (int i = 0; i < code.size(); i++)
      {code.elementAt(i).action();
      }
@@ -333,13 +386,65 @@ c var 2
     ok(c.rep(), 2);
    }
 
+  protected static void test_vars()
+   {Layout l = new Layout("""
+i var 4
+A array 2
+  a var 4
+v var 4
+""");
+
+    Field i = l.locateFieldByName("i");
+    Field a = l.locateFieldByName("a");
+    Field v = l.locateFieldByName("v");
+
+    i.iWrite(0); v.iWrite(2); a.iWrite(v, i);
+    i.iWrite(1); v.iWrite(4); a.iWrite(v, i);
+
+    l.runProgram();
+
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  i            1  var        4
+  1       0  A            0  array      2          a
+  2       2    a          4  var        4       A            2
+  3       0  v            4  var        4
+""");
+
+    l.clearProgram();
+    i.iWrite(0); a.iRead(i);
+    l.runProgram();
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  i            0  var        4
+  1       0  A            0  array      2          a
+  2       2    a          2  var        4       A            2
+  3       0  v            4  var        4
+""");
+
+    l.clearProgram();
+    i.iWrite(1); a.iRead(i);
+    l.runProgram();
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  i            1  var        4
+  1       0  A            0  array      2          a
+  2       2    a          4  var        4       A            2
+  3       0  v            4  var        4
+""");
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
+    test_parse_top();
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {oldTests();
-    test_parse_top();
+   {//oldTests();
+    test_vars();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

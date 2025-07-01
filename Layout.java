@@ -271,7 +271,7 @@ class Layout extends Test                                                       
      };
    }
 
-  void GoZero(Label label, Field condition)                                      // Go to a specified label if the value of a field is zero
+  void GoZero(Label label, Field condition)                                     // Go to a specified label if the value of a field is zero
    {new Instruction()
      {void action()
        {if (condition.value == 0) pc = label.offset; else ++pc;

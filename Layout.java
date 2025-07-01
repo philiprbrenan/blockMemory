@@ -197,7 +197,7 @@ class Layout extends Test                                                       
     abstract void action();                                                     // Override this method to specify what the instruction does
    }
 
-  void allocateMemory()                                                         // Allocate memory for all fields
+  void allocateMemory()                                                         // Allocate memory for all fields that actually use memory
    {for(Field f: fields) if (f.spacer) f.allocateMemory();
    }
 
@@ -412,9 +412,7 @@ v var 4
   3       0  v            4  var        4
 """);
 
-    l.clearProgram();
-    i.iWrite(0); a.iRead(i);
-    l.runProgram();
+    l.clearProgram(); i.iWrite(0); a.iRead(i); l.runProgram();
     //stop(l);
     ok(l, """
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
@@ -424,9 +422,7 @@ v var 4
   3       0  v            4  var        4
 """);
 
-    l.clearProgram();
-    i.iWrite(1); a.iRead(i);
-    l.runProgram();
+    l.clearProgram();  i.iWrite(1); a.iRead(i); l.runProgram();
     //stop(l);
     ok(l, """
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
@@ -437,15 +433,51 @@ v var 4
 """);
    }
 
+  protected static void test_array()
+   {Layout l = new Layout("""
+i var 4
+j var 4
+A array 2
+  B array 3
+    b var 4
+v var 4
+""");
+
+    Field i = l.locateFieldByName("i");
+    Field j = l.locateFieldByName("j");
+    Field A = l.locateFieldByName("A");
+    Field a = l.locateFieldByName("a");
+    Field B = l.locateFieldByName("B");
+    Field b = l.locateFieldByName("b");
+    Field v = l.locateFieldByName("v");
+
+    for   (int x = 0; x < A.rep; x++)
+     {for (int y = 0; y < B.rep; y++)
+       {i.iWrite(x); j.iWrite(y); v.iWrite(2 * x + y); b.iWrite(v, i, j);
+       }
+     }
+    l.runProgram();
+
+    for   (int y = 0; y < B.rep; y++)
+     {for (int x = 0; x < A.rep; x++)
+       {l.clearProgram();
+        i.iWrite(x); j.iWrite(y); b.iRead(i, j);
+        l.runProgram();
+        ok(b.value, 2 * x + y);
+       }
+     }
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
     test_vars();
+    test_array();
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {oldTests();
-    //test_vars();
+   {//oldTests();
+    test_array();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

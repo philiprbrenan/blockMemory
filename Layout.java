@@ -14,6 +14,8 @@ class Layout extends Test                                                       
   final Stack<Label>          labels = new Stack<>();                           // The code that manipulates the fields
   final int                 maxSteps = 200;                                      // Maximum number of steps to execute
   int                             pc = 0;                                       // The index of the next instruction to be executed
+  String                          rc = null;                                    // The result of executing the program.  If null then no problems were detected
+  boolean   supressErrorMessagePrint = false;                                   // Do not print error message from iStop() during testing if true
 
 //D1 Layout                                                                     // Describe a memory layout
 
@@ -319,14 +321,25 @@ class Layout extends Test                                                       
    {for(Field f: fields) if (f.spacer && f.dims() > 0) f.allocateMemory();
    }
 
-  void clearProgram() {code.clear(); pc = 0;}                                   // Clear the program code
+  void clearProgram() {code.clear();}                                           // Clear the program code
 
   void runProgram()                                                             // Run the program code
-   {int  i = 0;
+   {rc = null;                                                                  // Clear the return code
+    int  i = 0;
     for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
      {code.elementAt(pc).action();
      }
     if (pc < code.size()) stop("Out of steps after :", i);
+   }
+
+  void iStop(final String message)                                              // Halt program execution with a message
+   {new Instruction()
+     {void action()
+       {rc = message;                                                           // Use the message as a result code
+        if (!supressErrorMessagePrint) say(message);                            // Write the supplied message
+        pc = code.size();                                                       // Halt the program
+       }
+     };
    }
 
 //D1 Parsing                                                                    // Parse the source description of a memory layout
@@ -698,6 +711,26 @@ d var 4
 """);
    }
 
+  protected static void test_stop()
+   {Layout l = new Layout("""
+a var 4
+""");
+
+    Field a = l.locateFieldByName("a");
+    l.supressErrorMessagePrint = true;
+    l.iStop("Stopped");
+    a.iWrite(1);
+    l.runProgram();
+
+    //stop(l);
+    ok(l, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  a            0  var        4
+""");
+
+    ok(l.rc.equals("Stopped"));
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
@@ -706,11 +739,12 @@ d var 4
     test_add();
     test_if();
     test_block();
+    test_stop();
    }
 
   protected static void newTests()                                              // Tests being worked on
-   {oldTests();
-    //test_block();
+   {//oldTests();
+    test_stop();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

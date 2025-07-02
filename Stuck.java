@@ -9,6 +9,9 @@ class Stuck extends Test                                                        
   final int bitsPerKey;                                                         // The number of bits needed to define a key
   final int bitsPerData;                                                        // The number of bits needed to define a data field
   final Layout layout;                                                          // Layout of the stuck
+  final Layout.Field stuckSize;                                                 // Current size of stuck up to the maximum size
+  final Layout.Field stuckKeys;                                                 // Keys field
+  final Layout.Field stuckData;                                                 // Data field
 
 //D1 Construction                                                               // Create a stuck
 
@@ -17,21 +20,35 @@ class Stuck extends Test                                                        
     bitsPerKey  = BitsPerKey;                                                   // The number of bits needed to define a key
     bitsPerData = BitsPerData;                                                  // The number of bits needed to define a data field
     layout      = layout();
+    stuckSize   = layout.locateFieldByName("stuckSize");                        // Current size of stuck up to the maximum size
+    stuckKeys   = layout.locateFieldByName("stuckKeys");                        // Keys field
+    stuckData   = layout.locateFieldByName("stuckData");                        // Data field
    }
 
   Layout layout()                                                               // Layout describing stuck
-   {return new Layout(
-"Stuck array "+size+"\n"+
-"  stuck struct\n"+
-"    stuck.valid bit\n"+
-"    stuck.key   var "+bitsPerKey +"\n"+
-"    stuck.data  var "+bitsPerData+"\n");
+   {return new Layout(String.format("""
+stuckSize      var    %d
+Stuck          array  %d
+  stuck        struct
+    stuckKeys  var    %d
+    stuckData  var    %d
+""", logTwo(size), size, bitsPerKey, bitsPerData));
    }
 
   static void test_parse()                                                      // Parse the stuck
    {final Stuck a = new Stuck(4, 4, 4);
     stop(a.layout);
    }
+
+//D1 Actions                                                                    // Actions on the stuck
+
+  void push                                                                     // Push a new key, data pair on the stack
+   (Layout.Field Key,
+    Layout.Field Data)
+   {if
+   }
+
+//D1 Tests                                                                      // tests
 
   static void oldTests()                                                        // Tests thought to be in good shape
    {

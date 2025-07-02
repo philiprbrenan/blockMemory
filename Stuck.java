@@ -72,7 +72,7 @@ Stuck          array  %d
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value == 0)
-         {L.stopProgram("Cannot pop empty stack");
+         {L.stopProgram("Cannot pop an empty stuck");
           return;
          }
         stuckSize.iDec();
@@ -144,6 +144,31 @@ Stuck          array  %d
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[index.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[index.value]);
+        L.P.pc++;
+       }
+     };
+   }
+
+  void setElementAt(Layout.Field index)                                         // Set the key, data pair at the specified index
+   {L.P.new Instruction()
+     {void action()
+       {if (index.value < 0)
+         {L.stopProgram("Index must be greater than zero");
+          return;
+         }
+
+        if (index.value >= size)
+         {L.stopProgram("Cannot set element beyond actual end of stuck");
+          return;
+         }
+
+        if (index.value > stuckSize.value)
+         {L.stopProgram("Cannot set element more than one element beyond current end of stuck");
+          return;
+         }
+
+        stuckKeys.iWrite(stuckKeys, index);
+        stuckData.iWrite(stuckData, index);
         L.P.pc++;
        }
      };
@@ -297,6 +322,29 @@ index var 4
     ok(s.L.P.rc, "Cannot get element beyond end of stuck");
    }
 
+  protected static void test_setElementAt()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+index var 4
+""");
+
+    Layout.Field index = l.locateFieldByName("index");
+
+    ok(s.stuckKeys, "stuckKeys: value=5, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=10, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    index.iWrite(1);
+    s.stuckKeys.iWrite(9);
+    s.stuckData.iWrite(11);
+    s.setElementAt(index);
+    s.L.runProgram();
+
+    ok(s.stuckKeys, "stuckKeys: value=9, 0=1, 1=9, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=11, 0=2, 1=11, 2=6, 3=8");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
@@ -304,11 +352,12 @@ index var 4
     test_unshift();
     test_shift();
     test_elementAt();
+    test_setElementAt();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_elementAt();
+    test_setElementAt();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

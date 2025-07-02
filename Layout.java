@@ -231,6 +231,13 @@ class Layout extends Test                                                       
 
     void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write ino backing mmeory as well call iWrite() as well
 
+    void iDec()                                                                 // Decrement the value of this field
+     {final Field f = checkVar();
+      P.new Instruction()
+       {void action() {f.value--; P.pc++;}
+       };
+     }
+
     void iInc()                                                                 // Increment the value of this field
      {final Field f = checkVar();
       P.new Instruction()
@@ -658,7 +665,7 @@ f var 4
     Field e = l.locateFieldByName("e");
     Field f = l.locateFieldByName("f");
 
-    a.iWrite(1);
+    a.iWrite(2); a.iDec();
     b.iWrite(1); b.iInc();
     c.iAdd();
     d.iAdd(b);

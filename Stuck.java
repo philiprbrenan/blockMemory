@@ -402,6 +402,11 @@ index var 4
     s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.L.runProgram();
     ok(s.stuckKeys, "stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2");
     ok(s.stuckData, "stuckData: value=12, 0=2, 1=12, 2=9, 3=4");
+
+    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.L.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.L.runProgram();
+    ok(s.stuckKeys, "stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9");
+    ok(s.stuckData, "stuckData: value=13, 0=13, 1=2, 2=12, 3=9");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape

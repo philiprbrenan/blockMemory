@@ -130,6 +130,25 @@ Stuck          array  %d
      };
    }
 
+  void elementAt(Layout.Field index)                                            // Get the key, data pair at the specified index
+   {L.P.new Instruction()
+     {void action()
+       {if (index.value < 0)
+         {L.stopProgram("Index must be greater than zero");
+          return;
+         }
+        if (index.value >= stuckSize.value)
+         {L.stopProgram("Cannot get element beyond end of stuck");
+          return;
+         }
+
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[index.value]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[index.value]);
+        L.P.pc++;
+       }
+     };
+   }
+
 //D1 Tests                                                                      // Tests
 
   protected static Stuck testStuck()                                            // Create a test stuck
@@ -243,16 +262,53 @@ Stuck          array  %d
     return s;
    }
 
+  protected static void test_elementAt()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+index var 4
+""");
+
+    Layout.Field index = l.locateFieldByName("index");
+
+    s.L.clearProgram(); index.iWrite(2); s.elementAt(index); s.L.runProgram();
+    ok(s.L, """
+  #  Indent  Name           Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize             4  var        2
+  1       0  Stuck                 0  array      4          stuck
+  2       2    stuck               0  struct         Stuck  stuckKeys, stuckData
+  3       4      stuckKeys         3  var        4   stuck                        4
+  4       4      stuckData         6  var        4   stuck                        4
+""");
+
+    s.L.clearProgram(); index.iWrite(1); s.elementAt(index); s.L.runProgram();
+    ok(s.L, """
+  #  Indent  Name           Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize             4  var        2
+  1       0  Stuck                 0  array      4          stuck
+  2       2    stuck               0  struct         Stuck  stuckKeys, stuckData
+  3       4      stuckKeys         2  var        4   stuck                        4
+  4       4      stuckData         4  var        4   stuck                        4
+""");
+
+    s.L.P.supressErrorMessagePrint = true;
+    s.L.clearProgram(); index.iWrite(5); s.elementAt(index); s.L.runProgram();
+    //stop(s.L.P.rc);
+    ok(s.L.P.rc, "Cannot get element beyond end of stuck");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
     test_pop();
     test_unshift();
     test_shift();
+    test_elementAt();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
+   {//oldTests();
+    test_elementAt();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

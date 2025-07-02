@@ -91,7 +91,7 @@ Stuck          array  %d
           return;
          }
         if (stuckSize.value >= size)
-         {L.stopProgram("Cannot unshift to a full stuck");
+         {L.stopProgram("Cannot unshift into a full stuck");
           return;
          }
 
@@ -167,8 +167,42 @@ Stuck          array  %d
           return;
          }
 
+        if (index.value == stuckSize.value)
+         {push();
+          return;
+         }
+
         stuckKeys.iWrite(stuckKeys, index);
         stuckData.iWrite(stuckData, index);
+        L.P.pc++;
+       }
+     };
+   }
+
+  void insertElementAt(Layout.Field Index)                                      // Insert a key data pair at thespecified index moving the elements abiove this position up one place to make room
+   {L.P.new Instruction()
+     {void action()
+       {if (Index.value < 0)
+         {L.stopProgram("Index must be greater than zero");
+          return;
+         }
+        if (stuckSize.value == Index.value)
+         {push();
+          return;
+         }
+        if (stuckSize.value >= size)
+         {L.stopProgram("Cannot insert into a full stuck");
+          return;
+         }
+
+        for (int i = size; i > Index.value+1; --i)
+         {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
+          stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
+         }
+        stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
+        stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
+
+        stuckSize.iInc();
         L.P.pc++;
        }
      };
@@ -345,6 +379,31 @@ index var 4
     ok(s.stuckData, "stuckData: value=11, 0=2, 1=11, 2=6, 3=8");
    }
 
+  protected static void test_insertElementAt()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+index var 4
+""");
+
+    Layout.Field index = l.locateFieldByName("index");
+    s.L.clearProgram(); s.pop(); s.L.runProgram();
+
+    ok(s.stuckSize, "stuckSize: value=3");
+    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.insertElementAt(index); s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3");
+    ok(s.stuckData, "stuckData: value=9, 0=2, 1=9, 2=4, 3=6");
+
+    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.L.runProgram();
+    ok(s.stuckKeys, "stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2");
+    ok(s.stuckData, "stuckData: value=12, 0=2, 1=12, 2=9, 3=4");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
@@ -353,11 +412,12 @@ index var 4
     test_shift();
     test_elementAt();
     test_setElementAt();
+    test_insertElementAt();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_setElementAt();
+    test_insertElementAt();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

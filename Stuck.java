@@ -264,7 +264,7 @@ Stuck          array  %d
     s.L.P.supressErrorMessagePrint = true;
     s.L.P.clearProgram(); s.pop(); s.L.runProgram();
     //stop(s.L.P.rc);
-    ok(s.L.P.rc, "Cannot pop empty stack");
+  ok(s.L.P.rc, "Cannot pop an empty stuck");
 
     return s;
    }
@@ -285,7 +285,7 @@ Stuck          array  %d
     s.L.P.supressErrorMessagePrint = true;
     s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
     //stop(s.L.P.rc);
-    ok(s.L.P.rc, "Cannot unshift to a full stuck");
+    ok(s.L.P.rc, "Cannot unshift into a full stuck");
 
     return s;
    }
@@ -416,7 +416,7 @@ index var 4
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
+   {oldTests();
     test_insertElementAt();
    }
 

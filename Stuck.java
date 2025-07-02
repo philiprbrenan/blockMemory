@@ -112,7 +112,7 @@ Stuck          array  %d
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value == 0)
-         {L.stopProgram("Cannot shift en empty stuck");
+         {L.stopProgram("Cannot shift an empty stuck");
           return;
          }
 
@@ -185,7 +185,6 @@ Stuck          array  %d
 
     s.L.P.supressErrorMessagePrint = true;
     s.L.P.clearProgram(); s.pop(); s.L.runProgram();
-
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot pop empty stack");
 
@@ -198,14 +197,17 @@ Stuck          array  %d
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.L.clearProgram();
-    s.pop();
-    s.L.runProgram();
+    s.L.clearProgram(); s.pop(); s.L.runProgram();
     s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
 
     ok(s.stuckSize, "stuckSize: value=4");
     ok(s.stuckKeys, "stuckKeys: value=9, 0=9, 1=1, 2=2, 3=3");
     ok(s.stuckData, "stuckData: value=11, 0=11, 1=2, 2=4, 3=6");
+
+    s.L.P.supressErrorMessagePrint = true;
+    s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
+    //stop(s.L.P.rc);
+    ok(s.L.P.rc, "Cannot unshift to a full stuck");
 
     return s;
    }
@@ -213,13 +215,30 @@ Stuck          array  %d
   protected static Stuck test_shift()
    {final Stuck s = test_push();
 
-    s.L.clearProgram();
-    s.shift();
-    s.L.runProgram();
-
+    s.L.clearProgram(); s.shift(); s.L.runProgram();
     ok(s.stuckSize, "stuckSize: value=3");
     ok(s.stuckKeys, "stuckKeys: value=1, 0=2, 1=3, 2=4, 3=4");
     ok(s.stuckData, "stuckData: value=2, 0=4, 1=6, 2=8, 3=8");
+
+    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=2");
+    ok(s.stuckKeys, "stuckKeys: value=2, 0=3, 1=4, 2=4, 3=4");
+    ok(s.stuckData, "stuckData: value=4, 0=6, 1=8, 2=8, 3=8");
+
+    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=1");
+    ok(s.stuckKeys, "stuckKeys: value=3, 0=4, 1=4, 2=4, 3=4");
+    ok(s.stuckData, "stuckData: value=6, 0=8, 1=8, 2=8, 3=8");
+
+    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=0");
+    ok(s.stuckKeys, "stuckKeys: value=4, 0=4, 1=4, 2=4, 3=4");
+    ok(s.stuckData, "stuckData: value=8, 0=8, 1=8, 2=8, 3=8");
+
+    s.L.P.supressErrorMessagePrint = true;
+    s.L.P.clearProgram(); s.shift(); s.L.runProgram();
+    //stop(s.L.P.rc);
+    ok(s.L.P.rc, "Cannot shift an empty stuck");
 
     return s;
    }

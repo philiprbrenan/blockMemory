@@ -42,15 +42,31 @@ Stuck          array  %d
 
 //D1 Actions                                                                    // Actions on the stuck
 
-  void push                                                                     // Push a new key, data pair on the stack
-   (Layout.Field Key,
-    Layout.Field Data)
+  void push()                                                                   // Push a new key, data pair on the stack
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size) L.stopProgram("Cannot push to a full stuck");
-        stuckKeys.iWrite(Key , stuckSize);
-        stuckData.iWrite(Data, stuckSize);
+       {if (stuckSize.value >= size)
+         {L.stopProgram("Cannot push to a full stuck");
+          return;
+         }
+        stuckKeys.iWrite(stuckKeys, stuckSize);
+        stuckData.iWrite(stuckData, stuckSize);
         stuckSize.iInc();
+        L.P.pc++;
+       }
+     };
+   }
+
+  void pop()                                                                    // Pop a key, data pair from the stack
+   {L.P.new Instruction()
+     {void action()
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot pop empty stack");
+          return;
+         }
+        stuckSize.iDec();
+        stuckKeys.iRead(stuckSize);
+        stuckData.iRead(stuckSize);
         L.P.pc++;
        }
      };
@@ -62,31 +78,67 @@ Stuck          array  %d
    {return new Stuck(4, 4, 4);
    }
 
-  protected static void test_push()
+  protected static Stuck test_push()
    {final Stuck  s = testStuck();
-    final Layout l = s.L.additionalLayout("""
-key  var 4
-data var 4
-""");
 
-    Layout.Field k = l.locateFieldByName("key");
-    Layout.Field d = l.locateFieldByName("data");
+    Layout.Field k = s.stuckKeys;
+    Layout.Field d = s.stuckData;
 
-    l.clearProgram(); k.iWrite(1); d.iWrite(2); s.push(k, d); l.runProgram();
-    l.clearProgram(); k.iWrite(2); d.iWrite(4); s.push(k, d); l.runProgram();
-    l.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(k, d); l.runProgram();
-    l.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(k, d); l.runProgram();
+    s.L.clearProgram(); k.iWrite(1); d.iWrite(2); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(2); d.iWrite(4); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(); s.L.runProgram();
+
+    ok(s.stuckSize, "stuckSize: value=4");
     ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
     ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.P.supressErrorMessagePrint = true;
+    s.L.clearProgram(); k.iWrite(5); d.iWrite(10); s.push(); s.L.runProgram();
+    ok(s.L.P.rc, "Cannot push to a full stuck");
+
+    return s;
+   }
+
+  protected static Stuck test_pop()
+   {final Stuck  s = test_push();
+
+    s.L.clearProgram();
+    s.pop();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=3");
+//    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
+//    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+//
+//    s.L.clearProgram(); s.pop(); s.L.runProgram();
+//    ok(s.stuckSize, "stuckSize: value=2");
+//    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4");
+//    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=6, 3=8");
+//
+//    s.L.clearProgram(); s.pop(); s.L.runProgram();
+//    ok(s.stuckSize, "stuckSize: value=1");
+//    ok(s.stuckKeys, "stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4");
+//    ok(s.stuckData, "stuckData: value=4, 0=2, 1=4, 2=6, 3=8");
+//
+//    s.L.clearProgram(); s.pop(); s.L.runProgram();
+//    ok(s.stuckSize, "stuckSize: value=0");
+//    ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4");
+//    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+//
+//    s.L.P.supressErrorMessagePrint = true;
+//    s.L.P.clearProgram(); s.pop(); s.L.runProgram();
+//    stop(s.L.P.rc);
+    return s;
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
+    test_push();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_push();
+    test_pop();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

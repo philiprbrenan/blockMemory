@@ -206,6 +206,41 @@ Stuck        array  %d
      };
    }
 
+  void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
+   {L.P.new Instruction()
+     {void action()
+       {L.P.pc++;
+        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
+         {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+          if (stuckKeys.value == v)
+           {Found.value = 1; Index.value = i;
+            stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
+            return;
+           }
+         }
+        Found.value = 0;
+       }
+     };
+   }
+
+  void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key.
+   {L.P.new Instruction()
+     {void action()
+       {L.P.pc++;
+        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
+         {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+          if (stuckKeys.value <= v)
+           {Found.value = 1; Index.value = i;
+            stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+            stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
+            return;
+           }
+         }
+        Found.value = 0;
+       }
+     };
+   }
+
 //D1 Tests                                                                      // Tests
 
   protected static Stuck testStuck()                                            // Create a test stuck
@@ -407,6 +442,62 @@ index var 4
     ok(s.stuckData, "stuckData: value=13, 0=13, 1=2, 2=12, 3=9");
    }
 
+  protected static void test_search_eq()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+found bit
+index var 4
+""");
+
+    Layout.Field found = l.locateFieldByName("found");
+    Layout.Field index = l.locateFieldByName("index");
+
+    s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.L.runProgram();
+    ok(found.value, 1);
+    ok(index.value, 1);
+    ok(s.stuckKeys.value, 2);
+    ok(s.stuckData.value, 4);
+
+    s.L.clearProgram(); s.stuckKeys.iWrite(5); s.search_eq(found, index); s.L.runProgram();
+    ok(found.value, 0);
+   }
+
+  protected static void test_search_le()
+   {final Stuck  s = testStuck();
+
+    Layout.Field k = s.stuckKeys;
+    Layout.Field d = s.stuckData;
+
+    s.L.clearProgram(); k.iWrite(2); d.iWrite(3); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(4); d.iWrite(5); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.L.runProgram();
+    s.L.clearProgram(); k.iWrite(8); d.iWrite(9); s.push(); s.L.runProgram();
+
+    final Layout l = s.L.additionalLayout("""
+found bit
+index var 4
+""");
+
+    Layout.Field found = l.locateFieldByName("found");
+    Layout.Field index = l.locateFieldByName("index");
+
+    s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.L.runProgram();
+    ok(found.value, 1);
+    ok(index.value, 0);
+    ok(s.stuckKeys.value, 2);
+    ok(s.stuckData.value, 3);
+
+    s.L.clearProgram(); s.stuckKeys.iWrite(3); s.search_le(found, index); s.L.runProgram();
+    ok(found.value, 1);
+    ok(index.value, 1);
+    ok(s.stuckKeys.value, 4);
+    ok(s.stuckData.value, 5);
+
+    s.L.clearProgram(); s.stuckKeys.iWrite(10); s.search_le(found, index); s.L.runProgram();
+    ok(found.value, 0);
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
@@ -416,11 +507,13 @@ index var 4
     test_elementAt();
     test_setElementAt();
     test_insertElementAt();
+    test_search_eq();
+    test_search_le();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
-    test_insertElementAt();
+   {//oldTests();
+    test_search_le();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

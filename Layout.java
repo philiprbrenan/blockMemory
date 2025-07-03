@@ -37,7 +37,8 @@ class Layout extends Test                                                       
     final Integer parent;                                                       // Parent
     final Stack<Field>dimensions = new Stack<>();                               // Dimensions of field
     final Stack<Field>children   = new Stack<>();                               // Children of an item
-    final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
+//  final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
+    final boolean spacer, array, bit, var;                                      // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
     BitSet[]memory;                                                             // Memory for this field
     int     value;                                                              // The last value read from the memory of this field
 
@@ -50,8 +51,8 @@ class Layout extends Test                                                       
       this.parent = parent;
       array       = cmd.equals("array");
       bit         = cmd.equals("bit");
-      struct      = cmd.equals("struct");
-      union       = cmd.equals("union");
+      //struct      = cmd.equals("struct");
+      //union       = cmd.equals("union");
       var         = cmd.equals("var");
       spacer      = bit || var;
       fields.push(this);
@@ -94,9 +95,10 @@ class Layout extends Test                                                       
 
     Integer rep()                                                               // The width of the element in bits or the array dimension
      {if (bit) return 1;
-      if (var || array) return rep;
-      stop("Only array, bit or var can have a rep count, not:", cmd, "with name:", name);
-      return null;
+      return rep;
+      //if (var || array) return rep;
+      //stop("Only array, bit or var can have a rep count, not:", cmd, "with name:", name);
+      //return null;
      }
 
     int dims() {return dimensions.size();}                                      // The number if containing arrays - if there are none the field has no backing memory only its cirrent value
@@ -400,21 +402,24 @@ class Layout extends Test                                                       
 
     for(int l = 0; l < lines.length; ++l)                                       // Lines
      {final String line   = lines[l];                                           // Each line
+      if (line.matches("\\A\\s*#")) continue;                                   // Comment
       final String E      = "on line: "+(l + 1)+"\n"+line;                      // Error line, 1 based
       final int indent    = line.length() - line.stripLeading().length();       // Indentation depth
       final String[]words = line.trim().split("\\s+");                          // Words in line
       if (words.length < 2) stop("Not enough operands", E);                     // Need at least a name and a type
       final String name   = words[0];                                           // First word is the name
       final String cmd    = words[1].toLowerCase();                             // Command is the second word
-      final String Rep    = words.length == 2 ? null : words[2];                // Repetition or width as string
-
-      if (names.containsKey(name)) stop("Duplicate name:", name, E);            // Require names to be unique
-      if (!cmd.matches("array|bit|struct|var|union"))                           // Check command
-        stop("Expected one of: array, bit, struct, union, var", E);
+      if (!cmd.matches("array|bit|var"))                                        // Check command
+        stop("Expected one of: array, bit or var", E);
+      final boolean bit   = cmd.equals("bit");                                  // Need at least a name and a type
+      final int eo = bit ? 2 : 3, ao = words.length;                            // Number of operands expected and actually found
+      if (ao != eo) stop("Not enough operands", E, "expected:", eo, "found:", ao);
+      final String Rep = ao > 2 ? words[2] : null;
       if (Rep != null && !Rep.matches("\\A\\d+\\Z"))                            // Repetition if present must be numeric
         stop("Repetition:", Rep, "should be an integer", E);
+      final int rep = Rep == null ? 1 : Integer.parseInt(Rep);                  // Repetition or width
 
-      final Integer rep   = Rep == null ? null : Integer.parseInt(Rep);         // Repetition or width as integer
+      if (names.containsKey(name)) stop("Duplicate name:", name, E);            // Require names to be unique
 
       if (fields.size() == 0)                                                   // First line parsed
        {new Field(l, indent, name, cmd, rep, null);                             // Details of the first line parsed
@@ -451,9 +456,7 @@ class Layout extends Test                                                       
       final String loc = name+" from line: "+line;
       if (p.bit    && k >  0) stop("Bit:",    loc, "cannot have child layouts");
       if (p.var    && k >  0) stop("Var:",    loc, "cannot have child layouts");
-      if (p.array  && k != 1) stop("Array:",  loc, "must have exactly one child layout");
-      if (p.struct && k < 2)  stop("Struct:", loc, "must have two or more child layouts");
-      if (p.union  && k < 2)  stop("Union:",  loc, "must have two or more child layouts");
+      if (p.array  && k <  1) stop("Array:",  loc, "must have exactly one or more child layouts");
      }
    }
 
@@ -496,38 +499,47 @@ class Layout extends Test                                                       
 //D1 Tests                                                                      // Test memory layouts
 
   protected static void test_parse()
-   {Layout l = new Layout("""
+   {
+//    Layout l = new Layout("""
+//A array 2
+//  S struct
+//    a var 4
+//    b bit
+//    u union
+//      B array 4
+//        S1 struct
+//          a1 bit
+//          b1 var 2
+//      C array 2
+//        S2 struct
+//          a2 bit
+//          b2 var 5
+//""");
+
+    Layout l = new Layout("""
 A array 2
-  S struct
-    a var 4
-    b bit
-    u union
-      B array 4
-        S1 struct
-          a1 bit
-          b1 var 2
-      C array 2
-        S2 struct
-          a2 bit
-          b2 var 5
+  a var 4
+  b bit
+  B array 4
+    a1 bit
+    b1 var 2
+    C array 2
+      a2 bit
+      b2 var 5
 """);
 
     //stop(l);
     ok(l, """
-   #  Indent  Name          Value___  Command  Rep  Parent  Children  Dimension
-   0       0  A                    0  array      2          S
-   1       2    S                  0  struct             A  a, b, u
-   2       4      a                0  var        4       S            2
-   3       4      b                0  bit                S            2
-   4       4      u                0  union              S  B, C
-   5       6        B              0  array      4       u  S1
-   6       8          S1           0  struct             B  a1, b1
-   7      10            a1         0  bit               S1            2*4 = 8
-   8      10            b1         0  var        2      S1            2*4 = 8
-   9       6        C              0  array      2       u  S2
-  10       8          S2           0  struct             C  a2, b2
-  11      10            a2         0  bit               S2            2*2 = 4
-  12      10            b2         0  var        5      S2            2*2 = 4
+  #  Indent  Name      Value___  Command  Rep  Parent  Children   Dimension
+  0       0  A                0  array      2          a, b, B
+  1       2    a              0  var        4       A             2
+  2       2    b              0  bit        1       A             2
+  3       2    B              0  array      4       A  a1, b1, C
+  4       4      a1           0  bit        1       B             2*4 = 8
+  5       4      b1           0  var        2       B             2*4 = 8
+  6       4      C            0  array      2       B  a2, b2
+  7       6        a2         0  bit        1       C             2*4*2 = 16
+  8       6        b2         0  var        5       C             2*4*2 = 16
 """);
 
     Field b1 = l.locateFieldByName("b1");
@@ -536,10 +548,18 @@ A array 2
    }
 
   protected static void test_parse_top()
+//   {Layout l = new Layout("""
+//a var 4
+//b bit
+//S struct
+//  a1 bit
+//  b1 var 5
+//c var 2
+//""");
    {Layout l = new Layout("""
 a var 4
 b bit
-S struct
+A array 1
   a1 bit
   b1 var 5
 c var 2
@@ -549,10 +569,10 @@ c var 2
     ok(l, """
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
   0       0  a            0  var        4
-  1       0  b            0  bit
-  2       0  S            0  struct                a1, b1
-  3       2    a1         0  bit                S
-  4       2    b1         0  var        5       S
+  1       0  b            0  bit        1
+  2       0  A            0  array      1          a1, b1
+  3       2    a1         0  bit        1       A            1
+  4       2    b1         0  var        5       A            1
   5       0  c            0  var        2
 """);
 

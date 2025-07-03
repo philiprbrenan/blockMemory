@@ -29,11 +29,10 @@ class Stuck extends Test                                                        
 
   Layout layout()                                                               // Layout describing stuck, Having the keys ordered sequqntiall makes it easy to compare them in parallel and find the first key greater than or equal to a search key, this being the most common operation.
    {return new Layout(String.format("""
-stuckSize      var    %d
-Stuck          array  %d
-  stuck        struct
-    stuckKeys  var    %d
-    stuckData  var    %d
+stuckSize    var    %d
+Stuck        array  %d
+  stuckKeys  var    %d
+  stuckData  var    %d
 """, logTwo(size), size, bitsPerKey, bitsPerData));
    }
 
@@ -42,12 +41,11 @@ Stuck          array  %d
 
     //stop(a.L);
     ok(a.L, """
-  #  Indent  Name           Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize             0  var        2
-  1       0  Stuck                 0  array      4          stuck
-  2       2    stuck               0  struct         Stuck  stuckKeys, stuckData
-  3       4      stuckKeys         0  var        4   stuck                        4
-  4       4      stuckData         0  var        4   stuck                        4
+  #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize           0  var        2
+  1       0  Stuck               0  array      4          stuckKeys, stuckData
+  2       2    stuckKeys         0  var        4   Stuck                        4
+  3       2    stuckData         0  var        4   Stuck                        4
 """);
    }
 
@@ -331,23 +329,23 @@ index var 4
     Layout.Field index = l.locateFieldByName("index");
 
     s.L.clearProgram(); index.iWrite(2); s.elementAt(index); s.L.runProgram();
+    //stop(s.L);
     ok(s.L, """
-  #  Indent  Name           Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize             4  var        2
-  1       0  Stuck                 0  array      4          stuck
-  2       2    stuck               0  struct         Stuck  stuckKeys, stuckData
-  3       4      stuckKeys         3  var        4   stuck                        4
-  4       4      stuckData         6  var        4   stuck                        4
+  #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize           4  var        2
+  1       0  Stuck               0  array      4          stuckKeys, stuckData
+  2       2    stuckKeys         3  var        4   Stuck                        4
+  3       2    stuckData         6  var        4   Stuck                        4
 """);
 
     s.L.clearProgram(); index.iWrite(1); s.elementAt(index); s.L.runProgram();
+    //stop(s.L);
     ok(s.L, """
-  #  Indent  Name           Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize             4  var        2
-  1       0  Stuck                 0  array      4          stuck
-  2       2    stuck               0  struct         Stuck  stuckKeys, stuckData
-  3       4      stuckKeys         2  var        4   stuck                        4
-  4       4      stuckData         4  var        4   stuck                        4
+  #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize           4  var        2
+  1       0  Stuck               0  array      4          stuckKeys, stuckData
+  2       2    stuckKeys         2  var        4   Stuck                        4
+  3       2    stuckData         4  var        4   Stuck                        4
 """);
 
     s.L.P.supressErrorMessagePrint = true;

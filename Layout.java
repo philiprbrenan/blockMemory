@@ -157,7 +157,7 @@ class Layout extends Test                                                       
     int convolute(Field...j)                                                    // Convolute the dimensions of this field with the supplied top level vars acting as array indices to locat the index of an element in an array
      {int i = j[0].value;                                                       // Current value of var
       final int J = j.length;
-      for (int c = 1; c < J; c++)                                               // Each dimension beyond the forst one contributes to the indes.  The first dimension determines the size but not the location of an element in the array
+      for (int c = 1; c < J; c++)                                               // Each dimension beyond the first one contributes to the indexs.  The first dimension determines the size but not the location of an element in the array
        {final int    d = dimensions.elementAt(c).rep();
         final Field  f = j[c];
         final int    v = f.value;
@@ -349,13 +349,16 @@ class Layout extends Test                                                       
       abstract void action();                                                   // Override this method to specify what the instruction does
      }
 
-    void clearProgram() {code.clear();}                                         // Clear the program code
+    void clearProgram() {code.clear(); P.rc = null;}                            // Clear the program code and return code
 
     void runProgram()                                                           // Run the program code
      {rc = null;                                                                // Clear the return code
       int  i = 0;
+      final int size = code.size();                                             // Programs must not add instrructions to the code
       for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
-       {code.elementAt(pc).action();
+       {final int cpc = pc;
+        code.elementAt(pc).action();
+        if (code.size() != size) stopProgram("Instructions being defined at instruction: "+cpc);
        }
       if (pc < code.size()) stop("Out of steps after :", i);
      }

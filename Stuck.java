@@ -14,7 +14,6 @@ class Stuck extends Test                                                        
   final Layout.Field stuckSize;                                                 // Current size of stuck up to the maximum size
   final Layout.Field stuckKeys;                                                 // Keys field
   final Layout.Field stuckData;                                                 // Data field
-static boolean debug = false;
 
 //D1 Construction                                                               // Create a stuck
 
@@ -232,6 +231,46 @@ Stuck        array  %d
            }
          }
         Found.value = 0;
+       }
+     };
+   }
+
+  void concatenate(Stuck source)                                                // Concatenate the indicated stuck on to the end one
+   {L.P.new Instruction()
+     {void action()
+       {L.P.pc++;
+        final int sourceSize = source.stuckSize.value;
+        final int targetSize =        stuckSize.value;
+        if (sourceSize + targetSize > size) L.P.stopProgram("Not enough room in target to concatenate source as well");
+        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
+         {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
+          stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
+         }
+        stuckSize.value += sourceSize;                                          // New size of target
+        L.P.pc++;
+       }
+     };
+   }
+
+  void splitIntoTwo(Stuck Left, Stuck Right, Layout.Field Index)                // Copy the key, data pairs upto and including the index into the left stuck, the remainder into right.  The original source stuck is not modifiedr
+   {L.P.new Instruction()
+     {void action()
+       {L.P.pc++;
+        if (Index.value >= stuckSize.value)             L.P.stopProgram("Cannot split beyond end of stuck");
+        if (Left.size  < Index.value)                   L.P.stopProgram("Left stuck too small");
+        if (Right.size < stuckSize.value - Index.value) L.P.stopProgram("Right stuck too small");
+
+        for (int i = 0; i < Index.value; ++i)                                   // Copy to left
+         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+         }
+        Left.stuckSize.value = Index.value;                                     // New size of left
+
+        for (int i = 0; i < stuckSize.value - Index.value; ++i)                 // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Index.value + i].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Index.value + i].clone();
+         }
+        Right.stuckSize.value = stuckSize.value - Index.value;                  // New size of right
        }
      };
    }
@@ -563,6 +602,55 @@ index var 4
     ok(found.value, 0);
    }
 
+  protected static void test_concatenate()
+   {final Stuck s = test_push();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    final Stuck t = test_push(); t.L.P = s.L.P;
+    ok(t.stuckSize, "stuckSize: value=4");
+    ok(t.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(t.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.pop();
+    s.pop();
+    t.pop();
+    t.pop();
+    s.concatenate(t);
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2");
+    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=2, 3=4");
+   }
+
+  protected static void test_splitIntoTwo()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+index var 4
+""");
+
+    Layout.Field index = l.locateFieldByName("index");
+
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+
+    final Stuck L = test_push(); L.L.P = s.L.P;
+    final Stuck R = test_push(); R.L.P = s.L.P;
+    s.L.clearProgram();
+    index.iWrite(2);
+    s.splitIntoTwo(L, R, index);
+    s.L.runProgram();
+    ok(L.stuckSize, "stuckSize: value=2");
+    ok(L.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(L.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(R.stuckSize, "stuckSize: value=2");
+    ok(R.stuckKeys, "stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4");
+    ok(R.stuckData, "stuckData: value=0, 0=6, 1=8, 2=6, 3=8");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
@@ -575,12 +663,13 @@ index var 4
     test_removeElementAt();
     test_search_eq();
     test_search_le();
+    test_concatenate();
+    test_splitIntoTwo();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
-    //test_removeElementAt();
-    test_setElementAt();
+   {//oldTests();
+    test_splitIntoTwo();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

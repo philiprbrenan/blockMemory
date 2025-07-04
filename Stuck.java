@@ -123,6 +123,51 @@ Stuck        array  %d
     stuckSize.iDec();
    }
 
+  void firstElement()                                                           // Get the first key, data pair
+   {L.P.new Instruction()
+     {void action()
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot get the first element because the stuck is empty");
+          return;
+         }
+
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[0]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[0]);
+        L.P.pc++;
+       }
+     };
+   }
+
+  void lastElement()                                                            // Get the last key, data pair
+   {L.P.new Instruction()
+     {void action()
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot get the last element because the stuck is empty");
+          return;
+         }
+
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value-1]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value-1]);
+        L.P.pc++;
+       }
+     };
+   }
+
+  void pastLastElement()                                                        // Get the key, data pair beyond the last valid element
+   {L.P.new Instruction()
+     {void action()
+       {if (stuckSize.value > size-1)
+         {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
+          return;
+         }
+
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
+        L.P.pc++;
+       }
+     };
+   }
+
   void elementAt(Layout.Field index)                                            // Get the key, data pair at the specified index
    {L.P.new Instruction()
      {void action()
@@ -142,7 +187,7 @@ Stuck        array  %d
    {L.P.new Instruction()
      {void action()
        {if (index.value > stuckSize.value)
-         {L.stopProgram("Cannot set element more than one element beyond current end of stuck");
+         {L.stopProgram("Cannot set element more than one step beyond current end of stuck");
           return;
          }
         if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
@@ -151,6 +196,44 @@ Stuck        array  %d
      };
     stuckKeys.iWrite(stuckKeys, index);
     stuckData.iWrite(stuckData, index);
+   }
+
+  void setFirstElement()                                                        // Get the first key, data pair
+   {L.P.new Instruction()
+     {void action()
+       {stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
+        stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
+        if (stuckSize.value == 0) stuckSize.value++;
+        L.P.pc++;
+       }
+     };
+   }
+
+  void setLastElement()                                                         // Get the last key, data pair
+   {L.P.new Instruction()
+     {void action()
+       {stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value-1], stuckKeys.value);
+        stuckData.setBitsFromInt(stuckData.memory[stuckSize.value-1], stuckData.value);
+        if (stuckSize.value == 0) stuckSize.value++;
+        L.P.pc++;
+       }
+     };
+   }
+
+  void setPastLastElement()                                                     // Get the key, data pair beyond the last valid element
+   {L.P.new Instruction()
+     {void action()
+       {if (stuckSize.value >= size)
+         {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
+          return;
+         }
+
+        stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value], stuckKeys.value);
+        stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
+        stuckSize.value++;
+        L.P.pc++;
+       }
+     };
    }
 
   void insertElementAt(Layout.Field Index)                                      // Insert a key, data pair at the specified index moving the elements above this position up one place to make room
@@ -165,6 +248,7 @@ Stuck        array  %d
          {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
           stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
          }
+
         stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
 
@@ -241,7 +325,10 @@ Stuck        array  %d
        {L.P.pc++;
         final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize > size) L.P.stopProgram("Not enough room in target to concatenate source as well");
+        if (sourceSize + targetSize > size)
+         {L.P.stopProgram("Not enough room in target to concatenate source as well");
+          return;
+         }
         for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
          {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
           stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
@@ -252,33 +339,87 @@ Stuck        array  %d
      };
    }
 
-  void splitIntoTwo(Stuck Left, Stuck Right, Layout.Field Index)                // Copy the key, data pairs upto and including the index into the left stuck, the remainder into right.  The original source stuck is not modifiedr
+  void splitIntoTwo(Stuck Left, Stuck Right, Layout.Field Copy)                 // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
        {L.P.pc++;
-        if (Index.value >= stuckSize.value)             L.P.stopProgram("Cannot split beyond end of stuck");
-        if (Left.size  < Index.value)                   L.P.stopProgram("Left stuck too small");
-        if (Right.size < stuckSize.value - Index.value) L.P.stopProgram("Right stuck too small");
+        if (Copy.value >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Left.size  < Copy.value)
+         {L.P.stopProgram("Left stuck too small");
+          return;
+         }
+        if (Right.size < stuckSize.value - Copy.value)
+         {L.P.stopProgram("Right stuck too small");
+          return;
+         }
 
-        for (int i = 0; i < Index.value; ++i)                                   // Copy to left
+        for (int i = 0; i < Copy.value; ++i)                                    // Copy to left
          {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
           Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
          }
-        Left.stuckSize.value = Index.value;                                     // New size of left
+        Left.stuckSize.value = Copy.value;                                      // New size of left
 
-        for (int i = 0; i < stuckSize.value - Index.value; ++i)                 // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Index.value + i].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Index.value + i].clone();
+        for (int i = 0; i < stuckSize.value - Copy.value; ++i)                  // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy.value + i].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy.value + i].clone();
          }
-        Right.stuckSize.value = stuckSize.value - Index.value;                  // New size of right
+        Right.stuckSize.value = stuckSize.value - Copy.value;                   // New size of right
        }
      };
+   }
+
+  void splitIntoThree(Stuck Left, Stuck Right, Layout.Field Copy,               // Copy the first key, data pairs into the left stuck, insert the next the pair  into the parent at the indicated position and copy the reminder to the right stuck
+    Stuck Parent, Layout.Field At)
+   {L.P.new Instruction()
+     {void action()
+       {L.P.pc++;
+        if (Copy.value >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Left.size  <  Copy.value)
+         {L.P.stopProgram("Left stuck too small");
+          return;
+         }
+        if (Right.size <  stuckSize.value - Copy.value -1)
+         {L.P.stopProgram("Right stuck too small");
+          return;
+         }
+        if (At.value   >  Parent.stuckSize.value)
+         {L.P.stopProgram("At is too big for parent");
+          return;
+         }
+
+        for (int i = 0; i < Copy.value; ++i)                                    // Copy to left
+         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+         }
+        Left.stuckSize.value = Copy.value;                                      // New size of left
+
+        for (int i = 0; i < stuckSize.value - Copy.value - 1; ++i)              // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy.value + i + 1].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy.value + i + 1].clone();
+         }
+        Right.stuckSize.value  = stuckSize.value - Copy.value - 1;              // New size of right
+        Parent.stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy.value]);
+        Parent.stuckData.value = stuckData.getIntFromBits(stuckData.memory[Copy.value]);
+       }
+     };
+
+    Parent.insertElementAt(At);
    }
 
 //D1 Tests                                                                      // Tests
 
   protected static Stuck testStuck()                                            // Create a test stuck
    {return new Stuck(4, 4, 4);
+   }
+
+  protected static Stuck testSmallStuck()                                       // Create a test stuck
+   {return new Stuck(2, 4, 4);
    }
 
   protected static Stuck test_push()
@@ -296,8 +437,10 @@ Stuck        array  %d
     ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
     ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
 
+    s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.clearProgram(); k.iWrite(5); d.iWrite(10); s.push(); s.L.runProgram();
+    k.iWrite(5); d.iWrite(10); s.push();
+    s.L.runProgram();
     ok(s.L.P.rc, "Cannot push to a full stuck");
 
     s.L.clearProgram(); k.iWrite(0); d.iWrite(0); s.L.runProgram();             // Clean up key and data value
@@ -330,8 +473,10 @@ Stuck        array  %d
     ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4");
     ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
 
+    s.L.P.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.P.clearProgram(); s.pop(); s.L.runProgram();
+    s.pop();
+    s.L.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot pop an empty stuck");
 
@@ -351,8 +496,10 @@ Stuck        array  %d
     ok(s.stuckKeys, "stuckKeys: value=9, 0=9, 1=1, 2=2, 3=3");
     ok(s.stuckData, "stuckData: value=11, 0=11, 1=2, 2=4, 3=6");
 
+    s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
+    k.iWrite(9); d.iWrite(11); s.unshift();
+    s.L.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot unshift into a full stuck");
 
@@ -382,8 +529,10 @@ Stuck        array  %d
     ok(s.stuckKeys, "stuckKeys: value=4, 0=4, 1=4, 2=4, 3=4");
     ok(s.stuckData, "stuckData: value=8, 0=8, 1=8, 2=8, 3=8");
 
+    s.L.P.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.P.clearProgram(); s.shift(); s.L.runProgram();
+    s.shift();
+    s.L.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot shift an empty stuck");
 
@@ -419,8 +568,10 @@ index var 4
   3       2    stuckData         4  var        4   Stuck                        4
 """);
 
+    s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.clearProgram(); index.iWrite(5); s.elementAt(index); s.L.runProgram();
+    index.iWrite(5); s.elementAt(index);
+    s.L.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot get element beyond end of stuck");
    }
@@ -449,13 +600,13 @@ index var 4
     ok(s.stuckData, "stuckData: value=11, 0=2, 1=11, 2=6, 3=8");
 
     s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
     s.pop();
     s.pop();
     index.iWrite(3);
     s.setElementAt(index);
     s.L.runProgram();
-
-    ok(s.L.P.rc, "Cannot set element more than one element beyond current end of stuck");
+    ok(s.L.P.rc, "Cannot set element more than one step beyond current end of stuck");
 
     s.L.clearProgram();
     index.iWrite(2);
@@ -500,7 +651,10 @@ index var 4
     ok(s.stuckKeys, "stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9");
     ok(s.stuckData, "stuckData: value=13, 0=13, 1=2, 2=12, 3=9");
 
-    s.L.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(12);  s.stuckData.iWrite(14); s.insertElementAt(index); s.L.runProgram();
+    s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    index.iWrite(0); s.stuckKeys.iWrite(12);  s.stuckData.iWrite(14); s.insertElementAt(index);
+    s.L.runProgram();
     ok(s.L.P.rc, "Cannot insert into a full stuck");
    }
 
@@ -532,8 +686,10 @@ index var 4
     ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=4, 2=4, 3=4");
     ok(s.stuckData, "stuckData: value=8, 0=2, 1=8, 2=8, 3=8");
 
+    s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
+    index.iWrite(1); s.removeElementAt(index);
+    s.L.runProgram();
     ok(s.L.P.rc, "Cannot remove element beyond end of actual stuck");
 
     s.L.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.L.runProgram();
@@ -541,8 +697,10 @@ index var 4
     ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=4, 2=4, 3=4");
     ok(s.stuckData, "stuckData: value=2, 0=2, 1=8, 2=8, 3=8");
 
+    s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.L.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.L.runProgram();
+    index.iWrite(0); s.removeElementAt(index);
+    s.L.runProgram();
     ok(s.L.P.rc, "Cannot remove element from empty stuck");
    }
 
@@ -613,6 +771,12 @@ index var 4
     ok(t.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
 
     s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.concatenate(t);
+    s.L.runProgram();
+    ok(s.L.P.rc, "Not enough room in target to concatenate source as well");
+
+    s.L.clearProgram();
     s.pop();
     s.pop();
     t.pop();
@@ -626,12 +790,13 @@ index var 4
 
   protected static void test_splitIntoTwo()
    {final Stuck s = test_push();
+    final Stuck S = testSmallStuck(); S.L.P = s.L.P;
 
     final Layout l = s.L.additionalLayout("""
-index var 4
+count var 4
 """);
 
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field count = l.locateFieldByName("count");
 
     ok(s.stuckSize, "stuckSize: value=4");
     ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
@@ -639,16 +804,158 @@ index var 4
 
     final Stuck L = test_push(); L.L.P = s.L.P;
     final Stuck R = test_push(); R.L.P = s.L.P;
+
     s.L.clearProgram();
-    index.iWrite(2);
-    s.splitIntoTwo(L, R, index);
+    s.L.P.supressErrorMessagePrint = true;
+    count.iWrite(6);
+    s.splitIntoTwo(L, R, count);
     s.L.runProgram();
+    ok(s.L.P.rc, "Cannot copy beyond end of stuck");
+
+    s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    count.iWrite(3);
+    s.splitIntoTwo(S, R, count);
+    s.L.runProgram();
+    ok(s.L.P.rc, "Left stuck too small");
+
+    s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    count.iWrite(1);
+    s.splitIntoTwo(L, S, count);
+    s.L.runProgram();
+    ok(s.L.P.rc, "Right stuck too small");
+
+    s.L.clearProgram();
+    count.iWrite(2);
+    s.splitIntoTwo(L, R, count);
+    s.L.runProgram();
+
     ok(L.stuckSize, "stuckSize: value=2");
     ok(L.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
     ok(L.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
     ok(R.stuckSize, "stuckSize: value=2");
     ok(R.stuckKeys, "stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4");
     ok(R.stuckData, "stuckData: value=0, 0=6, 1=8, 2=6, 3=8");
+   }
+
+  protected static void test_splitIntoThree()
+   {final Stuck s = test_push();
+
+    final Layout l = s.L.additionalLayout("""
+at    var 4
+count var 4
+""");
+
+    Layout.Field at    = l.locateFieldByName("at");
+    Layout.Field count = l.locateFieldByName("count");
+
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+
+    final Stuck P = test_push(); P.L.P = s.L.P;
+    final Stuck L = test_push(); L.L.P = s.L.P;
+    final Stuck R = test_push(); R.L.P = s.L.P;
+
+    s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    at.iWrite(11);
+    count.iWrite(2);
+    s.splitIntoThree(L, R, count, P, at);
+    s.L.runProgram();
+    ok(s.L.P.rc, "At is too big for parent");
+
+    s.L.clearProgram();
+    at.iWrite(1);
+    count.iWrite(2);
+    P.pop();
+    s.splitIntoThree(L, R, count, P, at);
+    s.L.runProgram();
+
+    ok(L.stuckSize, "stuckSize: value=2");
+    ok(L.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(L.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(R.stuckSize, "stuckSize: value=1");
+    ok(R.stuckKeys, "stuckKeys: value=0, 0=4, 1=2, 2=3, 3=4");
+    ok(R.stuckData, "stuckData: value=0, 0=8, 1=4, 2=6, 3=8");
+    ok(P.stuckSize, "stuckSize: value=4");
+    ok(P.stuckKeys, "stuckKeys: value=3, 0=1, 1=3, 2=2, 3=3");
+    ok(P.stuckData, "stuckData: value=6, 0=2, 1=6, 2=4, 3=6");
+   }
+
+  protected static void test_firstLastPast()
+   {final Stuck s = test_push();
+
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.firstElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.pop();
+    s.lastElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=3");
+    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.pastLastElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=3");
+    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+   }
+
+  protected static void test_setFirstLastPast()
+   {final Stuck s = test_push();
+
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.stuckKeys.iWrite(2);
+    s.stuckData.iWrite(2);
+    s.setFirstElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=3, 3=4");
+    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+
+    s.L.clearProgram();
+    s.pop();
+    s.stuckKeys.iWrite(2);
+    s.stuckData.iWrite(2);
+    s.setLastElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=3");
+    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=2, 3=4");
+    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=2, 3=8");
+
+    s.L.clearProgram();
+    s.stuckKeys.iWrite(2);
+    s.stuckData.iWrite(2);
+    s.setPastLastElement();
+    s.L.runProgram();
+    ok(s.stuckSize, "stuckSize: value=4");
+    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=2, 3=2");
+    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=2, 3=2");
+
+    s.L.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.stuckKeys.iWrite(2);
+    s.stuckData.iWrite(2);
+    s.setPastLastElement();
+    s.L.runProgram();
+    ok(s.L.P.rc, "Cannot get the element beyond the last element because the stuck is full");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -665,11 +972,13 @@ index var 4
     test_search_le();
     test_concatenate();
     test_splitIntoTwo();
+    test_splitIntoThree();
+    test_firstLastPast();
+    test_setFirstLastPast();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_splitIntoTwo();
+   {oldTests();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

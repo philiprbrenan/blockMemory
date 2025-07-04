@@ -280,6 +280,7 @@ class Layout extends Test                                                       
     final Stack<Label>          labels = new Stack<>();                         // Labels into the code
     final int                 maxSteps = 200;                                   // Maximum number of steps to execute
     int                             pc = 0;                                     // The index of the next instruction to be executed
+    int                            cpc = 0;                                     // The index of the current instruction being executed
     String                          rc = null;                                  // The result of executing the program.  If null then no problems were detected
     boolean   supressErrorMessagePrint = false;                                 // Do not print error message from iStop() during testing if true
 
@@ -349,14 +350,18 @@ class Layout extends Test                                                       
       abstract void action();                                                   // Override this method to specify what the instruction does
      }
 
-    void clearProgram() {code.clear(); P.rc = null;}                            // Clear the program code and return code
+    void clearProgram()                                                         // Clear the code associated with a program so we can create a new program
+     {code.clear(); labels.clear();
+      P.rc = null;
+      supressErrorMessagePrint = false;
+     }
 
     void runProgram()                                                           // Run the program code
      {rc = null;                                                                // Clear the return code
       int  i = 0;
       final int size = code.size();                                             // Programs must not add instrructions to the code
       for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
-       {final int cpc = pc;
+       {cpc = pc;
         code.elementAt(pc).action();
         if (code.size() != size) stopProgram("Instructions being defined at instruction: "+cpc);
        }
@@ -365,7 +370,7 @@ class Layout extends Test                                                       
 
     void stopProgram(final String message)                                      // Halt program execution with a message
      {rc = message;                                                             // Use the message as a result code
-      if (!supressErrorMessagePrint) say(message);                              // Write the supplied message
+      if (!supressErrorMessagePrint) say(message, code.elementAt(cpc).traceBack);// Write the supplied message
       pc = code.size();                                                         // Halt the program
      }
 

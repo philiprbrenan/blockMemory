@@ -36,19 +36,6 @@ Stuck        array  %d
 """, logTwo(size), size, bitsPerKey, bitsPerData));
    }
 
-  static void test_parse()                                                      // Parse the stuck
-   {final Stuck a = new Stuck(4, 4, 4);
-
-    //stop(a.L);
-    ok(a.L, """
-  #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize           0  var        2
-  1       0  Stuck               0  array      4          stuckKeys, stuckData
-  2       2    stuckKeys         0  var        4   Stuck                        4
-  3       2    stuckData         0  var        4   Stuck                        4
-""");
-   }
-
 //D1 Actions                                                                    // Actions on the stuck
 
   void push()                                                                   // Push a new key, data pair on the stack
@@ -413,6 +400,19 @@ Stuck        array  %d
    }
 
 //D1 Tests                                                                      // Tests
+
+  static void test_parse()                                                      // Parse the stuck
+   {final Stuck a = new Stuck(4, 4, 4);
+
+    //stop(a.L);
+    ok(a.L, """
+  #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
+  0       0  stuckSize           0  var        2
+  1       0  Stuck               0  array      4          stuckKeys, stuckData
+  2       2    stuckKeys         0  var        4   Stuck                        4
+  3       2    stuckData         0  var        4   Stuck                        4
+""");
+   }
 
   protected static Stuck testStuck()                                            // Create a test stuck
    {return new Stuck(4, 4, 4);

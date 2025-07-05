@@ -36,6 +36,48 @@ Stuck        array  %d
 """, logTwo(size), size, bitsPerKey, bitsPerData));
    }
 
+  Stuck duplicate()                                                             // Duplicate this struck
+   {final Stuck s = new Stuck(size, bitsPerKey, bitsPerData);
+    s.copy(this);
+    s.L.P = L.P;
+    return s;
+   }
+
+  void copy(Stuck Source)                                                       // Copy one stuck into another
+   {if (size != Source.size)
+     {L.P.stopProgram("Size mismatch");
+      return;
+     }
+    if (bitsPerKey != Source.bitsPerKey)
+     {L.P.stopProgram("Bits per key mismatch");
+      return;
+     }
+    if (bitsPerData != Source.bitsPerData)
+     {L.P.stopProgram("Bits per data mismatch");
+      return;
+     }
+    stuckSize.value = Source.stuckSize.value;
+    stuckKeys.value = Source.stuckKeys.value;
+    stuckData.value = Source.stuckData.value;
+    for (int i = 0; i < size; i++)
+     {stuckKeys.memory[i] = (BitSet)Source.stuckKeys.memory[i].clone();
+      stuckData.memory[i] = (BitSet)Source.stuckData.memory[i].clone();
+     }
+   }
+
+  public String toString()
+   {final StringBuilder s = new StringBuilder();
+    s.append(stuckSize+"\n");
+    s.append(stuckKeys+"\n");
+    s.append(stuckData+"\n");
+    return ""+s;
+   }
+
+  public String toTest()
+   {final StringBuilder s = new StringBuilder();
+    return "ok(s, \"\"\"\n"+toString()+"\"\"\");\n";
+   }
+
 //D1 Actions                                                                    // Actions on the stuck
 
   void push()                                                                   // Push a new key, data pair on the stack
@@ -433,9 +475,11 @@ Stuck        array  %d
     s.L.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(); s.L.runProgram();
     s.L.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(); s.L.runProgram();
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -448,30 +492,49 @@ Stuck        array  %d
     return s;
    }
 
+  protected static void test_copy()
+   {final Stuck s = test_push();
+    final Stuck t = s.duplicate();
+
+    ok(t, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+   }
+
   protected static Stuck test_pop()
    {final Stuck  s = test_push();
 
     s.L.clearProgram();
     s.pop();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram(); s.pop(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=2");
-    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=2
+stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
+stuckData: value=6, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram(); s.pop(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=1");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=4, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=1
+stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4
+stuckData: value=4, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram(); s.pop(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=0");
-    ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=0
+stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4
+stuckData: value=2, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.P.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -492,9 +555,11 @@ Stuck        array  %d
     s.L.clearProgram(); s.pop(); s.L.runProgram();
     s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=9, 0=9, 1=1, 2=2, 3=3");
-    ok(s.stuckData, "stuckData: value=11, 0=11, 1=2, 2=4, 3=6");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=9, 0=9, 1=1, 2=2, 3=3
+stuckData: value=11, 0=11, 1=2, 2=4, 3=6
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -510,24 +575,32 @@ Stuck        array  %d
    {final Stuck s = test_push();
 
     s.L.clearProgram(); s.shift(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=1, 0=2, 1=3, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=4, 1=6, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=1, 0=2, 1=3, 2=4, 3=4
+stuckData: value=2, 0=4, 1=6, 2=8, 3=8
+""");
 
     s.L.clearProgram(); s.shift(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=2");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=3, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=4, 0=6, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=2
+stuckKeys: value=2, 0=3, 1=4, 2=4, 3=4
+stuckData: value=4, 0=6, 1=8, 2=8, 3=8
+""");
 
     s.L.clearProgram(); s.shift(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=1");
-    ok(s.stuckKeys, "stuckKeys: value=3, 0=4, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=6, 0=8, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=1
+stuckKeys: value=3, 0=4, 1=4, 2=4, 3=4
+stuckData: value=6, 0=8, 1=8, 2=8, 3=8
+""");
 
     s.L.clearProgram(); s.shift(); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=0");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=4, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=8, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=0
+stuckKeys: value=4, 0=4, 1=4, 2=4, 3=4
+stuckData: value=8, 0=8, 1=8, 2=8, 3=8
+""");
 
     s.L.P.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -585,9 +658,11 @@ index var 4
 
     Layout.Field index = l.locateFieldByName("index");
 
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
-
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
     s.L.clearProgram();
     index.iWrite(1);
     s.stuckKeys.iWrite(9);
@@ -595,9 +670,11 @@ index var 4
     s.setElementAt(index);
     s.L.runProgram();
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=9, 0=1, 1=9, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=11, 0=2, 1=11, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=9, 0=1, 1=9, 2=3, 3=4
+stuckData: value=11, 0=2, 1=11, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -615,9 +692,11 @@ index var 4
     s.setElementAt(index);
     s.L.runProgram();
 
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=8, 0=1, 1=9, 2=8, 3=4");
-    ok(s.stuckData, "stuckData: value=12, 0=2, 1=11, 2=12, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=8, 0=1, 1=9, 2=8, 3=4
+stuckData: value=12, 0=2, 1=11, 2=12, 3=8
+""");
    }
 
   protected static void test_insertElementAt()
@@ -630,26 +709,34 @@ index var 4
     Layout.Field index = l.locateFieldByName("index");
     s.L.clearProgram(); s.pop(); s.L.runProgram();
 
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.insertElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3");
-    ok(s.stuckData, "stuckData: value=9, 0=2, 1=9, 2=4, 3=6");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3
+stuckData: value=9, 0=2, 1=9, 2=4, 3=6
+""");
 
     s.L.clearProgram(); s.pop(); s.L.runProgram();
     s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2");
-    ok(s.stuckData, "stuckData: value=12, 0=2, 1=12, 2=9, 3=4");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2
+stuckData: value=12, 0=2, 1=12, 2=9, 3=4
+""");
 
     s.L.clearProgram(); s.pop(); s.L.runProgram();
     s.L.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9");
-    ok(s.stuckData, "stuckData: value=13, 0=13, 1=2, 2=12, 3=9");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9
+stuckData: value=13, 0=13, 1=2, 2=12, 3=9
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -667,24 +754,32 @@ index var 4
 
     Layout.Field index = l.locateFieldByName("index");
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=1, 1=3, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=4, 0=2, 1=6, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=2, 0=1, 1=3, 2=4, 3=4
+stuckData: value=4, 0=2, 1=6, 2=8, 3=8
+""");
 
     s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=2");
-    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=6, 0=2, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=2
+stuckKeys: value=3, 0=1, 1=4, 2=4, 3=4
+stuckData: value=6, 0=2, 1=8, 2=8, 3=8
+""");
 
     s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=1");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=2, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=1
+stuckKeys: value=4, 0=1, 1=4, 2=4, 3=4
+stuckData: value=8, 0=2, 1=8, 2=8, 3=8
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -693,9 +788,11 @@ index var 4
     ok(s.L.P.rc, "Cannot remove element beyond end of actual stuck");
 
     s.L.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=0");
-    ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=4, 2=4, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=8, 2=8, 3=8");
+    ok(s, """
+stuckSize: value=0
+stuckKeys: value=1, 0=1, 1=4, 2=4, 3=4
+stuckData: value=2, 0=2, 1=8, 2=8, 3=8
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -762,13 +859,18 @@ index var 4
 
   protected static void test_concatenate()
    {final Stuck s = test_push();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
     final Stuck t = test_push(); t.L.P = s.L.P;
-    ok(t.stuckSize, "stuckSize: value=4");
-    ok(t.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(t.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(t, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -783,9 +885,11 @@ index var 4
     t.pop();
     s.concatenate(t);
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2");
-    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=2, 3=4");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2
+stuckData: value=6, 0=2, 1=4, 2=2, 3=4
+""");
    }
 
   protected static void test_splitIntoTwo()
@@ -798,9 +902,11 @@ count var 4
 
     Layout.Field count = l.locateFieldByName("count");
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     final Stuck L = test_push(); L.L.P = s.L.P;
     final Stuck R = test_push(); R.L.P = s.L.P;
@@ -831,12 +937,17 @@ count var 4
     s.splitIntoTwo(L, R, count);
     s.L.runProgram();
 
-    ok(L.stuckSize, "stuckSize: value=2");
-    ok(L.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(L.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
-    ok(R.stuckSize, "stuckSize: value=2");
-    ok(R.stuckKeys, "stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4");
-    ok(R.stuckData, "stuckData: value=0, 0=6, 1=8, 2=6, 3=8");
+    ok(L, """
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(R, """
+stuckSize: value=2
+stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
+""");
    }
 
   protected static void test_splitIntoThree()
@@ -850,9 +961,11 @@ count var 4
     Layout.Field at    = l.locateFieldByName("at");
     Layout.Field count = l.locateFieldByName("count");
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     final Stuck P = test_push(); P.L.P = s.L.P;
     final Stuck L = test_push(); L.L.P = s.L.P;
@@ -873,62 +986,83 @@ count var 4
     s.splitIntoThree(L, R, count, P, at);
     s.L.runProgram();
 
-    ok(L.stuckSize, "stuckSize: value=2");
-    ok(L.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(L.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
-    ok(R.stuckSize, "stuckSize: value=1");
-    ok(R.stuckKeys, "stuckKeys: value=0, 0=4, 1=2, 2=3, 3=4");
-    ok(R.stuckData, "stuckData: value=0, 0=8, 1=4, 2=6, 3=8");
-    ok(P.stuckSize, "stuckSize: value=4");
-    ok(P.stuckKeys, "stuckKeys: value=3, 0=1, 1=3, 2=2, 3=3");
-    ok(P.stuckData, "stuckData: value=6, 0=2, 1=6, 2=4, 3=6");
+    ok(L, """
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(R, """
+stuckSize: value=1
+stuckKeys: value=0, 0=4, 1=2, 2=3, 3=4
+stuckData: value=0, 0=8, 1=4, 2=6, 3=8
+""");
+
+    ok(P, """
+stuckSize: value=4
+stuckKeys: value=3, 0=1, 1=3, 2=2, 3=3
+stuckData: value=6, 0=2, 1=6, 2=4, 3=6
+""");
+
    }
 
   protected static void test_firstLastPast()
    {final Stuck s = test_push();
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.firstElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4
+stuckData: value=2, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.pop();
     s.lastElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=6, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
+stuckData: value=6, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.pastLastElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=8, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
+""");
    }
 
   protected static void test_setFirstLastPast()
    {final Stuck s = test_push();
 
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=0, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setFirstElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=3, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=6, 3=8");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=2, 0=2, 1=2, 2=3, 3=4
+stuckData: value=2, 0=2, 1=4, 2=6, 3=8
+""");
 
     s.L.clearProgram();
     s.pop();
@@ -936,18 +1070,22 @@ count var 4
     s.stuckData.iWrite(2);
     s.setLastElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=3");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=2, 3=4");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=2, 3=8");
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=2, 0=2, 1=2, 2=2, 3=4
+stuckData: value=2, 0=2, 1=4, 2=2, 3=8
+""");
 
     s.L.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setPastLastElement();
     s.L.runProgram();
-    ok(s.stuckSize, "stuckSize: value=4");
-    ok(s.stuckKeys, "stuckKeys: value=2, 0=2, 1=2, 2=2, 3=2");
-    ok(s.stuckData, "stuckData: value=2, 0=2, 1=4, 2=2, 3=2");
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=2, 0=2, 1=2, 2=2, 3=2
+stuckData: value=2, 0=2, 1=4, 2=2, 3=2
+""");
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
@@ -961,6 +1099,7 @@ count var 4
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
+    test_copy();
     test_pop();
     test_unshift();
     test_shift();

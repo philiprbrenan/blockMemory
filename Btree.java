@@ -86,8 +86,8 @@ stucks         array  %d
          stuckIsFreeField.value = 1;
         }
       };
-      freeNextField   .iWrite(freeNextField,    index);
-      stuckIsFreeField.iWrite(stuckIsFreeField, index);
+      freeNextField   .iWrite(index);
+      stuckIsFreeField.iWrite(index);
      }
     setRootAsLeaf();
     L.runProgram();
@@ -104,6 +104,12 @@ stucks         array  %d
      };
 
     stuckIsFreeField.iZero(btreeIndex);                                         // Show as in use
+L.P.new Instruction()
+ {void action()
+   {
+say("FFFF", bTreeIndex, stuckIsFreeField);
+   }
+ };
 
     freeNextField.iRead(btreeIndex);                                            // Locate next stuck on free chain to become new first stuck on free chain
 
@@ -124,7 +130,13 @@ stucks         array  %d
          }
        }
      };
-    freeNextField.iWrite(freeStartField, ref);                                  // Append the free chain to this stuck
+    L.P.new Instruction()
+     {void action()
+       {freeNextField.value = freeStartField.value;
+       }
+     };
+
+    freeNextField.iWrite(ref);                                                  // Append the free chain to this stuck
     L.P.new Instruction()
      {void action()
        {freeStartField.value = ref.value;                                       // This stuck becomes the first stuick on the free chain
@@ -136,21 +148,44 @@ stucks         array  %d
 //D2 Stuck                                                                      // Get and set stucks within btree
 
   Stuck stuck()                                                                 // Make a temporary stuck we can copy into or out of as needed
-   {return new Stuck(stuckSize, bitsPerKey, bitsPerData);
+   {final Stuck s = new Stuck(stuckSize, bitsPerKey, bitsPerData);
+    s.L.P = L.P;
+    return s;
    }
 
   void copyStuckFrom(Stuck T, Layout.Field BtreeIndex)                          // Copy a stuck out of the btree
    {stuckSizeField.iRead(BtreeIndex);
-    T.stuckSize.value = stuckSizeField.value;
+    L.P.new Instruction()
+     {void action()
+       {T.stuckSize.value = stuckSizeField.value;
+say("AAAA", BtreeIndex);
+       }
+     };
 
     Layout.Field index = T.index();
 
-    for (int i = 0; i < stuckSize; i++)
+    for (int i = 0; i < T.size; i++)
      {index.iWrite(i);
-      stuckKeysField.iRead(BtreeIndex, index);
-      T.stuckKeys.iWrite(T.stuckKeys,  index);
-      stuckDataField.iRead(BtreeIndex, index);
-      T.stuckData.iWrite(T.stuckData,  index);
+      stuckKeysField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckKeys.value = stuckKeysField.value;}}; T.stuckKeys.iWrite(index);
+      L.P.new Instruction()
+      {void action()
+        {say("TTTT", BtreeIndex, index, stuckKeysField);
+        }
+      };
+      stuckDataField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckData.value = stuckDataField.value;}}; T.stuckData.iWrite(index);
+     }
+   }
+
+  void saveStuckInto(Stuck T, Layout.Field BtreeIndex)                          // Save a stuck into the indocated position in the btree
+   {stuckSizeField.iWrite(T.stuckSize.value);
+
+    Layout.Field index = T.index();
+
+    for (int i = 0; i < T.size; i++)
+     {final int I = i;
+      index.iWrite(I);
+      T.stuckKeys.iRead(index); L.P.new Instruction() {void action() {stuckKeysField.value = T.stuckKeys.value;}}; stuckKeysField.iWrite(BtreeIndex, index);
+      T.stuckData.iRead(index); L.P.new Instruction() {void action() {stuckDataField.value = T.stuckData.value;}}; stuckDataField.iWrite(BtreeIndex, index);
      }
    }
 
@@ -253,10 +288,17 @@ stucks         array  %d
     for (int i = 0; i < size; i++)
      {final Layout.Program p = L.startNewProgram();
 
-      btreeIndex.iWrite(i);
+
       stuckIsLeafField.iRead(btreeIndex);
       stuckIsFreeField.iRead(btreeIndex);
       freeNextField   .iRead(btreeIndex);
+
+      btreeIndex.iWrite(i);
+L.P.new Instruction()
+ {void action()
+   {say("BBBB", btreeIndex, stuckIsFreeField.value);
+   }
+ };
       L.runProgram();
       L.continueProgram(p);
 
@@ -354,14 +396,102 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 """);
    }
 
+  static void test_btree()
+   {final Btree b = test_create();
+    final Layout.Field s = b.btreeIndex();
+    final Layout.Field t = b.btreeIndex();
+    final Layout.Field x = b.btreeIndex();
+    final Layout.Field y = b.btreeIndex();
+
+    final Stuck S = b.stuck();
+    final Stuck T = b.stuck();
+    final Stuck X = b.stuck();
+    final Stuck Y = b.stuck();
+    final Stuck Z = b.stuck();
+
+    b.allocate(s);
+    b.allocate(t);
+    b.allocate(x);
+    b.allocate(y);
+    b.runProgram();
+
+    b.clearProgram();
+    S.stuckKeys.iWrite( 1); S.stuckData.iWrite( 2); S.push();
+    S.stuckKeys.iWrite( 2); S.stuckData.iWrite( 4); S.push();
+    S.stuckKeys.iWrite( 3); S.stuckData.iWrite( 6); S.push();
+    S.stuckKeys.iWrite( 4); S.stuckData.iWrite( 8); S.push();
+    b.runProgram();
+
+    b.clearProgram();
+    T.stuckKeys.iWrite(11); T.stuckData.iWrite(12); T.push();
+    T.stuckKeys.iWrite(12); T.stuckData.iWrite(14); T.push();
+    T.stuckKeys.iWrite(13); T.stuckData.iWrite(16); T.push();
+    T.stuckKeys.iWrite(14); T.stuckData.iWrite(18); T.push();
+    b.runProgram();
+
+    b.clearProgram();
+    X.stuckKeys.iWrite(21); X.stuckData.iWrite(22); X.push();
+    X.stuckKeys.iWrite(22); X.stuckData.iWrite(24); X.push();
+    X.stuckKeys.iWrite(23); X.stuckData.iWrite(26); X.push();
+    X.stuckKeys.iWrite(24); X.stuckData.iWrite(28); X.push();
+    b.runProgram();
+
+    b.clearProgram();
+    Y.stuckKeys.iWrite(31); Y.stuckData.iWrite(32); Y.push();
+    Y.stuckKeys.iWrite(32); Y.stuckData.iWrite(34); Y.push();
+    Y.stuckKeys.iWrite(33); Y.stuckData.iWrite(36); Y.push();
+    Y.stuckKeys.iWrite(34); Y.stuckData.iWrite(38); Y.push();
+    b.runProgram();
+
+    b.clearProgram();
+    Z.stuckKeys.iWrite(10); Z.stuckData.iWrite(s.value); Z.push();
+    Z.stuckKeys.iWrite(20); Z.stuckData.iWrite(t.value); Z.push();
+    Z.stuckKeys.iWrite(30); Z.stuckData.iWrite(x.value); Z.push();
+    Z.stuckKeys.iWrite(40); Z.stuckData.iWrite(y.value); Z.push();
+    b.runProgram();
+
+    b.clearProgram();
+    b.saveStuckInto(S, s);
+    b.saveStuckInto(T, t);
+    b.saveStuckInto(X, x);
+    b.saveStuckInto(Y, y);
+    b.runProgram();
+say("CCCC", b.stuckKeysField);
+    ok(b, """
+Btree
+Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  1   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  2   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  3   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  4   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+""");
+
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
+    test_allocFree();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_allocFree();
+    test_btree();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

@@ -123,12 +123,13 @@ stucks         array  %d
          }
        }
      };
-    freeNextField.iWrite(freeStartField, ref);                              // Append the free chain to this stuck
+    freeNextField.iWrite(freeStartField, ref);                                  // Append the free chain to this stuck
     L.P.new Instruction()
      {void action()
        {freeStartField.value = ref.value;                                       // This stuck becomes the first stuick on the free chain
        }
      };
+    stuckIsFreeField.iOne(ref);                                                 // Show as free
    }
 
 //D2 Stuck                                                                      // Get and set stucks within btree
@@ -156,11 +157,18 @@ stucks         array  %d
 
   void setRootAsLeaf()                                                          // Set the root to be a leaf
    {final Layout.Field i = btreeIndex();
-    final Layout.Field b = bit("isLeaf");
-    i.value = 0;
-    b.value = 1;
-    stuckIsLeafField.iWrite(b, i);
+    i.iWrite(0);
+    stuckIsLeafField.iOne(i);
    }
+
+  void setRootAsBranch()                                                        // Set the root to be a branch
+   {final Layout.Field i = btreeIndex();
+    i.iWrite(1);
+    stuckIsLeafField.iOne(i);
+   }
+
+  void setLeaf  (Layout.Field i) {stuckIsLeafField.iOne (i);}                   // Set a stuck in the btree to be a leaf
+  void setBranch(Layout.Field i) {stuckIsLeafField.iZero(i);}                   // Set a stuck in the btree to be a branch
 
 //D1 Find                                                                       // Find a key in a btree
 
@@ -296,6 +304,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 
     ok(b.freeStartField, "freeStart: value=1");
     ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+say("AAAA", b);
 
     b.allocate(x);
     b.allocate(y);

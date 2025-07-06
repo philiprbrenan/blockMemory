@@ -223,17 +223,24 @@ class Layout extends Test                                                       
        };
      }
 
-    void iZero(Field...indices)                                                 // Create an instruction to zero a field
+    void iConstant(int value, Field...indices)                                  // Create an instruction to set an array element to a constant
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {final int index = convolute(indices);
+         {if (indices.length == 0)                                              // No indices
+           {f.value = value;
+            return;
+           }
+          final int index = convolute(indices);
           final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
-          f.setBitsFromInt(b, 0);
+          f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
          }
        };
      }
+
+    void iOne (Field...indices) {iConstant(1, indices);}                        // Create an instruction to set a field to one
+    void iZero(Field...indices) {iConstant(0, indices);}                        // Create an instruction to set a field to zero
 
 //D2 Instructions                                                               // Instructions that can be executed against memory
 
@@ -706,6 +713,12 @@ v var 4
        }
      }
     ok(b, "b: value=4, 0=0, 1=1, 2=2, 3=2, 4=3, 5=4");
+
+    l.clearProgram(); i.iWrite(1); j.iWrite(1); b.iZero(i, j); l.runProgram();
+    ok(b, "b: value=0, 0=0, 1=1, 2=2, 3=2, 4=0, 5=4");
+
+    l.clearProgram(); i.iWrite(1); j.iWrite(1); b.iOne (i, j); l.runProgram();
+    ok(b, "b: value=1, 0=0, 1=1, 2=2, 3=2, 4=1, 5=4");
    }
 
   protected static void test_add()

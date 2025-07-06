@@ -65,6 +65,16 @@ Stuck        array  %d
      }
    }
 
+  Layout.Field variable(String name, int size)                                  // Create a variable
+   {final Layout.Field v = L.variable(name, size);
+    return v;
+   }
+
+  Layout.Field found() {return variable("found", 1);}                           // Whether a key was found in a stuck or not
+  Layout.Field index() {return variable("stuckIndex", logTwo(size)+1);}         // Index a key, data pair in a stuck
+  Layout.Field count() {return variable("count",      logTwo(size)+1);}         // Number of key, data pairs to copy
+  Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
+
   public String toString()
    {final StringBuilder s = new StringBuilder();
     s.append(stuckSize+"\n");
@@ -614,12 +624,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
 
   protected static void test_elementAt()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-index var 4
-""");
-
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field index = s.index();
 
     s.L.clearProgram(); index.iWrite(2); s.elementAt(index); s.L.runProgram();
     //stop(s.L);
@@ -651,12 +656,7 @@ index var 4
 
   protected static void test_setElementAt()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-index var 4
-""");
-
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field index = s.index();
 
     ok(s, """
 stuckSize: value=4
@@ -701,12 +701,7 @@ stuckData: value=12, 0=2, 1=11, 2=12, 3=8
 
   protected static void test_insertElementAt()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-index var 4
-""");
-
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field index = s.index();
     s.L.clearProgram(); s.pop(); s.L.runProgram();
 
     ok(s, """
@@ -747,12 +742,7 @@ stuckData: value=13, 0=13, 1=2, 2=12, 3=9
 
   protected static void test_removeElementAt()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-index var 4
-""");
-
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field index = s.index();
 
     ok(s, """
 stuckSize: value=4
@@ -803,14 +793,8 @@ stuckData: value=2, 0=2, 1=8, 2=8, 3=8
 
   protected static void test_search_eq()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-found bit
-index var 4
-""");
-
-    Layout.Field found = l.locateFieldByName("found");
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field found = s.found();
+    Layout.Field index = s.index();
 
     s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.L.runProgram();
     ok(found.value, 1);
@@ -833,13 +817,8 @@ index var 4
     s.L.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.L.runProgram();
     s.L.clearProgram(); k.iWrite(8); d.iWrite(9); s.push(); s.L.runProgram();
 
-    final Layout l = s.L.additionalLayout("""
-found bit
-index var 4
-""");
-
-    Layout.Field found = l.locateFieldByName("found");
-    Layout.Field index = l.locateFieldByName("index");
+    Layout.Field found = s.found();
+    Layout.Field index = s.index();
 
     s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.L.runProgram();
     ok(found.value, 1);
@@ -895,13 +874,7 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
   protected static void test_splitIntoTwo()
    {final Stuck s = test_push();
     final Stuck S = testSmallStuck(); S.L.P = s.L.P;
-
-    final Layout l = s.L.additionalLayout("""
-count var 4
-""");
-
-    Layout.Field count = l.locateFieldByName("count");
-
+    Layout.Field count = s.count();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
@@ -914,6 +887,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     count.iWrite(6);
+
     s.splitIntoTwo(L, R, count);
     s.L.runProgram();
     ok(s.L.P.rc, "Cannot copy beyond end of stuck");
@@ -952,14 +926,8 @@ stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 
   protected static void test_splitIntoThree()
    {final Stuck s = test_push();
-
-    final Layout l = s.L.additionalLayout("""
-at    var 4
-count var 4
-""");
-
-    Layout.Field at    = l.locateFieldByName("at");
-    Layout.Field count = l.locateFieldByName("count");
+    Layout.Field at    = s.at();
+    Layout.Field count = s.count();
 
     ok(s, """
 stuckSize: value=4
@@ -973,8 +941,9 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.L.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    at.iWrite(11);
+    at.iWrite(7);
     count.iWrite(2);
+
     s.splitIntoThree(L, R, count, P, at);
     s.L.runProgram();
     ok(s.L.P.rc, "At is too big for parent");

@@ -106,8 +106,8 @@ Stuck        array  %d
         L.P.pc++;
        }
      };
-    stuckKeys.iWrite(stuckKeys, stuckSize);
-    stuckData.iWrite(stuckData, stuckSize);
+    stuckKeys.iWrite(stuckSize);
+    stuckData.iWrite(stuckSize);
     stuckSize.iInc();
    }
 
@@ -239,8 +239,8 @@ Stuck        array  %d
         L.P.pc++;
        }
      };
-    stuckKeys.iWrite(stuckKeys, index);
-    stuckData.iWrite(stuckData, index);
+    stuckKeys.iWrite(index);
+    stuckData.iWrite(index);
    }
 
   void setFirstElement()                                                        // Get the first key, data pair

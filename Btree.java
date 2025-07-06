@@ -102,6 +102,8 @@ stucks         array  %d
        }
      };
 
+    stuckIsFreeField.iZero(btreeIndex);                                         // Show as in use
+
     freeNextField.iRead(btreeIndex);                                            // Locate next stuck on free chain to become new first stuck on free chain
 
     L.P.new Instruction()
@@ -109,6 +111,7 @@ stucks         array  %d
        {freeStartField.value = freeNextField.value;                             // Next stuck on free chain becomes head of free chain
        }
      };
+    freeNextField.iZero(btreeIndex);                                            // Clear the next field from the current stuck
    }
 
   private void free(Layout.Field ref)                                           // Free the indicated stuck to make it available for reuse
@@ -302,16 +305,14 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     ok(y, "btreeIndex: value=2");
 
     ok(b.freeStartField, "freeStart: value=3");
-    ok(b.freeNextField,  "freeNext: value=3, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+    ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=0, 2=0, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
 
     b.L.clearProgram();
-    b.free(y);
     b.free(x);
+    b.free(y);
     b.L.runProgram();
-say (b.freeStartField);
-stop(b.freeNextField);
-    ok(x, "btreeIndex: value=1");
-    ok(y, "btreeIndex: value=2");
+    ok(b.freeStartField, "freeStart: value=2");
+    ok(b.freeNextField,  "freeNext: value=1, 0=0, 1=3, 2=1, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape

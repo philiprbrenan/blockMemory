@@ -223,6 +223,18 @@ class Layout extends Test                                                       
        };
      }
 
+    void iZero(Field...indices)                                                 // Create an instruction to zero a field
+     {final Field f = checkVar();
+      P.new Instruction()
+       {void action()
+         {final int index = convolute(indices);
+          final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
+          f.setBitsFromInt(b, 0);
+          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         }
+       };
+     }
+
 //D2 Instructions                                                               // Instructions that can be executed against memory
 
     void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write ino backing mmeory as well call iWrite() as well
@@ -850,6 +862,10 @@ a var 4
 
     //stop(a);
     ok(a, "a: value=2");
+    l.P.clearProgram();
+    a.iZero();
+    l.P.runProgram();
+    ok(a, "a: value=0");
    }
 
   protected static void test_stackProgram()

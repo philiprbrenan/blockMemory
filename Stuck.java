@@ -75,6 +75,12 @@ Stuck        array  %d
   Layout.Field count() {return variable("count",      logTwo(size)+1);}         // Number of key, data pairs to copy
   Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
 
+  void runProgram  () {L.runProgram();}                                         // Runb the program
+  void clearProgram() {L.clearProgram();}                                       // Clear the current program
+
+
+//D1 Print                                                                      // Print  the stcuk
+
   public String toString()
    {final StringBuilder s = new StringBuilder();
     s.append(stuckSize+"\n");
@@ -480,10 +486,10 @@ Stuck        array  %d
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.L.clearProgram(); k.iWrite(1); d.iWrite(2); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(2); d.iWrite(4); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(); s.L.runProgram();
+    s.clearProgram(); k.iWrite(1); d.iWrite(2); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(2); d.iWrite(4); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(); s.runProgram();
 
     ok(s, """
 stuckSize: value=4
@@ -491,13 +497,13 @@ stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     k.iWrite(5); d.iWrite(10); s.push();
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot push to a full stuck");
 
-    s.L.clearProgram(); k.iWrite(0); d.iWrite(0); s.L.runProgram();             // Clean up key and data value
+    s.clearProgram(); k.iWrite(0); d.iWrite(0); s.runProgram();             // Clean up key and data value
 
     return s;
    }
@@ -516,40 +522,40 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
   protected static Stuck test_pop()
    {final Stuck  s = test_push();
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.pop();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
     ok(s, """
 stuckSize: value=2
 stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
 stuckData: value=6, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
     ok(s, """
 stuckSize: value=1
 stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4
 stuckData: value=4, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
     ok(s, """
 stuckSize: value=0
 stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4
 stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.P.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     s.pop();
-    s.L.runProgram();
+    s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot pop an empty stuck");
 
@@ -562,8 +568,8 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.runProgram();
 
     ok(s, """
 stuckSize: value=4
@@ -571,10 +577,10 @@ stuckKeys: value=9, 0=9, 1=1, 2=2, 3=3
 stuckData: value=11, 0=11, 1=2, 2=4, 3=6
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     k.iWrite(9); d.iWrite(11); s.unshift();
-    s.L.runProgram();
+    s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot unshift into a full stuck");
 
@@ -584,28 +590,28 @@ stuckData: value=11, 0=11, 1=2, 2=4, 3=6
   protected static Stuck test_shift()
    {final Stuck s = test_push();
 
-    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    s.clearProgram(); s.shift(); s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=1, 0=2, 1=3, 2=4, 3=4
 stuckData: value=2, 0=4, 1=6, 2=8, 3=8
 """);
 
-    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    s.clearProgram(); s.shift(); s.runProgram();
     ok(s, """
 stuckSize: value=2
 stuckKeys: value=2, 0=3, 1=4, 2=4, 3=4
 stuckData: value=4, 0=6, 1=8, 2=8, 3=8
 """);
 
-    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    s.clearProgram(); s.shift(); s.runProgram();
     ok(s, """
 stuckSize: value=1
 stuckKeys: value=3, 0=4, 1=4, 2=4, 3=4
 stuckData: value=6, 0=8, 1=8, 2=8, 3=8
 """);
 
-    s.L.clearProgram(); s.shift(); s.L.runProgram();
+    s.clearProgram(); s.shift(); s.runProgram();
     ok(s, """
 stuckSize: value=0
 stuckKeys: value=4, 0=4, 1=4, 2=4, 3=4
@@ -615,7 +621,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
     s.L.P.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     s.shift();
-    s.L.runProgram();
+    s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot shift an empty stuck");
 
@@ -626,7 +632,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
    {final Stuck s = test_push();
     Layout.Field index = s.index();
 
-    s.L.clearProgram(); index.iWrite(2); s.elementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(2); s.elementAt(index); s.runProgram();
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
@@ -636,7 +642,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
   3       2    stuckData         6  var        4   Stuck                        4
 """);
 
-    s.L.clearProgram(); index.iWrite(1); s.elementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(1); s.elementAt(index); s.runProgram();
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
@@ -646,10 +652,10 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
   3       2    stuckData         4  var        4   Stuck                        4
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     index.iWrite(5); s.elementAt(index);
-    s.L.runProgram();
+    s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot get element beyond end of stuck");
    }
@@ -663,12 +669,12 @@ stuckSize: value=4
 stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
-    s.L.clearProgram();
+    s.clearProgram();
     index.iWrite(1);
     s.stuckKeys.iWrite(9);
     s.stuckData.iWrite(11);
     s.setElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
 
     ok(s, """
 stuckSize: value=4
@@ -676,21 +682,21 @@ stuckKeys: value=9, 0=1, 1=9, 2=3, 3=4
 stuckData: value=11, 0=2, 1=11, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     s.pop();
     s.pop();
     index.iWrite(3);
     s.setElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot set element more than one step beyond current end of stuck");
 
-    s.L.clearProgram();
+    s.clearProgram();
     index.iWrite(2);
     s.stuckKeys.iWrite(8);
     s.stuckData.iWrite(12);
     s.setElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
 
     ok(s, """
 stuckSize: value=3
@@ -702,7 +708,7 @@ stuckData: value=12, 0=2, 1=11, 2=12, 3=8
   protected static void test_insertElementAt()
    {final Stuck s = test_push();
     Layout.Field index = s.index();
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
 
     ok(s, """
 stuckSize: value=3
@@ -710,33 +716,33 @@ stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.insertElementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.insertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3
 stuckData: value=9, 0=2, 1=9, 2=4, 3=6
 """);
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
-    s.L.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2
 stuckData: value=12, 0=2, 1=12, 2=9, 3=4
 """);
 
-    s.L.clearProgram(); s.pop(); s.L.runProgram();
-    s.L.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.L.runProgram();
+    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9
 stuckData: value=13, 0=13, 1=2, 2=12, 3=9
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     index.iWrite(0); s.stuckKeys.iWrite(12);  s.stuckData.iWrite(14); s.insertElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot insert into a full stuck");
    }
 
@@ -750,44 +756,44 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=2, 0=1, 1=3, 2=4, 3=4
 stuckData: value=4, 0=2, 1=6, 2=8, 3=8
 """);
 
-    s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=2
 stuckKeys: value=3, 0=1, 1=4, 2=4, 3=4
 stuckData: value=6, 0=2, 1=8, 2=8, 3=8
 """);
 
-    s.L.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=1
 stuckKeys: value=4, 0=1, 1=4, 2=4, 3=4
 stuckData: value=8, 0=2, 1=8, 2=8, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     index.iWrite(1); s.removeElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot remove element beyond end of actual stuck");
 
-    s.L.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.L.runProgram();
+    s.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=0
 stuckKeys: value=1, 0=1, 1=4, 2=4, 3=4
 stuckData: value=2, 0=2, 1=8, 2=8, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     index.iWrite(0); s.removeElementAt(index);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot remove element from empty stuck");
    }
 
@@ -796,13 +802,13 @@ stuckData: value=2, 0=2, 1=8, 2=8, 3=8
     Layout.Field found = s.found();
     Layout.Field index = s.index();
 
-    s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.L.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.runProgram();
     ok(found.value, 1);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 4);
 
-    s.L.clearProgram(); s.stuckKeys.iWrite(5); s.search_eq(found, index); s.L.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(5); s.search_eq(found, index); s.runProgram();
     ok(found.value, 0);
    }
 
@@ -812,27 +818,27 @@ stuckData: value=2, 0=2, 1=8, 2=8, 3=8
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.L.clearProgram(); k.iWrite(2); d.iWrite(3); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(4); d.iWrite(5); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.L.runProgram();
-    s.L.clearProgram(); k.iWrite(8); d.iWrite(9); s.push(); s.L.runProgram();
+    s.clearProgram(); k.iWrite(2); d.iWrite(3); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(4); d.iWrite(5); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(8); d.iWrite(9); s.push(); s.runProgram();
 
     Layout.Field found = s.found();
     Layout.Field index = s.index();
 
-    s.L.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.L.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.runProgram();
     ok(found.value, 1);
     ok(index.value, 0);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 3);
 
-    s.L.clearProgram(); s.stuckKeys.iWrite(3); s.search_le(found, index); s.L.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(3); s.search_le(found, index); s.runProgram();
     ok(found.value, 1);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 4);
     ok(s.stuckData.value, 5);
 
-    s.L.clearProgram(); s.stuckKeys.iWrite(10); s.search_le(found, index); s.L.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(10); s.search_le(found, index); s.runProgram();
     ok(found.value, 0);
    }
 
@@ -851,19 +857,19 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     s.concatenate(t);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Not enough room in target to concatenate source as well");
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.pop();
     s.pop();
     t.pop();
     t.pop();
     s.concatenate(t);
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2
@@ -884,32 +890,32 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck L = test_push(); L.L.P = s.L.P;
     final Stuck R = test_push(); R.L.P = s.L.P;
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     count.iWrite(6);
 
     s.splitIntoTwo(L, R, count);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot copy beyond end of stuck");
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     count.iWrite(3);
     s.splitIntoTwo(S, R, count);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Left stuck too small");
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     count.iWrite(1);
     s.splitIntoTwo(L, S, count);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Right stuck too small");
 
-    s.L.clearProgram();
+    s.clearProgram();
     count.iWrite(2);
     s.splitIntoTwo(L, R, count);
-    s.L.runProgram();
+    s.runProgram();
 
     ok(L, """
 stuckSize: value=2
@@ -939,21 +945,21 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck L = test_push(); L.L.P = s.L.P;
     final Stuck R = test_push(); R.L.P = s.L.P;
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     at.iWrite(7);
     count.iWrite(2);
 
     s.splitIntoThree(L, R, count, P, at);
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "At is too big for parent");
 
-    s.L.clearProgram();
+    s.clearProgram();
     at.iWrite(1);
     count.iWrite(2);
     P.pop();
     s.splitIntoThree(L, R, count, P, at);
-    s.L.runProgram();
+    s.runProgram();
 
     ok(L, """
 stuckSize: value=2
@@ -984,28 +990,28 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.firstElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4
 stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.pop();
     s.lastElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
 stuckData: value=6, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.pastLastElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
@@ -1022,46 +1028,46 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setFirstElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=2, 0=2, 1=2, 2=3, 3=4
 stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.pop();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setLastElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=2, 0=2, 1=2, 2=2, 3=4
 stuckData: value=2, 0=2, 1=4, 2=2, 3=8
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setPastLastElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=2, 0=2, 1=2, 2=2, 3=2
 stuckData: value=2, 0=2, 1=4, 2=2, 3=2
 """);
 
-    s.L.clearProgram();
+    s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setPastLastElement();
-    s.L.runProgram();
+    s.runProgram();
     ok(s.L.P.rc, "Cannot get the element beyond the last element because the stuck is full");
    }
 

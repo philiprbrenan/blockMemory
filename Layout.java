@@ -210,12 +210,11 @@ class Layout extends Test                                                       
        };
      }
 
-    void iWrite(Field source, Field...indices)                                  // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
+    void iWrite(Field...indices)                                                // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
          {final int index = convolute(indices);
-          final int value = source.value;
           final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
           f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
@@ -643,8 +642,8 @@ v var 4
     Field a = l.locateFieldByName("a");
     Field v = l.locateFieldByName("v");
 
-    i.iWrite(0); v.iWrite(2); a.iWrite(v, i);
-    i.iWrite(1); v.iWrite(4); a.iWrite(v, i);
+    i.iWrite(0); v.iWrite(2); a.iWrite(i);
+    i.iWrite(1); v.iWrite(4); a.iWrite(i);
 
     l.runProgram();
 
@@ -653,7 +652,7 @@ v var 4
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
   0       0  i            1  var        4
   1       0  A            0  array      2          a
-  2       2    a          4  var        4       A            2
+  2       2    a          0  var        4       A            2
   3       0  v            4  var        4
 """);
 
@@ -663,7 +662,7 @@ v var 4
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
   0       0  i            0  var        4
   1       0  A            0  array      2          a
-  2       2    a          2  var        4       A            2
+  2       2    a          0  var        4       A            2
   3       0  v            4  var        4
 """);
 
@@ -673,7 +672,7 @@ v var 4
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
   0       0  i            1  var        4
   1       0  A            0  array      2          a
-  2       2    a          4  var        4       A            2
+  2       2    a          0  var        4       A            2
   3       0  v            4  var        4
 """);
    }
@@ -699,7 +698,7 @@ v var 4
     l.clearProgram();
     for   (int x = 0; x < A.rep; x++)
      {for (int y = 0; y < B.rep; y++)
-       {i.iWrite(x); j.iWrite(y); b.iWrite(2 * x + y); b.iWrite(b, i, j);
+       {i.iWrite(x); j.iWrite(y); b.iWrite(2 * x + y); b.iWrite(i, j);
        }
      }
     l.runProgram();

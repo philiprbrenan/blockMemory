@@ -66,6 +66,7 @@ stucks         array  %d
   Layout.Field btreeIndex()     {return variable("btreeIndex", logTwo(size)+1);}// Create an index for a stuck in a btree
 
   void runProgram()                      {L.runProgram();}
+  void clearProgram()                    {L.clearProgram();}
   void stopProgram(String message)       {L.stopProgram(message);}
   Layout.Program startNewProgram()       {return L.startNewProgram();}
   void continueProgram(Layout.Program p) {L.continueProgram(p);}
@@ -293,7 +294,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
      {void Leaf  () {a.iWrite(1);}
       void Branch() {a.iWrite(2);}
      };
-    b.L.runProgram();
+    b.runProgram();
     ok(a, "a: value=1");
    }
 
@@ -304,11 +305,17 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 
     ok(b.freeStartField, "freeStart: value=1");
     ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
-say("AAAA", b);
+    ok(b, """
+Btree
+Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+""");
 
     b.allocate(x);
     b.allocate(y);
-    b.L.runProgram();
+    b.runProgram();
 
     ok(x, "btreeIndex: value=1");
     ok(y, "btreeIndex: value=2");
@@ -316,12 +323,35 @@ say("AAAA", b);
     ok(b.freeStartField, "freeStart: value=3");
     ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=0, 2=0, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
 
-    b.L.clearProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  1   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+Stuck:  2   size: 0   free: 0   next:  0  leaf: 0
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+""");
+
+    b.clearProgram();
     b.free(x);
     b.free(y);
-    b.L.runProgram();
+    b.runProgram();
     ok(b.freeStartField, "freeStart: value=2");
     ok(b.freeNextField,  "freeNext: value=1, 0=0, 1=3, 2=1, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+    ok(b, """
+Btree
+Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+""");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape

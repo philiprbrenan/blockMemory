@@ -63,7 +63,11 @@ stucks         array  %d
    }
 
   Layout.Field bit(String name) {return variable(name, 1);}                     // Create a bit
-  Layout.Field btreeIndex() {return variable("btreeIndex", logTwo(size)+1);}    // Create an index for a stuck in a btree
+  Layout.Field btreeIndex()     {return variable("btreeIndex", logTwo(size)+1);}// Create an index for a stuck in a btree
+
+  void runProgram()                      {L.runProgram();}
+  Layout.Program startNewProgram()       {return L.startNewProgram();}
+  void continueProgram(Layout.Program p) {L.continueProgram(p);}
 
   void createFreeChain()                                                        // Create the free chain
    {final Layout.Field index = btreeIndex();
@@ -120,13 +124,14 @@ stucks         array  %d
   class IsLeaf
    {IsLeaf(Layout.Field index)                                                  // Process a stuck depending on wnether it is a leaf or a branch
      {stuckIsLeafField.iRead(index);
+      final IsLeaf  l = this;
       L.P.new If(stuckIsLeafField)
-       {void Then() {leaf();}
-        void Else() {branch();}
+       {void Then() {l.Leaf();}
+        void Else() {l.Branch();}
        };
      }
-    void leaf() {}
-    void branch() {}
+    void Leaf() {}
+    void Branch() {}
    }
 
 //  public void find(Layout.Field Key)                                            // Find the leaf associated with a key in the tree
@@ -227,12 +232,18 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     return b;
    }
 
-  static Btree test_leaf()
+  static void test_leaf()
    {final Btree b = test_create();
-    ok(b, """
-Btree
-""");
-    return b;
+    final Layout.Field btreeIndex = b.btreeIndex();
+    final Layout.Field a          = b.variable("a", 4);
+
+    btreeIndex.iWrite(0);
+    b.new IsLeaf(btreeIndex)
+     {void Leaf  () {a.iWrite(1);}
+      void Branch() {a.iWrite(2);}
+     };
+    b.L.runProgram();
+    ok(a, "a: value=1");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -241,7 +252,7 @@ Btree
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_create();
+    test_leaf();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

@@ -66,8 +66,11 @@ stucks         array  %d
   Layout.Field btreeIndex()     {return variable("btreeIndex", logTwo(size)+1);}// Create an index for a stuck in a btree
 
   void runProgram()                      {L.runProgram();}
+  void stopProgram(String message)       {L.stopProgram(message);}
   Layout.Program startNewProgram()       {return L.startNewProgram();}
   void continueProgram(Layout.Program p) {L.continueProgram(p);}
+
+//D2 Allocation                                                                 // Allocate stucks from the free chain
 
   void createFreeChain()                                                        // Create the free chain
    {final Layout.Field index = btreeIndex();
@@ -89,6 +92,43 @@ stucks         array  %d
     L.runProgram();
     L.continueProgram(p);
    }
+
+  private void allocate(Layout.Field ref)                                       // Allocate a stuck and set a ref to the allocated node
+   {final Layout.Field btreeIndex = btreeIndex();
+    L.P.new Instruction()
+     {void action()
+       {if (freeStartField.value == 0) stopProgram("Out of memory");            // Check memory
+        ref.value = btreeIndex.value = freeStartField.value;                    // Head of free chain gives allocated stuck
+       }
+     };
+
+    freeNextField.iRead(btreeIndex);                                            // Locate next stuck on free chain to become new first stuck on free chain
+
+    L.P.new Instruction()
+     {void action()
+       {freeStartField.value = freeNextField.value;                             // Next stuck on free chain becomes head of free chain
+       }
+     };
+   }
+
+  private void free(Layout.Field ref)                                           // Free the indicated stuck to make it available for reuse
+   {L.P.new Instruction()
+     {void action()
+       {if (ref.value == 0)                                                     // The root stuck cannot be freed
+         {stopProgram("Cannot free the root stuck");
+          return;
+         }
+       }
+     };
+    freeNextField.iWrite(freeStartField, ref);                              // Append the free chain to this stuck
+    L.P.new Instruction()
+     {void action()
+       {freeStartField.value = ref.value;                                       // This stuck becomes the first stuick on the free chain
+       }
+     };
+   }
+
+//D2 Stuck                                                                      // Get and set stucks within btree
 
   Stuck stuck()                                                                 // Make a temporary stuck we can copy into or out of as needed
    {return new Stuck(stuckSize, bitsPerKey, bitsPerData);
@@ -246,13 +286,42 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     ok(a, "a: value=1");
    }
 
+  static void test_allocFree()
+   {final Btree b = test_create();
+    final Layout.Field x = b.btreeIndex();
+    final Layout.Field y = b.btreeIndex();
+
+    ok(b.freeStartField, "freeStart: value=1");
+    ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+
+    b.allocate(x);
+    b.allocate(y);
+    b.L.runProgram();
+
+    ok(x, "btreeIndex: value=1");
+    ok(y, "btreeIndex: value=2");
+
+    ok(b.freeStartField, "freeStart: value=3");
+    ok(b.freeNextField,  "freeNext: value=3, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+
+    b.L.clearProgram();
+    b.free(y);
+    b.free(x);
+    b.L.runProgram();
+say (b.freeStartField);
+stop(b.freeNextField);
+    ok(x, "btreeIndex: value=1");
+    ok(y, "btreeIndex: value=2");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
+    test_leaf();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_leaf();
+    test_allocFree();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

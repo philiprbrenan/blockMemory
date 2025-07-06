@@ -14,22 +14,19 @@ class Layout extends Test                                                       
 
 //D1 Layout                                                                     // Describe a memory layout
 
+  Layout() {source = null;}                                                     // An empty layout to create a program other layouts can use
+
   Layout(String Source)                                                         // A source description of the layout to be parsed into fields
    {source = Source;
     parseFields();
     allocateMemory();                                                           // Allocate memory for all fields
    }
 
-  Layout additionalLayout(String Source)                                        // A source description of an additional layout to be attached to this layout
-   {final Layout l = new Layout(Source);                                        // Parse additional layout
-    l.P = P;                                                                    // Use the program of the main layout
-    return l;                                                                   // Return additional layout
-   }
-
 //D1 Fields                                                                     // Describe a field in a memory layout
 
   class Field                                                                   // The fields in the layout
-   {final int     line;                                                         // Line at which the layout was parsed
+   {final Layout  layout;                                                       // Containing layout
+    final int     line;                                                         // Line at which the layout was parsed
     final int     indent;                                                       // Indentation
     final String  name;                                                         // Name
     final String  cmd;                                                          // Command
@@ -43,7 +40,8 @@ class Layout extends Test                                                       
     int     value;                                                              // The last value read from the memory of this field
 
     Field(int line, int indent, String name, String cmd, Integer rep, Integer parent) // Constructor
-     {this.line   = line;
+     {this.layout = Layout.this;
+      this.line   = line;
       this.indent = indent;
       this.name   = name;
       this.cmd    = cmd;
@@ -174,7 +172,7 @@ class Layout extends Test                                                       
     void iRead(int index)                                                       // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value = f.getIntFromBits(memory[index]); P.pc++;}
+       {void action() {f.value = f.getIntFromBits(memory[index]);}
        };
      }
 
@@ -184,7 +182,6 @@ class Layout extends Test                                                       
        {void action()
          {final int index = convolute(indices);
           f.value = f.getIntFromBits(memory[index]);
-          P.pc++;
          }
        };
      }
@@ -193,12 +190,11 @@ class Layout extends Test                                                       
 
     void iWrite(int value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
      {final Field  f = checkVar();
-      final BitSet b = new BitSet(f.rep());
+      final BitSet b = new BitSet(f.rep());                                     // Only used locally - does not become part of memory
       P.new Instruction()
        {void action()
          {f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what would actually be written into memory
-          P.pc++;
          }
        };
      }
@@ -210,7 +206,6 @@ class Layout extends Test                                                       
          {final BitSet b = f.memory[index];                                     // Bit set in memory holding value at this index
           f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
-          P.pc++;
          }
        };
      }
@@ -224,7 +219,6 @@ class Layout extends Test                                                       
           final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
           f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
-          P.pc++;
          }
        };
      }
@@ -236,14 +230,14 @@ class Layout extends Test                                                       
     void iDec()                                                                 // Decrement the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value--; P.pc++;}
+       {void action() {f.value--;}
        };
      }
 
     void iInc()                                                                 // Increment the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value++; P.pc++;}
+       {void action() {f.value++;}
        };
      }
 
@@ -251,20 +245,20 @@ class Layout extends Test                                                       
      {final Field t = checkVar();
       switch(Source.length)
        {case 0: P.new Instruction()
-         {void action() {t.value = 0; P.pc++;}
+         {void action() {t.value = 0;}
          };
         break;
         case 1: P.new Instruction()
-         {void action() {t.value = Source[0].value; P.pc++;}
+         {void action() {t.value = Source[0].value;}
          };
         break;
         case 2: P.new Instruction()
-         {void action() {t.value = Source[0].value + Source[1].value; P.pc++;}
+         {void action() {t.value = Source[0].value + Source[1].value;}
          };
         break;
         default: P.new Instruction()
          {void action()
-           {t.value = 0; for(Field s : Source) t.value += s.value; P.pc++;
+           {t.value = 0; for(Field s : Source) t.value += s.value;
 
            }
          };
@@ -303,7 +297,7 @@ class Layout extends Test                                                       
     void GoNotZero(Label label, Field condition)                                // Go to a specified label if the value of a field is not zero
      {P.new Instruction()
        {void action()
-         {if (condition.value > 0) pc = label.offset; else P.pc++;
+         {if (condition.value > 0) pc = label.offset;
          }
        };
      }
@@ -311,7 +305,7 @@ class Layout extends Test                                                       
     void GoZero(Label label, Field condition)                                   // Go to a specified label if the value of a field is zero
      {P.new Instruction()
        {void action()
-         {if (condition.value == 0) pc = label.offset; else P.pc++;
+         {if (condition.value == 0) pc = label.offset;
          }
        };
      }
@@ -340,6 +334,34 @@ class Layout extends Test                                                       
       abstract void code();
      }
 
+    abstract class For                                                          // A for loop
+     {final Label start     = new Label(), end = new Label();                       // Labels at start and end of block to facilitate continuing or exiting
+      final Field loop      = variable("loop",      Integer.SIZE);
+      final Field condition = variable("condition", 1);
+
+      For(int count)
+       {P.new Instruction()
+         {void action()
+           {loop.value = 0;
+           }
+         };
+
+        start.set();
+        P.new Instruction()
+         {void action()
+           {condition.value = loop.value < count ? 1 : 0;
+           }
+         };
+
+        GoZero(end, condition);
+        code();
+        loop.iInc();
+        Goto(start);
+        end.set();
+       }
+      void code() {};
+     }
+
 //D1 Execute                                                                    // Execute instructions in a program to modify the memory described by the layout
 
     abstract class Instruction                                                  // Instructions used to manipulate the fields
@@ -362,8 +384,12 @@ class Layout extends Test                                                       
       final int size = code.size();                                             // Programs must not add instrructions to the code
       for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
        {cpc = pc;
-        code.elementAt(pc).action();
-        if (code.size() != size) stopProgram("Instructions being defined at instruction: "+cpc);
+        code.elementAt(cpc).action();
+        if (code.size() != size)
+         {stopProgram("Additional instructions being defined inside an instruction at instruction: "+cpc);
+          return;
+         }
+        if (pc == cpc) pc++;
        }
       if (pc < code.size()) stop("Out of steps after :", i);
      }
@@ -384,10 +410,21 @@ class Layout extends Test                                                       
   void clearProgram() {P.clearProgram();}                                       // Clear the program code
   void runProgram()   {P.runProgram();}                                         // Run the program code
   void stopProgram(final String message) {P.stopProgram(message);}              // Halt program execution with a message
+  void continueProgram(Program p) {P = p;}                                      // Continue with an existing program
+
+  Program startNewProgram()                                                     // Start a new pogram returning the previous program so that it can be continued at some point
+   {final Program p = P;
+    P = new Program();
+    return p;
+   }
 
 //D1 Parsing                                                                    // Parse the source description of a memory layout
 
   Field locateFieldByName(String name) {return names.get(name);}                // Locate a field by name
+  Field onlyField()                                                             // Retrieve the only field in a layout
+  {if (names.size() != 1) stop("One name only must be defined");
+   return names.firstEntry().getValue();
+  }
 
   void allocateMemory()                                                         // Allocate memory for all fields that actually use memory
    {for(Field f: fields) if (f.spacer && f.dims() > 0) f.allocateMemory();
@@ -407,7 +444,6 @@ class Layout extends Test                                                       
 
   private void parseFields()                                                    // Parse the layout description into fields
    {final String[]lines = source.split("\n");                                   // Split source into lines
-
     for(int l = 0; l < lines.length; ++l)                                       // Lines
      {final String line   = lines[l];                                           // Each line
       if (line.matches("\\A\\s*#")) continue;                                   // Comment
@@ -468,6 +504,15 @@ class Layout extends Test                                                       
      }
    }
 
+  Layout.Field variable(String name, int size)                                  // Create a variable
+   {final Layout l = new Layout(String.format("""
+%s var %d
+""", name, size));
+
+    l.P = P;
+    return l.onlyField();
+   }
+
 //D2 Printing                                                                   // Print the results if parsing a memory layout
 
   public String toString()                                                      // Print the fields of the input lines
@@ -507,24 +552,7 @@ class Layout extends Test                                                       
 //D1 Tests                                                                      // Test memory layouts
 
   protected static void test_parse()
-   {
-//    Layout l = new Layout("""
-//A array 2
-//  S struct
-//    a var 4
-//    b bit
-//    u union
-//      B array 4
-//        S1 struct
-//          a1 bit
-//          b1 var 2
-//      C array 2
-//        S2 struct
-//          a2 bit
-//          b2 var 5
-//""");
-
-    Layout l = new Layout("""
+   {Layout l = new Layout("""
 A array 2
   a var 4
   b bit
@@ -556,14 +584,6 @@ A array 2
    }
 
   protected static void test_parse_top()
-//   {Layout l = new Layout("""
-//a var 4
-//b bit
-//S struct
-//  a1 bit
-//  b1 var 5
-//c var 2
-//""");
    {Layout l = new Layout("""
 a var 4
 b bit
@@ -779,12 +799,29 @@ d var 4
 """);
    }
 
+  protected static void test_for()
+   {Layout       l = new Layout();
+    Layout.Field i = l.variable("index", 4);
+
+    for (int j = 0; j < 8; ++j)
+     {l.clearProgram();
+      i.iWrite(0);
+      l.P.new For(j)
+       {void code()
+         {i.iInc();                                                                                //
+         }                                                                                //
+       };
+      l.runProgram();
+      ok(i, "index: value="+j);
+     }
+   }
+
   protected static void test_stop()
    {Layout l = new Layout("""
 a var 4
 """);
 
-    Field a = l.locateFieldByName("a");
+    Field a = l.onlyField();
     l.P.supressErrorMessagePrint = true;
     l.P.iStop("Stopped");
     a.iWrite(1);
@@ -799,6 +836,36 @@ a var 4
     ok(l.P.rc.equals("Stopped"));
    }
 
+  protected static void test_variable()
+   {final Layout l = new Layout();
+    Layout.Field a = l.variable("a", 4);
+    a.iWrite(2);
+    l.P.runProgram();
+
+    //stop(a.layout);
+    ok(a.layout, """
+  #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  a            2  var        4
+""");
+
+    //stop(a);
+    ok(a, "a: value=2");
+   }
+
+  protected static void test_stackProgram()
+   {final Layout l = new Layout();
+    Layout.Field a = l.variable("a", 4);
+
+    a.iWrite(1);
+    Program p = l.startNewProgram();
+    a.iWrite(2);
+    l.P.runProgram();
+    ok(a, "a: value=2");
+    l.continueProgram(p);
+    l.P.runProgram();
+    ok(a, "a: value=1");
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
@@ -807,12 +874,14 @@ a var 4
     test_add();
     test_if();
     test_block();
+    test_for();
     test_stop();
+    test_variable();
+    test_stackProgram();
    }
 
   protected static void newTests()                                              // Tests being worked on
    {oldTests();
-    test_stop();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

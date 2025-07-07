@@ -33,7 +33,7 @@ stuckSize    var    %d
 Stuck        array  %d
   stuckKeys  var    %d
   stuckData  var    %d
-""", logTwo(size), size, bitsPerKey, bitsPerData));
+""", logTwo(size)+1, size, bitsPerKey, bitsPerData));
    }
 
   Stuck duplicate()                                                             // Duplicate this struck
@@ -70,10 +70,12 @@ Stuck        array  %d
     return v;
    }
 
-  Layout.Field found() {return variable("found", 1);}                           // Whether a key was found in a stuck or not
+  Layout.Field found() {return variable("found",                   1);}         // Whether a key was found in a stuck or not
   Layout.Field index() {return variable("stuckIndex", logTwo(size)+1);}         // Index a key, data pair in a stuck
   Layout.Field count() {return variable("count",      logTwo(size)+1);}         // Number of key, data pairs to copy
   Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
+  Layout.Field key()   {return variable("at",         bitsPerKey);}             // A field capable of holding a key value
+  Layout.Field data()  {return variable("at",         bitsPerData);}            // A field capable of holding a data value
 
   void runProgram  () {L.runProgram();}                                         // Runb the program
   void clearProgram() {L.clearProgram();}                                       // Clear the current program
@@ -96,6 +98,8 @@ Stuck        array  %d
 
 //D1 Actions                                                                    // Actions on the stuck
 
+  void clear() {stuckSize.iZero();}                                             // Clear the stuck by making it appear empty
+
   void push()                                                                   // Push a new key, data pair on the stack
    {L.P.new Instruction()
      {void action()
@@ -103,7 +107,6 @@ Stuck        array  %d
          {L.stopProgram("Cannot push to a full stuck");
           return;
          }
-        L.P.pc++;
        }
      };
     stuckKeys.iWrite(stuckSize);
@@ -118,7 +121,6 @@ Stuck        array  %d
          {L.stopProgram("Cannot pop an empty stuck");
           return;
          }
-        L.P.pc++;
        }
      };
     stuckSize.iDec();
@@ -140,7 +142,6 @@ Stuck        array  %d
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
-        L.P.pc++;
        }
      };
     stuckSize.iInc();
@@ -161,8 +162,6 @@ Stuck        array  %d
          {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i].clone();
           stuckData.memory[i-1] = (BitSet)stuckData.memory[i].clone();
          }
-
-        L.P.pc++;
        }
      };
     stuckSize.iDec();
@@ -178,7 +177,6 @@ Stuck        array  %d
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[0]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[0]);
-        L.P.pc++;
        }
      };
    }
@@ -193,7 +191,6 @@ Stuck        array  %d
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value-1]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value-1]);
-        L.P.pc++;
        }
      };
    }
@@ -208,7 +205,6 @@ Stuck        array  %d
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
-        L.P.pc++;
        }
      };
    }
@@ -223,7 +219,6 @@ Stuck        array  %d
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[index.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[index.value]);
-        L.P.pc++;
        }
      };
    }
@@ -236,7 +231,6 @@ Stuck        array  %d
           return;
          }
         if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
-        L.P.pc++;
        }
      };
     stuckKeys.iWrite(index);
@@ -246,10 +240,13 @@ Stuck        array  %d
   void setFirstElement()                                                        // Get the first key, data pair
    {L.P.new Instruction()
      {void action()
-       {stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot set the first element because the stuck is empty");
+          return;
+         }
+        stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
         if (stuckSize.value == 0) stuckSize.value++;
-        L.P.pc++;
        }
      };
    }
@@ -257,10 +254,13 @@ Stuck        array  %d
   void setLastElement()                                                         // Get the last key, data pair
    {L.P.new Instruction()
      {void action()
-       {stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value-1], stuckKeys.value);
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot set the last element because the stuck is empty");
+          return;
+         }
+        stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value-1], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[stuckSize.value-1], stuckData.value);
         if (stuckSize.value == 0) stuckSize.value++;
-        L.P.pc++;
        }
      };
    }
@@ -268,15 +268,17 @@ Stuck        array  %d
   void setPastLastElement()                                                     // Get the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
-         {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
+       {if (stuckSize.value == 0)
+         {L.stopProgram("Cannot set the element past last element because the stuck is empty");
+          return;
+         }
+        if (stuckSize.value >= size)
+         {L.stopProgram("Cannot set the element beyond the last element because the stuck is full");
           return;
          }
 
         stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
-        stuckSize.value++;
-        L.P.pc++;
        }
      };
    }
@@ -296,8 +298,6 @@ Stuck        array  %d
 
         stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
-
-        L.P.pc++;
        }
      };
     stuckSize.iInc();
@@ -322,8 +322,6 @@ Stuck        array  %d
          {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
           stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
          }
-
-        L.P.pc++;
        }
      };
     stuckSize.iDec();
@@ -332,10 +330,9 @@ Stuck        array  %d
   void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
    {L.P.new Instruction()
      {void action()
-       {L.P.pc++;
-        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
-         {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
-          if (stuckKeys.value == v)
+       {for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
+         {final int k = stuckKeys.getIntFromBits(stuckKeys.memory[i]);          // Key being checked
+          if (stuckKeys.value == k)                                             // Search key versus current key
            {Found.value = 1; Index.value = i;
             stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
             return;
@@ -346,13 +343,16 @@ Stuck        array  %d
      };
    }
 
-  void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key.
+  void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
    {L.P.new Instruction()
      {void action()
-       {L.P.pc++;
-        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
+       {if (stuckSize.value >= size)
+         {L.stopProgram("Cannot search a full stuck because the first element past the last element is needed as the return value if no key matches");
+          return;
+         }
+        for (int i = 0; i < stuckSize.value-1; ++i)                             // Check each key not including the last
          {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
-          if (stuckKeys.value <= v)
+          if (stuckKeys.value <= v)                                             // Found a matching key
            {Found.value = 1; Index.value = i;
             stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
             stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
@@ -360,6 +360,8 @@ Stuck        array  %d
            }
          }
         Found.value = 0;
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
        }
      };
    }
@@ -367,8 +369,7 @@ Stuck        array  %d
   void concatenate(Stuck source)                                                // Concatenate the indicated stuck on to the end one
    {L.P.new Instruction()
      {void action()
-       {L.P.pc++;
-        final int sourceSize = source.stuckSize.value;
+       {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
         if (sourceSize + targetSize > size)
          {L.P.stopProgram("Not enough room in target to concatenate source as well");
@@ -379,7 +380,6 @@ Stuck        array  %d
           stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
          }
         stuckSize.value += sourceSize;                                          // New size of target
-        L.P.pc++;
        }
      };
    }
@@ -387,8 +387,7 @@ Stuck        array  %d
   void splitIntoTwo(Stuck Left, Stuck Right, Layout.Field Copy)                 // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
-       {L.P.pc++;
-        if (Copy.value >= stuckSize.value)
+       {if (Copy.value >= stuckSize.value)
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
@@ -420,8 +419,7 @@ Stuck        array  %d
     Stuck Parent, Layout.Field At)
    {L.P.new Instruction()
      {void action()
-       {L.P.pc++;
-        if (Copy.value >= stuckSize.value)
+       {if (Copy.value >= stuckSize.value)
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
@@ -465,7 +463,7 @@ Stuck        array  %d
     //stop(a.L);
     ok(a.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize           0  var        2
+  0       0  stuckSize           0  var        3
   1       0  Stuck               0  array      4          stuckKeys, stuckData
   2       2    stuckKeys         0  var        4   Stuck                        4
   3       2    stuckData         0  var        4   Stuck                        4
@@ -506,6 +504,18 @@ stuckData: value=8, 0=2, 1=4, 2=6, 3=8
     s.clearProgram(); k.iWrite(0); d.iWrite(0); s.runProgram();             // Clean up key and data value
 
     return s;
+   }
+
+  protected static void test_clear()
+   {final Stuck s = test_push();
+
+    s.clear();
+    s.runProgram();
+    ok(s, """
+stuckSize: value=0
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
    }
 
   protected static void test_copy()
@@ -636,7 +646,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize           4  var        2
+  0       0  stuckSize           4  var        3
   1       0  Stuck               0  array      4          stuckKeys, stuckData
   2       2    stuckKeys         3  var        4   Stuck                        4
   3       2    stuckData         6  var        4   Stuck                        4
@@ -646,7 +656,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
-  0       0  stuckSize           4  var        2
+  0       0  stuckSize           4  var        3
   1       0  Stuck               0  array      4          stuckKeys, stuckData
   2       2    stuckKeys         2  var        4   Stuck                        4
   3       2    stuckData         4  var        4   Stuck                        4
@@ -821,7 +831,7 @@ stuckData: value=2, 0=2, 1=8, 2=8, 3=8
     s.clearProgram(); k.iWrite(2); d.iWrite(3); s.push(); s.runProgram();
     s.clearProgram(); k.iWrite(4); d.iWrite(5); s.push(); s.runProgram();
     s.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(8); d.iWrite(9); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(8); d.iWrite(9); s.setPastLastElement(); s.runProgram();
 
     Layout.Field found = s.found();
     Layout.Field index = s.index();
@@ -1029,6 +1039,18 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
     s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.pastLastElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot get the element beyond the last element because the stuck is full");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.setPastLastElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot set the element beyond the last element because the stuck is full");
+
+    s.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setFirstElement();
@@ -1057,23 +1079,47 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=8
     s.setPastLastElement();
     s.runProgram();
     ok(s, """
-stuckSize: value=4
+stuckSize: value=3
 stuckKeys: value=2, 0=2, 1=2, 2=2, 3=2
 stuckData: value=2, 0=2, 1=4, 2=2, 3=2
 """);
 
     s.clearProgram();
+    s.clear();
     s.L.P.supressErrorMessagePrint = true;
-    s.stuckKeys.iWrite(2);
-    s.stuckData.iWrite(2);
+    s.firstElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot get the first element because the stuck is empty");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.lastElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot get the last element because the stuck is empty");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.setFirstElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot set the first element because the stuck is empty");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.setLastElement();
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot set the last element because the stuck is empty");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
     s.setPastLastElement();
     s.runProgram();
-    ok(s.L.P.rc, "Cannot get the element beyond the last element because the stuck is full");
+    ok(s.L.P.rc, "Cannot set the element past last element because the stuck is empty");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
+    test_clear();
     test_copy();
     test_pop();
     test_unshift();

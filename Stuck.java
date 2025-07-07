@@ -350,15 +350,19 @@ Stuck        array  %d
          {L.stopProgram("Cannot search a full stuck because the first element past the last element is needed as the return value if no key matches");
           return;
          }
-        for (int i = 0; i < stuckSize.value-1; ++i)                             // Check each key not including the last
+say("SSSS00", stuckSize.value);
+        for (int i = 0; i < stuckSize.value; ++i)                             // Check each key not including the last
          {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+say("SSSS22", i, stuckKeys.value, v);
           if (stuckKeys.value <= v)                                             // Found a matching key
            {Found.value = 1; Index.value = i;
+say("SSSS33 found");
             stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
             stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
             return;
            }
          }
+say("SSSS44 last");
         Found.value = 0;
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);

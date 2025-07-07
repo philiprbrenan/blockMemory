@@ -306,7 +306,6 @@ stucks         array  %d
        {Key .iMove(stuckKeysField);
         Data.iMove(stuckDataField);
         find(Key, Found, Data, btreeIndex, stuckIndex);                         // Find the leaf that should contain the key and possibly the key.
-
         copyStuckFrom(S, btreeIndex);                                           // Copy the stuck that should contain the key
         S.stuckKeys.iMove(Key);
         S.stuckData.iMove(Data);
@@ -323,7 +322,13 @@ stucks         array  %d
         S.isFull(full);                                                         // Check whether the stuck is full
         L.P.new If (full)
          {void Else()                                                           // Leaf is not full so we can insert immediately
-           {S.insertElementAt(stuckIndex);
+           {S.search_le(Found, stuckIndex);
+            S.stuckKeys.iMove(Key);
+            S.stuckData.iMove(Data);
+            L.P.new If(Found)
+             {void Then() {S.insertElementAt(stuckIndex);}                      //
+              void Else() {S.push();}                                           //
+             };
             saveStuckInto(S, btreeIndex);
             Found.iOne();
             L.P.Goto(end);
@@ -649,6 +654,121 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     ok(stuckIndex, "stuckIndex: value=1");
    }
 
+  static void test_findAndInsert()
+   {final Btree b = test_create();
+    final Layout.Field Found = b.bit("Found");
+
+    b.L.P.maxSteps = 500;
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(20);
+    b.stuckDataField.iWrite(21);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 1   free: 0   next:  0  leaf: 1
+stuckSize: value=1
+stuckKeys: value=0, 0=20, 1=0, 2=0, 3=0
+stuckData: value=0, 0=21, 1=0, 2=0, 3=0
+""");
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(10);
+    b.stuckDataField.iWrite(1);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=0, 0=10, 1=20, 2=0, 3=0
+stuckData: value=0, 0=1, 1=21, 2=0, 3=0
+""");
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(30);
+    b.stuckDataField.iWrite(31);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 1
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+""");
+
+    Layout.Field index = b.btreeIndex();
+    b.clearProgram();
+    b.allocate(index);
+    b.setRootAsBranch();
+    b.setLeaf(index);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+Stuck:  1   size: 0   free: 0   next:  0  leaf: 1
+stuckSize: value=0
+stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
+stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+""");
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(4);
+    b.stuckDataField.iWrite(5);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+Stuck:  1   size: 1   free: 0   next:  0  leaf: 1
+stuckSize: value=1
+stuckKeys: value=0, 0=4, 1=0, 2=0, 3=0
+stuckData: value=0, 0=5, 1=0, 2=0, 3=0
+""");
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(5);
+    b.stuckDataField.iWrite(6);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=0, 0=4, 1=5, 2=0, 3=0
+stuckData: value=0, 0=5, 1=6, 2=0, 3=0
+""");
+
+    b.clearProgram();
+    b.stuckKeysField.iWrite(3);
+    b.stuckDataField.iWrite(4);
+    b.findAndInsert(Found);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+Stuck:  1   size: 3   free: 0   next:  0  leaf: 1
+stuckSize: value=3
+stuckKeys: value=0, 0=3, 1=4, 2=5, 3=0
+stuckData: value=0, 0=4, 1=5, 2=6, 3=0
+""");
+   }
+
   static void test_isLeaf()
    {final Btree b = test_btree();
     final Layout.Field isLeaf     = b.bit("isLeaf");
@@ -678,11 +798,13 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     test_allocFree();
     test_btree();
     test_find();
+    test_findAndInsert();
     test_isLeaf();
    }
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
+    //test_findAndInsert();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

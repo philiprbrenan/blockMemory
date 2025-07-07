@@ -310,7 +310,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     final Layout.Field y = b.btreeIndex();
 
     ok(b.freeStartField, "freeStart: value=1");
-    ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+    ok(b.freeNextField,  "freeNext: value=16, 0=0, 1=2, 2=3, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=16");
     ok(b, """
 Btree
 Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
@@ -327,7 +327,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     ok(y, "btreeIndex: value=2");
 
     ok(b.freeStartField, "freeStart: value=3");
-    ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=0, 2=0, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+    ok(b.freeNextField,  "freeNext: value=0, 0=0, 1=0, 2=0, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=16");
 
     ok(b, """
 Btree
@@ -350,7 +350,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.free(y);
     b.runProgram();
     ok(b.freeStartField, "freeStart: value=2");
-    ok(b.freeNextField,  "freeNext: value=1, 0=0, 1=3, 2=1, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=0");
+    ok(b.freeNextField,  "freeNext: value=1, 0=0, 1=3, 2=1, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=16");
     ok(b, """
 Btree
 Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
@@ -507,7 +507,7 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
+   {oldTests();
     test_find();
    }
 

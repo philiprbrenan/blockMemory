@@ -71,15 +71,34 @@ Stuck        array  %d
    }
 
   Layout.Field found() {return variable("found",                   1);}         // Whether a key was found in a stuck or not
+  Layout.Field empty() {return variable("empty",                   1);}         // Whether the stuck is empty
+  Layout.Field full()  {return variable("full",                    1);}         // Whether the stuck is full
   Layout.Field index() {return variable("stuckIndex", logTwo(size)+1);}         // Index a key, data pair in a stuck
   Layout.Field count() {return variable("count",      logTwo(size)+1);}         // Number of key, data pairs to copy
   Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
-  Layout.Field key()   {return variable("at",         bitsPerKey);}             // A field capable of holding a key value
-  Layout.Field data()  {return variable("at",         bitsPerData);}            // A field capable of holding a data value
+  Layout.Field key()   {return variable("key",        bitsPerKey);}             // A field capable of holding a key value
+  Layout.Field data()  {return variable("data",       bitsPerData);}            // A field capable of holding a data value
 
   void runProgram  () {L.runProgram();}                                         // Runb the program
   void clearProgram() {L.clearProgram();}                                       // Clear the current program
 
+//D1 Attributes                                                                 // Answers to questions about the stuck
+
+  void isEmpty(Layout.Field empty)                                              // Whether the stuck is empty
+   {L.P.new Instruction()
+     {void action()
+       {empty.value = stuckSize.value == 0 ? 1 : 0;
+       }
+     };
+   }
+
+  void isFull(Layout.Field full)                                                // Whether the stuck is full
+   {L.P.new Instruction()
+     {void action()
+       {full.value = stuckSize.value >= size ? 1 : 0;
+       }
+     };
+   }
 
 //D1 Print                                                                      // Print  the stcuk
 
@@ -1117,6 +1136,27 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     ok(s.L.P.rc, "Cannot set the element past last element because the stuck is empty");
    }
 
+  protected static void test_emptyFull()
+   {final Stuck s = test_push();
+    final Layout.Field e = s.empty();
+    final Layout.Field f = s.full();
+
+    s.clearProgram();
+    s.isEmpty(e);
+    s.isFull (f);
+    s.runProgram();
+    ok(e, "empty: value=0");
+    ok(f, "full: value=1");
+
+    s.clearProgram();
+    for (int i = 0; i < 4; i++) s.pop();
+    s.isEmpty(e);
+    s.isFull (f);
+    s.runProgram();
+    ok(e, "empty: value=1");
+    ok(f, "full: value=0");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_parse();
     test_push();
@@ -1136,10 +1176,12 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     test_splitIntoThree();
     test_firstLastPast();
     test_setFirstLastPast();
+    test_emptyFull();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
+   {//oldTests();
+    test_emptyFull();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

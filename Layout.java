@@ -203,7 +203,11 @@ class Layout extends Test                                                       
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {final BitSet b = f.memory[index];                                     // Bit set in memory holding value at this index
+         {if (logTwo(value) > f.rep())
+           {P.stopProgram("Value too big to be wrtitten into array");
+            return;
+           }
+          final BitSet b = f.memory[index];                                     // Bit set in memory holding value at this index
           f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
          }
@@ -214,7 +218,11 @@ class Layout extends Test                                                       
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {final int index = convolute(indices);
+         {if (logTwo(value) > f.rep())
+           {P.stopProgram("Value too big to be wrtitten into array");
+            return;
+           }
+          final int index = convolute(indices);
           final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
           f.setBitsFromInt(b, value);
           f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
@@ -228,6 +236,10 @@ class Layout extends Test                                                       
        {void action()
          {if (indices.length == 0)                                              // No indices
            {f.value = value;
+            return;
+           }
+          if (logTwo(value) > f.rep())
+           {P.stopProgram("Value too big to be wrtitten into array");
             return;
            }
           final int index = convolute(indices);
@@ -290,7 +302,7 @@ class Layout extends Test                                                       
   class Program                                                                 // Program definition
    {final Stack<Instruction>      code = new Stack<>();                         // The code that manipulates the fields
     final Stack<Label>          labels = new Stack<>();                         // Labels into the code
-    final int                 maxSteps = 200;                                   // Maximum number of steps to execute
+    int                       maxSteps = 200;                                   // Maximum number of steps to execute
     int                             pc = 0;                                     // The index of the next instruction to be executed
     int                            cpc = 0;                                     // The index of the current instruction being executed
     String                          rc = null;                                  // The result of executing the program.  If null then no problems were detected

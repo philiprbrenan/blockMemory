@@ -229,26 +229,13 @@ stucks         array  %d
     final Layout.Field s = btreeIndex;
     s.iZero();                                                                  // Start at the root
 
-    L.P.new Instruction()
-     {void action()
-       {say("FFFF", Key, Btree.this);
-       }
-     };
-
     L.P.new Block()
      {void code()
        {copyStuckFrom(S, s);                                                    // Set search key
-L.P.new Instruction() {void action(){say("SSSS", s, S);}};
         S.stuckKeys.iMove(Key);
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
-           {L.P.new Instruction()
-            {void action()
-              {
-           say("LLLL");
-              }
-            };
-            S.search_eq(Found, stuckIndex);                                     // Search
+           {S.search_eq(Found, stuckIndex);                                     // Search
             L.P.GoZero(end, Found);                                             // Key not present
             S.elementAt(stuckIndex);                                            // Look up data
             Data.iMove(S.stuckData);                                            // Save data
@@ -424,7 +411,6 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     Z.stuckKeys.iWrite(10); Z.stuckData.iWrite(s.value); Z.push();
     Z.stuckKeys.iWrite(20); Z.stuckData.iWrite(t.value); Z.push();
     Z.stuckKeys.iWrite(30); Z.stuckData.iWrite(x.value); Z.push();
-    Z.stuckKeys.iWrite(40); Z.stuckData.iWrite(y.value); Z.push();
     b.runProgram();
 
     b.clearProgram();
@@ -436,10 +422,10 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.runProgram();
     ok(b, """
 Btree
-Stuck:  0   size: 4   free: 0   next:  0  leaf: 0
-stuckSize: value=4
-stuckKeys: value=40, 0=10, 1=20, 2=30, 3=40
-stuckData: value=4, 0=1, 1=2, 2=3, 3=4
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=2, 2=3, 3=0
 Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
 stuckSize: value=4
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
@@ -469,11 +455,16 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     final Layout.Field stuckIndex = s.index();
     final Layout.Field btreeIndex = s.index();
 
-    b.L.P.maxSteps = 10_000;
-    Key.iWrite(20);
+    b.L.P.maxSteps = 400;
+    Key.iWrite(14);
     b.find(Key, Found, Data, btreeIndex, stuckIndex);
     b.runProgram();
-    stop(Found, Data, btreeIndex, stuckIndex);
+
+    //stop(Found, Data, btreeIndex, stuckIndex);
+    ok(Found, "found: value=1");
+    ok(Data,  "at: value=18");
+    ok(btreeIndex, "stuckIndex: value=2");
+    ok(stuckIndex, "stuckIndex: value=3");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -485,8 +476,8 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    test_btree();
-    //test_find();
+    //test_btree();
+    test_find();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

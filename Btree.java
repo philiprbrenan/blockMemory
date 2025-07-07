@@ -208,6 +208,46 @@ stucks         array  %d
   void setLeaf  (Layout.Field i) {stuckIsLeafField.iOne (i);}                   // Set a stuck in the btree to be a leaf
   void setBranch(Layout.Field i) {stuckIsLeafField.iZero(i);}                   // Set a stuck in the btree to be a branch
 
+  void isLeaf(Layout.Field index, Layout.Field isLeaf)                          // Is leaf at indicated index
+   {stuckIsLeafField.iRead(index);
+    isLeaf.iMove(stuckIsLeafField);
+   }
+
+  void isRootLeaf(Layout.Field isLeaf)                                          // Is the root a leaf
+   {final Layout.Field i = btreeIndex();
+    i.iZero();
+    stuckIsLeafField.iRead(i);
+    isLeaf.iMove(stuckIsLeafField);
+   }
+
+
+//D1 Print                                                                      // Print the tree
+
+  public String toString()
+   {final StringBuilder s = new StringBuilder();
+    final Stuck t = stuck();
+    final Layout.Field btreeIndex = btreeIndex();
+    final Layout.Field stuckIndex = t.index();
+    s.append("Btree\n");
+    for (int i = 0; i < size; i++)                                              // Each stuck in the btree
+     {final Layout.Program p = L.startNewProgram();
+      btreeIndex.iWrite(i);                                                     // Index the stuck
+      stuckIsLeafField.iRead(btreeIndex);
+      stuckIsFreeField.iRead(btreeIndex);
+      freeNextField   .iRead(btreeIndex);
+      copyStuckFrom(t, btreeIndex);                                             // Copy content of stuck in btree to a local stuck
+      L.runProgram();
+      L.continueProgram(p);
+      if (stuckIsFreeField.value > 0) continue;                                 // Not in use as it is on the free chain
+
+      s.append(String.format("Stuck: %2d   size: %d   free: %d   next: %2d  leaf: %d\n",
+        i, t.stuckSize.value, freeNextField.value, freeNextField.value, stuckIsLeafField.value));
+      s.append(""+t);
+     }
+    return ""+s;
+   }
+
+
 //D1 Find                                                                       // Find a key in a btree
 
   class IsLeaf                                                                  // Process a stuck depending on wnether it is a leaf or a branch
@@ -250,30 +290,128 @@ stucks         array  %d
      };
    }
 
-//D1 Print                                                                      // Print the tree
+//D1 Insertion                                                                  // Insert a key, data pair into the tree if ther is room for it or update and existing key with a new datum
 
-  public String toString()
-   {final StringBuilder s = new StringBuilder();
-    final Stuck t = stuck();
-    final Layout.Field btreeIndex = btreeIndex();
-    final Layout.Field stuckIndex = t.index();
-    s.append("Btree\n");
-    for (int i = 0; i < size; i++)                                              // Each stuck in the btree
-     {final Layout.Program p = L.startNewProgram();
-      btreeIndex.iWrite(i);                                                     // Index the stuck
-      stuckIsLeafField.iRead(btreeIndex);
-      stuckIsFreeField.iRead(btreeIndex);
-      freeNextField   .iRead(btreeIndex);
-      copyStuckFrom(t, btreeIndex);                                             // Copy content of stuck in btree to a local stuck
-      L.runProgram();
-      L.continueProgram(p);
-      if (stuckIsFreeField.value > 0) continue;                                 // Not in use as it is on the free chain
+  private void findAndInsert(Layout.Field Found)                                // Find the leaf that should contain this key and insert or update it is possible setting Found to true if found else to false indocatying that the key, data pair still needs to be inserted
+   {final Stuck  S          = stuck();
+    Layout.Field Key        = S.key();
+    Layout.Field Data       = S.data();
+    Layout.Field btreeIndex = btreeIndex();
+    Layout.Field stuckIndex = S.index();
+    Layout.Field empty      = S.empty();
+    Layout.Field full       = S.full();
 
-      s.append(String.format("Stuck: %2d   size: %d   free: %d   next: %2d  leaf: %d\n",
-        i, t.stuckSize.value, freeNextField.value, freeNextField.value, stuckIsLeafField.value));
-      s.append(""+t);
-     }
-    return ""+s;
+    L.P.new Block()
+     {void code()
+       {Key .iMove(stuckKeysField);
+        Data.iMove(stuckDataField);
+        find(Key, Found, Data, btreeIndex, stuckIndex);                         // Find the leaf that should contain the key and possibly the key.
+
+        copyStuckFrom(S, btreeIndex);                                           // Copy the stuck that should contain the key
+        S.stuckKeys.iMove(Key);
+        S.stuckData.iMove(Data);
+
+        L.P.new If (Found)                                                      // Found the key in the leaf so update it with the new data
+         {void Then()
+           {S.setElementAt(stuckIndex);
+            saveStuckInto(S, btreeIndex);
+            Found.iOne();
+            L.P.Goto(end);
+           }
+         };
+
+        S.isFull(full);                                                         // Check whether the stuck is full
+        L.P.new If (full)
+         {void Else()                                                           // Leaf is not full so we can insert immediately
+           {S.insertElementAt(stuckIndex);
+            saveStuckInto(S, btreeIndex);
+            Found.iOne();
+            L.P.Goto(end);
+           }
+         };
+        Found.iZero();                                                          // The key has not been inserted
+       }
+     };
+   }
+
+  public void put()                                                             // Insert a key, data pair into the tree or update and existing key with a new datum
+   {final Stuck  S           = stuck();
+    Layout.Field Key         = S.key();
+    Layout.Field Data        = S.data();
+    Layout.Field btreeIndex  = btreeIndex();
+    Layout.Field stuckIndex  = S.index();
+    Layout.Field empty       = S.empty();
+    Layout.Field full        = S.full();
+    final Layout.Field found = S.found();
+
+//    L.P.new Block()
+//     {void code()
+//       {findAndInsert(found);    // hand target label in directly               // Try direct insertion with no modifications to the shape of the tree
+//        L.P.GoNotZero(end, found);                                              // Direct insertion succeeded
+//        nT.loadRoot();                                                          // Load root
+//        nT.isFull();
+//        P.new If (T.at(isFull))                                                 // Start the insertion at the root(), after splitting it if necessary
+//         {void Then()
+//           {nT.isLeaf(T.at(IsLeaf));
+//            P.new If (T.at(IsLeaf))
+//             {void Then() {splitLeafRoot  ();}
+//              void Else() {splitBranchRoot();}
+//             };
+//            z();
+//            findAndInsert(Return);                                              // Splitting the root() might have been enough
+//           }
+//         };
+//        nT.loadRootStuck(bT);                                                   // Load root as branch. If it were a leaf and had spae find and insert would have worked or the root would have been split and so must be branch.
+//        T.at(parent).zero();
+//
+//        P.new Block()                                                           // Step down through the tree, splitting as we go
+//         {void code()
+//           {findFirstGreaterThanOrEqualInBranch                                 // Step down from parent to child
+//             (nT, T.at(Key), null, T.at(first), T.at(child));
+//
+//            P.new Block()                                                       // Reached a leaf
+//             {void code()
+//               {nC.loadNode(T.at(child));
+//                nC.isLeaf(T.at(IsLeaf));
+//                P.GoOff(end, T.at(IsLeaf));
+//                P.parallelStart();   tt(index,          first);                 // Index of the matching key
+//                tt(node_splitLeaf, child);
+//                tt(splitParent,   parent);
+//
+//
+//                splitLeaf();                                                    // Split the child leaf
+//                findAndInsert(null);                                            // Now guaranteed to work
+//
+//                merge();                                                        // Improve the tree along the path to the key
+//                P.Goto(Return);
+//               }
+//             };
+//            z();
+//
+//            nC.loadNode(T.at(child));
+//            nC.branchSize(T.at(childSize));
+//            T.at(childSize).equal(T.at(maxKeysPerBranch), T.at(branchIsFull));  // Check whether the child needs splitting because it is full
+//
+//            P.new If (T.at(branchIsFull))                                       // Step down, splitting full branches as we go
+//             {void Then()
+//               {P.parallelStart();   tt(index, first);
+//                tt(node_splitBranch, child);
+//                tt(splitParent, parent);
+//
+//
+//                splitBranch();                                                  // Split the child branch in the search path for the key from the parent so the the search path does not contain a full branch above the containing leaf
+//
+//                findFirstGreaterThanOrEqualInBranch                             // Perform the step down again as the split will have altered the local layout
+//                 (nT, T.at(Key), null, null, T.at(child));
+//               }
+//             };
+//            nT.loadStuck(bT, child);                                            // Step down "From the heights"
+//            tt(parent, child);
+//            P.Goto(start);
+//           }
+//         };
+//       }
+//     };
    }
 
 //D1 Tests                                                                      // Test the btree
@@ -454,7 +592,7 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     final Layout.Field Data  = s.data();
     final Layout.Field Found = s.found();
     final Layout.Field stuckIndex = s.index();
-    final Layout.Field btreeIndex = s.index();
+    final Layout.Field btreeIndex = b.btreeIndex();
 
     b.L.P.maxSteps = 500;
 
@@ -473,8 +611,8 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
     //stop(Found, Data, btreeIndex, stuckIndex);
     ok(Found, "found: value=1");
-    ok(Data,  "at: value=8");
-    ok(btreeIndex, "stuckIndex: value=1");
+    ok(Data,  "data: value=8");
+    ok(btreeIndex, "btreeIndex: value=1");
     ok(stuckIndex, "stuckIndex: value=3");
 
     b.clearProgram();
@@ -484,8 +622,8 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
     //stop(Found, Data, btreeIndex, stuckIndex);
     ok(Found, "found: value=1");
-    ok(Data,  "at: value=18");
-    ok(btreeIndex, "stuckIndex: value=2");
+    ok(Data,  "data: value=18");
+    ok(btreeIndex, "btreeIndex: value=2");
     ok(stuckIndex, "stuckIndex: value=3");
 
     b.clearProgram();
@@ -495,8 +633,8 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
     //stop(Found, Data, btreeIndex, stuckIndex);
     ok(Found, "found: value=1");
-    ok(Data,  "at: value=26");
-    ok(btreeIndex, "stuckIndex: value=3");
+    ok(Data,  "data: value=26");
+    ok(btreeIndex, "btreeIndex: value=3");
     ok(stuckIndex, "stuckIndex: value=2");
 
     b.clearProgram();
@@ -506,9 +644,32 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
     //stop(Found, Data, btreeIndex, stuckIndex);
     ok(Found, "found: value=1");
-    ok(Data,  "at: value=34");
-    ok(btreeIndex, "stuckIndex: value=4");
+    ok(Data,  "data: value=34");
+    ok(btreeIndex, "btreeIndex: value=4");
     ok(stuckIndex, "stuckIndex: value=1");
+   }
+
+  static void test_isLeaf()
+   {final Btree b = test_btree();
+    final Layout.Field isLeaf     = b.bit("isLeaf");
+    final Layout.Field btreeIndex = b.btreeIndex();
+
+    b.clearProgram();
+    b.isRootLeaf(isLeaf);
+    b.runProgram();
+    ok(isLeaf, "isLeaf: value=0");
+
+    b.clearProgram();
+    btreeIndex.iZero();
+    b.isLeaf(btreeIndex, isLeaf);
+    b.runProgram();
+    ok(isLeaf, "isLeaf: value=0");
+
+    b.clearProgram();
+    btreeIndex.iOne();
+    b.isLeaf(btreeIndex, isLeaf);
+    b.runProgram();
+    ok(isLeaf, "isLeaf: value=1");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -517,11 +678,11 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     test_allocFree();
     test_btree();
     test_find();
+    test_isLeaf();
    }
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
-    test_find();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

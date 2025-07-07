@@ -53,7 +53,7 @@ stucks         array  %d
   stuck        array  %d
     stuckKeys  var    %d
     stuckData  var    %d
-""", logTwo(size), size, logTwo(size), logTwo(stuckSize), stuckSize, bitsPerKey, bitsPerData));
+""", logTwo(size)+1, size, logTwo(size)+1, logTwo(stuckSize)+1, stuckSize, bitsPerKey, bitsPerData));
    }
 
   Layout.Field variable(String name, int size)                                  // Create a variable
@@ -163,8 +163,11 @@ stucks         array  %d
      }
    }
 
-  void saveStuckInto(Stuck S, Layout.Field BtreeIndex)                          // Save a stuck into the indocated position in the btree
-   {stuckSizeField.iWrite(S.stuckSize.value);
+  void saveStuckInto(Stuck S, Layout.Field BtreeIndex)                          // Save a stuck into the indicated position in the btree
+   {
+
+    stuckSizeField.iMove(S.stuckSize);                                           // Get the size field from the btree
+    stuckSizeField.iWrite(BtreeIndex);                                   // Set the size field in the stuck
 
     Layout.Field index = S.index();
 
@@ -198,8 +201,8 @@ stucks         array  %d
 
   void setRootAsBranch()                                                        // Set the root to be a branch
    {final Layout.Field i = btreeIndex();
-    i.iWrite(1);
-    stuckIsLeafField.iOne(i);
+    i.iWrite(0);
+    stuckIsLeafField.iZero(i);
    }
 
   void setLeaf  (Layout.Field i) {stuckIsLeafField.iOne (i);}                   // Set a stuck in the btree to be a leaf
@@ -207,8 +210,8 @@ stucks         array  %d
 
 //D1 Find                                                                       // Find a key in a btree
 
-  class IsLeaf
-   {IsLeaf(Layout.Field index)                                                  // Process a stuck depending on wnether it is a leaf or a branch
+  class IsLeaf                                                                  // Process a stuck depending on wnether it is a leaf or a branch
+   {IsLeaf(Layout.Field index)
      {stuckIsLeafField.iRead(index);
       final IsLeaf  l = this;
       L.P.new If(stuckIsLeafField)
@@ -220,61 +223,46 @@ stucks         array  %d
     void Branch() {}
    }
 
-//  public void find(Layout.Field Key)                                            // Find the leaf associated with a key in the tree
-//   {L.P.new Block()
-//     {void code()
-//       {final Layout.Program.Label Return = end;
-//        final Stuck        P = stuck();
-//        final Layout.Field p = btreeIndex();
-//
-//        L.P.new Instruction()
-//         {void action()
-//           {p.value = 0;
-//            copyStuckFrom(P, p);
-//            stuckIsLeafField.iRead(p);
-//            if (stuckIsLeafField.value > 0)
-//             {P.find(Key);
-//             }
-//           }
-//         };
-//
-//
-//        L.P.new Block()                                                           // The root is a leaf
-//         {void code()
-//           {P.parallelStart();   P.GoOff(end, nT.isLeaf());                     // Confirm that the root is a leaf
-//            P.parallelSection(); findEqualInLeaf(T.at(Key), nT);                // Assume the root is a leaf and start looking for the key
-//            P.parallelEnd();
-//
-//            P.parallelStart();   T.at(find).zero();                             // Leaf that should contain this key is the root
-//            P.parallelSection(); P.Goto(Return);
-//            P.parallelEnd();
-//           }
-//         };
-//
-//        P.new Block()
-//         {void code()
-//           {findFirstGreaterThanOrEqualInBranch                                 // Find next child in search path of key
-//             (nT, T.at(Key), null, null, T.at(child));
-//            nT.loadNode(T.at(child));
-//
-//            P.new Block()                                                       // Found the containing leaf
-//             {void code()
-//               {P.parallelStart();   P.GoOff(end, nT.isLeaf());                 // Confirm that it is a leaf
-//                P.parallelSection(); findEqualInLeaf(T.at(Key), nT);
-//                P.parallelEnd();
-//
-//                P.parallelStart();   tt(find, child);
-//                P.parallelSection(); P.Goto(Return);
-//                P.parallelEnd();
-//               }
-//             };
-//
-//            P.Goto(start);                                                      // Restart search one level down
-//           }
-//         };
-//       }
-//     };
-//   }
+  public void find(Layout.Field Key, Layout.Field Found,                        // Find the leaf associated with a key in the tree
+    Layout.Field Data, Layout.Field btreeIndex, Layout.Field stuckIndex)
+   {final Stuck        S = stuck();
+    final Layout.Field s = btreeIndex;
+    s.iZero();                                                                  // Start at the root
+
+    L.P.new Instruction()
+     {void action()
+       {say("FFFF", Key, Btree.this);
+       }
+     };
+
+    L.P.new Block()
+     {void code()
+       {copyStuckFrom(S, s);                                                    // Set search key
+L.P.new Instruction() {void action(){say("SSSS", s, S);}};
+        S.stuckKeys.iMove(Key);
+        new IsLeaf(s)
+         {void Leaf()                                                           // At a leaf - search for exact match
+           {L.P.new Instruction()
+            {void action()
+              {
+           say("LLLL");
+              }
+            };
+            S.search_eq(Found, stuckIndex);                                     // Search
+            L.P.GoZero(end, Found);                                             // Key not present
+            S.elementAt(stuckIndex);                                            // Look up data
+            Data.iMove(S.stuckData);                                            // Save data
+            L.P.Goto  (end);                                                    // Successfully found the key
+           }
+          void Branch()                                                         // On a branch - step to next level down
+           {S.search_le(Found, stuckIndex);                                     // Search stuck for matching key
+            s.iMove(S.stuckData);                                               // Index of next stuck down
+            L.P.Goto(start);                                                    // Key not present
+           }
+         };
+       };
+     };
+   }
 
 //D1 Print                                                                      // Print the tree
 
@@ -293,8 +281,8 @@ stucks         array  %d
       copyStuckFrom(t, btreeIndex);                                             // Copy content of stuck in btree to a local stuck
       L.runProgram();
       L.continueProgram(p);
-
       if (stuckIsFreeField.value > 0) continue;                                 // Not in use as it is on the free chain
+
       s.append(String.format("Stuck: %2d   size: %d   free: %d   next: %2d  leaf: %d\n",
         i, t.stuckSize.value, freeNextField.value, freeNextField.value, stuckIsLeafField.value));
       s.append(""+t);
@@ -386,7 +374,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 """);
    }
 
-  static void test_btree()
+  static Btree test_btree()
    {final Btree b = test_create();
     final Layout.Field s = b.btreeIndex();
     final Layout.Field t = b.btreeIndex();
@@ -398,7 +386,6 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     final Stuck X = b.stuck();
     final Stuck Y = b.stuck();
     final Stuck Z = b.stuck();
-
     b.allocate(s);
     b.allocate(t);
     b.allocate(x);
@@ -441,47 +428,65 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.runProgram();
 
     b.clearProgram();
-    b.saveStuckInto(S, s);
-    b.saveStuckInto(T, t);
-    b.saveStuckInto(X, x);
-    b.saveStuckInto(Y, y);
-    b.saveStuckIntoRoot(Z);
+    b.saveStuckInto(S, s);   b.setLeaf(s);
+    b.saveStuckInto(T, t);   b.setLeaf(t);
+    b.saveStuckInto(X, x);   b.setLeaf(x);
+    b.saveStuckInto(Y, y);   b.setLeaf(y);
+    b.saveStuckIntoRoot(Z);  b.setRootAsBranch();
     b.runProgram();
     ok(b, """
 Btree
-Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
-stuckSize: value=0
+Stuck:  0   size: 4   free: 0   next:  0  leaf: 0
+stuckSize: value=4
 stuckKeys: value=40, 0=10, 1=20, 2=30, 3=40
 stuckData: value=4, 0=1, 1=2, 2=3, 3=4
-Stuck:  1   size: 0   free: 0   next:  0  leaf: 0
-stuckSize: value=0
+Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
-Stuck:  2   size: 0   free: 0   next:  0  leaf: 0
-stuckSize: value=0
+Stuck:  2   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
 stuckKeys: value=14, 0=11, 1=12, 2=13, 3=14
 stuckData: value=18, 0=12, 1=14, 2=16, 3=18
-Stuck:  3   size: 0   free: 0   next:  0  leaf: 0
-stuckSize: value=0
+Stuck:  3   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
 stuckKeys: value=24, 0=21, 1=22, 2=23, 3=24
 stuckData: value=28, 0=22, 1=24, 2=26, 3=28
-Stuck:  4   size: 0   free: 0   next:  0  leaf: 0
-stuckSize: value=0
+Stuck:  4   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
 stuckKeys: value=34, 0=31, 1=32, 2=33, 3=34
 stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 """);
+    return b;
+   }
 
+  static void test_find()
+   {final Btree b = test_btree();
+    final Stuck s = b.stuck();
+    final Layout.Field Key   = s.key();
+    final Layout.Field Data  = s.data();
+    final Layout.Field Found = s.found();
+    final Layout.Field stuckIndex = s.index();
+    final Layout.Field btreeIndex = s.index();
+
+    b.L.P.maxSteps = 10_000;
+    Key.iWrite(20);
+    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+    b.runProgram();
+    stop(Found, Data, btreeIndex, stuckIndex);
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
     test_allocFree();
+    test_btree();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
     test_btree();
+    //test_find();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

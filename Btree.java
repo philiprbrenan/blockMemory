@@ -104,13 +104,6 @@ stucks         array  %d
      };
 
     stuckIsFreeField.iZero(btreeIndex);                                         // Show as in use
-L.P.new Instruction()
- {void action()
-   {
-say("FFFF", bTreeIndex, stuckIsFreeField);
-   }
- };
-
     freeNextField.iRead(btreeIndex);                                            // Locate next stuck on free chain to become new first stuck on free chain
 
     L.P.new Instruction()
@@ -158,7 +151,6 @@ say("FFFF", bTreeIndex, stuckIsFreeField);
     L.P.new Instruction()
      {void action()
        {T.stuckSize.value = stuckSizeField.value;
-say("AAAA", BtreeIndex);
        }
      };
 
@@ -167,11 +159,6 @@ say("AAAA", BtreeIndex);
     for (int i = 0; i < T.size; i++)
      {index.iWrite(i);
       stuckKeysField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckKeys.value = stuckKeysField.value;}}; T.stuckKeys.iWrite(index);
-      L.P.new Instruction()
-      {void action()
-        {say("TTTT", BtreeIndex, index, stuckKeysField);
-        }
-      };
       stuckDataField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckData.value = stuckDataField.value;}}; T.stuckData.iWrite(index);
      }
    }
@@ -285,28 +272,19 @@ say("AAAA", BtreeIndex);
     final Layout.Field btreeIndex = btreeIndex();
     final Layout.Field stuckIndex = t.index();
     s.append("Btree\n");
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < size; i++)                                              // Each stuck in the btree
      {final Layout.Program p = L.startNewProgram();
-
-
+      btreeIndex.iWrite(i);                                                     // Index the stuck
       stuckIsLeafField.iRead(btreeIndex);
       stuckIsFreeField.iRead(btreeIndex);
       freeNextField   .iRead(btreeIndex);
-
-      btreeIndex.iWrite(i);
-L.P.new Instruction()
- {void action()
-   {say("BBBB", btreeIndex, stuckIsFreeField.value);
-   }
- };
+      copyStuckFrom(t, btreeIndex);                                             // Copy content of stuck in btree to a local stuck
       L.runProgram();
       L.continueProgram(p);
 
       if (stuckIsFreeField.value > 0) continue;                                 // Not in use as it is on the free chain
       s.append(String.format("Stuck: %2d   size: %d   free: %d   next: %2d  leaf: %d\n",
         i, t.stuckSize.value, freeNextField.value, freeNextField.value, stuckIsLeafField.value));
-
-      copyStuckFrom(t, btreeIndex);                                             // Print stuck at this index in the btree
       s.append(""+t);
      }
     return ""+s;
@@ -456,7 +434,6 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.saveStuckInto(X, x);
     b.saveStuckInto(Y, y);
     b.runProgram();
-say("CCCC", b.stuckKeysField);
     ok(b, """
 Btree
 Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
@@ -465,20 +442,20 @@ stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
 stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 Stuck:  1   size: 0   free: 0   next:  0  leaf: 0
 stuckSize: value=0
-stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
-stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 Stuck:  2   size: 0   free: 0   next:  0  leaf: 0
 stuckSize: value=0
-stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
-stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+stuckKeys: value=14, 0=11, 1=12, 2=13, 3=14
+stuckData: value=18, 0=12, 1=14, 2=16, 3=18
 Stuck:  3   size: 0   free: 0   next:  0  leaf: 0
 stuckSize: value=0
-stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
-stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+stuckKeys: value=24, 0=21, 1=22, 2=23, 3=24
+stuckData: value=28, 0=22, 1=24, 2=26, 3=28
 Stuck:  4   size: 0   free: 0   next:  0  leaf: 0
 stuckSize: value=0
-stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
-stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+stuckKeys: value=34, 0=31, 1=32, 2=33, 3=34
+stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 """);
 
    }

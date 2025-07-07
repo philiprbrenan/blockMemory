@@ -228,14 +228,30 @@ stucks         array  %d
    {final Stuck        S = stuck();
     final Layout.Field s = btreeIndex;
     s.iZero();                                                                  // Start at the root
+L.P.new Instruction()
+ {void action()
+   {say("AAAA11 Start", Key);
+   }
+ };
 
     L.P.new Block()
      {void code()
        {copyStuckFrom(S, s);                                                    // Set search key
         S.stuckKeys.iMove(Key);
+L.P.new Instruction()
+ {void action()
+   {say("AAAA22", s);
+   }
+ };
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
            {S.search_eq(Found, stuckIndex);                                     // Search
+L.P.new Instruction()
+ {void action()
+   {say("LLLL", s);
+   }
+ };
+
             L.P.GoZero(end, Found);                                             // Key not present
             S.elementAt(stuckIndex);                                            // Look up data
             Data.iMove(S.stuckData);                                            // Save data
@@ -244,6 +260,11 @@ stucks         array  %d
           void Branch()                                                         // On a branch - step to next level down
            {S.search_le(Found, stuckIndex);                                     // Search stuck for matching key
             s.iMove(S.stuckData);                                               // Index of next stuck down
+L.P.new Instruction()
+ {void action()
+   {say("BBBB", Key, stuckIndex, s, S);
+   }
+ };
             L.P.Goto(start);                                                    // Key not present
            }
          };
@@ -455,16 +476,48 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     final Layout.Field stuckIndex = s.index();
     final Layout.Field btreeIndex = s.index();
 
-    b.L.P.maxSteps = 400;
-    Key.iWrite(14);
+    b.L.P.maxSteps = 500;
+
+//    b.clearProgram();
+//    Key.iWrite(5);
+//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+//    b.runProgram();
+//
+//    //stop(Found);
+//    ok(Found, "found: value=0");
+//
+//    b.clearProgram();
+//    Key.iWrite(4);
+//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+//    b.runProgram();
+//
+//    //stop(Found, Data, btreeIndex, stuckIndex);
+//    ok(Found, "found: value=1");
+//    ok(Data,  "at: value=8");
+//    ok(btreeIndex, "stuckIndex: value=1");
+//    ok(stuckIndex, "stuckIndex: value=3");
+//
+//    b.clearProgram();
+//    Key.iWrite(14);
+//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+//    b.runProgram();
+//
+//    //stop(Found, Data, btreeIndex, stuckIndex);
+//    ok(Found, "found: value=1");
+//    ok(Data,  "at: value=18");
+//    ok(btreeIndex, "stuckIndex: value=2");
+//    ok(stuckIndex, "stuckIndex: value=3");
+//
+    b.clearProgram();
+    Key.iWrite(23);
     b.find(Key, Found, Data, btreeIndex, stuckIndex);
     b.runProgram();
 
     //stop(Found, Data, btreeIndex, stuckIndex);
     ok(Found, "found: value=1");
-    ok(Data,  "at: value=18");
-    ok(btreeIndex, "stuckIndex: value=2");
-    ok(stuckIndex, "stuckIndex: value=3");
+    ok(Data,  "at: value=26");
+    ok(btreeIndex, "stuckIndex: value=3");
+    ok(stuckIndex, "stuckIndex: value=2");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -472,11 +525,11 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     test_leaf();
     test_allocFree();
     test_btree();
+    test_find();
    }
 
   static void newTests()                                                        // Tests being worked on
    {//oldTests();
-    //test_btree();
     test_find();
    }
 

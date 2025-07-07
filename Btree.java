@@ -146,34 +146,46 @@ stucks         array  %d
     return s;
    }
 
-  void copyStuckFrom(Stuck T, Layout.Field BtreeIndex)                          // Copy a stuck out of the btree
+  void copyStuckFrom(Stuck S, Layout.Field BtreeIndex)                          // Copy a stuck out of the btree
    {stuckSizeField.iRead(BtreeIndex);
     L.P.new Instruction()
      {void action()
-       {T.stuckSize.value = stuckSizeField.value;
+       {S.stuckSize.value = stuckSizeField.value;
        }
      };
 
-    Layout.Field index = T.index();
+    Layout.Field index = S.index();
 
-    for (int i = 0; i < T.size; i++)
+    for (int i = 0; i < S.size; i++)
      {index.iWrite(i);
-      stuckKeysField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckKeys.value = stuckKeysField.value;}}; T.stuckKeys.iWrite(index);
-      stuckDataField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {T.stuckData.value = stuckDataField.value;}}; T.stuckData.iWrite(index);
+      stuckKeysField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {S.stuckKeys.value = stuckKeysField.value;}}; S.stuckKeys.iWrite(index);
+      stuckDataField.iRead(BtreeIndex, index); L.P.new Instruction() {void action() {S.stuckData.value = stuckDataField.value;}}; S.stuckData.iWrite(index);
      }
    }
 
-  void saveStuckInto(Stuck T, Layout.Field BtreeIndex)                          // Save a stuck into the indocated position in the btree
-   {stuckSizeField.iWrite(T.stuckSize.value);
+  void saveStuckInto(Stuck S, Layout.Field BtreeIndex)                          // Save a stuck into the indocated position in the btree
+   {stuckSizeField.iWrite(S.stuckSize.value);
 
-    Layout.Field index = T.index();
+    Layout.Field index = S.index();
 
-    for (int i = 0; i < T.size; i++)
+    for (int i = 0; i < S.size; i++)
      {final int I = i;
       index.iWrite(I);
-      T.stuckKeys.iRead(index); L.P.new Instruction() {void action() {stuckKeysField.value = T.stuckKeys.value;}}; stuckKeysField.iWrite(BtreeIndex, index);
-      T.stuckData.iRead(index); L.P.new Instruction() {void action() {stuckDataField.value = T.stuckData.value;}}; stuckDataField.iWrite(BtreeIndex, index);
+      S.stuckKeys.iRead(index); L.P.new Instruction() {void action() {stuckKeysField.value = S.stuckKeys.value;}}; stuckKeysField.iWrite(BtreeIndex, index);
+      S.stuckData.iRead(index); L.P.new Instruction() {void action() {stuckDataField.value = S.stuckData.value;}}; stuckDataField.iWrite(BtreeIndex, index);
      }
+   }
+
+  void copyStuckFromRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+   {final Layout.Field i = btreeIndex();
+    i.iWrite(0);
+    copyStuckFrom(S, i);
+   }
+
+  void saveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+   {final Layout.Field i = btreeIndex();
+    i.iWrite(0);
+    saveStuckInto(S, i);
    }
 
 //D1 Attributes                                                                 // Get and set attributes
@@ -433,13 +445,14 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.saveStuckInto(T, t);
     b.saveStuckInto(X, x);
     b.saveStuckInto(Y, y);
+    b.saveStuckIntoRoot(Z);
     b.runProgram();
     ok(b, """
 Btree
 Stuck:  0   size: 0   free: 0   next:  0  leaf: 1
 stuckSize: value=0
-stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
-stuckData: value=0, 0=0, 1=0, 2=0, 3=0
+stuckKeys: value=40, 0=10, 1=20, 2=30, 3=40
+stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Stuck:  1   size: 0   free: 0   next:  0  leaf: 0
 stuckSize: value=0
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4

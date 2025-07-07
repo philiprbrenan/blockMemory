@@ -410,6 +410,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     Z.stuckKeys.iWrite(10); Z.stuckData.iWrite(s.value); Z.push();
     Z.stuckKeys.iWrite(20); Z.stuckData.iWrite(t.value); Z.push();
     Z.stuckKeys.iWrite(30); Z.stuckData.iWrite(x.value); Z.push();
+    Z.stuckKeys.iWrite(0);  Z.stuckData.iWrite(y.value); Z.setPastLastElement();
     b.runProgram();
 
     b.clearProgram();
@@ -419,12 +420,13 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.saveStuckInto(Y, y);   b.setLeaf(y);
     b.saveStuckIntoRoot(Z);  b.setRootAsBranch();
     b.runProgram();
+//stop(b);
     ok(b, """
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
 stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
-stuckData: value=0, 0=1, 1=2, 2=3, 3=0
+stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
 stuckSize: value=4
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
@@ -496,6 +498,17 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
     ok(Data,  "at: value=26");
     ok(btreeIndex, "stuckIndex: value=3");
     ok(stuckIndex, "stuckIndex: value=2");
+
+    b.clearProgram();
+    Key.iWrite(32);
+    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+    b.runProgram();
+
+    //stop(Found, Data, btreeIndex, stuckIndex);
+    ok(Found, "found: value=1");
+    ok(Data,  "at: value=34");
+    ok(btreeIndex, "stuckIndex: value=4");
+    ok(stuckIndex, "stuckIndex: value=1");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape

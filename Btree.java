@@ -228,30 +228,13 @@ stucks         array  %d
    {final Stuck        S = stuck();
     final Layout.Field s = btreeIndex;
     s.iZero();                                                                  // Start at the root
-L.P.new Instruction()
- {void action()
-   {say("AAAA11 Start", Key);
-   }
- };
-
     L.P.new Block()
      {void code()
        {copyStuckFrom(S, s);                                                    // Set search key
         S.stuckKeys.iMove(Key);
-L.P.new Instruction()
- {void action()
-   {say("AAAA22", s);
-   }
- };
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
            {S.search_eq(Found, stuckIndex);                                     // Search
-L.P.new Instruction()
- {void action()
-   {say("LLLL", s);
-   }
- };
-
             L.P.GoZero(end, Found);                                             // Key not present
             S.elementAt(stuckIndex);                                            // Look up data
             Data.iMove(S.stuckData);                                            // Save data
@@ -260,11 +243,6 @@ L.P.new Instruction()
           void Branch()                                                         // On a branch - step to next level down
            {S.search_le(Found, stuckIndex);                                     // Search stuck for matching key
             s.iMove(S.stuckData);                                               // Index of next stuck down
-L.P.new Instruction()
- {void action()
-   {say("BBBB", Key, stuckIndex, s, S);
-   }
- };
             L.P.Goto(start);                                                    // Key not present
            }
          };

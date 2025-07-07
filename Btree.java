@@ -456,36 +456,36 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
     b.L.P.maxSteps = 500;
 
-//    b.clearProgram();
-//    Key.iWrite(5);
-//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
-//    b.runProgram();
-//
-//    //stop(Found);
-//    ok(Found, "found: value=0");
-//
-//    b.clearProgram();
-//    Key.iWrite(4);
-//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
-//    b.runProgram();
-//
-//    //stop(Found, Data, btreeIndex, stuckIndex);
-//    ok(Found, "found: value=1");
-//    ok(Data,  "at: value=8");
-//    ok(btreeIndex, "stuckIndex: value=1");
-//    ok(stuckIndex, "stuckIndex: value=3");
-//
-//    b.clearProgram();
-//    Key.iWrite(14);
-//    b.find(Key, Found, Data, btreeIndex, stuckIndex);
-//    b.runProgram();
-//
-//    //stop(Found, Data, btreeIndex, stuckIndex);
-//    ok(Found, "found: value=1");
-//    ok(Data,  "at: value=18");
-//    ok(btreeIndex, "stuckIndex: value=2");
-//    ok(stuckIndex, "stuckIndex: value=3");
-//
+    b.clearProgram();
+    Key.iWrite(5);
+    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+    b.runProgram();
+
+    //stop(Found);
+    ok(Found, "found: value=0");
+
+    b.clearProgram();
+    Key.iWrite(4);
+    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+    b.runProgram();
+
+    //stop(Found, Data, btreeIndex, stuckIndex);
+    ok(Found, "found: value=1");
+    ok(Data,  "at: value=8");
+    ok(btreeIndex, "stuckIndex: value=1");
+    ok(stuckIndex, "stuckIndex: value=3");
+
+    b.clearProgram();
+    Key.iWrite(14);
+    b.find(Key, Found, Data, btreeIndex, stuckIndex);
+    b.runProgram();
+
+    //stop(Found, Data, btreeIndex, stuckIndex);
+    ok(Found, "found: value=1");
+    ok(Data,  "at: value=18");
+    ok(btreeIndex, "stuckIndex: value=2");
+    ok(stuckIndex, "stuckIndex: value=3");
+
     b.clearProgram();
     Key.iWrite(23);
     b.find(Key, Found, Data, btreeIndex, stuckIndex);

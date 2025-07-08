@@ -12,7 +12,7 @@ class Btree extends Test                                                        
   final int bitsPerKey;                                                         // The number of bits needed to define a key
   final int bitsPerData;                                                        // The number of bits needed to define a data field
   final Layout L;                                                               // Layout of the stuck
-  final Layout.Field freeStartField;                                            // Start of free chain. Initially all stucks are on the free chain except the root stuck
+  final Layout.Field freeStartField;    // Can Field be removed from these names                                        // Start of free chain. Initially all stucks are on the free chain except the root stuck
   final Layout.Field stuckIsLeafField;                                          // Whether the current stuck is acting as a leaf or a branch in the btree.
   final Layout.Field stuckIsFreeField;                                          // Whether the stuck is on the free chain
   final Layout.Field freeNextField;                                             // Next stuck on the free chain. If this stuck is not on the free chain then this field is zero to show that this stuck in use
@@ -322,6 +322,143 @@ stucks         array  %d
     p.push();                                                                   // Add reference to left child
     p.stuckData.iMove(cr); p.setPastLastElement();                              // Add reference to right child as top element past the end of the stuck
     saveStuckIntoRoot(p);                                                       // Save the root stuck back into the btree and mark it as a branch
+   }
+
+  private void splitLeafNotTop(Layout.Field parentIndex, Layout.Field stuckIndex) // Split a full leaf that is not the root and is not the last child of its parent branch which is not full
+   {final Stuck p = stuck(), c = stuck(), l = stuck(), r = stuck();             // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
+    final Layout.Field isFull = bit("isFull"), isFullButOne = bit("isFullButOne");
+    final Layout.Field isLeaf = bit("isLeaf");
+    final Layout.Field ci = btreeIndex(), cl = btreeIndex(), cr = btreeIndex(); // Btree indexes of child and left and right children of child
+    final Layout.Field ck = p.key(), pl = p.key(), pr = p.key(), plr = p.key(); // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
+
+    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    p.stuckKeys.iRead(stuckIndex); ck.iMove(p.stuckKeys);                       // Key of child
+    p.stuckData.iRead(stuckIndex); cr.iMove(p.stuckData);                       // Reference to child
+    copyStuckFrom(c, p.stuckData);                                              // Load child
+
+    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
+    L.P.new If(isLeaf)
+     {void Then()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Parent must be a branch");
+           }
+         };
+       }
+     };
+
+    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    L.P.new If(isFullButOne)
+     {void Then()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Parent must not be full");
+           }
+         };
+       }
+     };
+
+    isLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
+    L.P.new If(isLeaf)
+     {void Else()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Child must be a leaf");
+           }
+         };
+       }
+     };
+
+    isLeaf(cr, isFull);                                                         // The child stuck must be a leaf
+    L.P.new If(isFull)
+     {void Else()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Child must be full");
+           }
+         };
+       }
+     };
+
+    c.splitLow(l, stuckSize / 2);                                               // Split the leaf in two down the middle copying out the lower half
+    allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
+                      saveStuckInto(c, cr);                                     // Allocate and save left leaf
+                                                                                // Update root with new children
+    l.lastElement();   pl.iMove(l.stuckKeys);                                   // Last element of left child
+    c.firstElement();  pr.iMove(c.stuckKeys);                                   // First element of right child
+    plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
+
+    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.insertElementAt(stuckIndex);  // Add reference to left child
+    saveStuckIntoRoot(p);                                                       // Save the parent stuck back into the btree
+   }
+
+  private void splitLeafAtTop(Layout.Field parentIndex)                         // Split a full leaf that is not the root and is the last child of its parent branch which is not full
+   {final Stuck p = stuck(), c = stuck(), l = stuck(), r = stuck();             // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
+    final Layout.Field isFull = bit("isFull"), isFullButOne = bit("isFullButOne");
+    final Layout.Field isLeaf = bit("isLeaf");
+    final Layout.Field ci = btreeIndex(), cl = btreeIndex(), cr = btreeIndex(); // Btree indexes of child and left and right children of child
+    final Layout.Field ck = p.key(), pl = p.key(), pr = p.key(), plr = p.key(); // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
+
+    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    p.pastLastElement();                                                        // Key of child
+    cr.iMove(p.stuckData);                                                      // Reference to child in btree
+    copyStuckFrom(c, p.stuckData);                                              // Load child from btree
+
+    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
+    L.P.new If(isLeaf)
+     {void Then()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Parent must be a branch");
+           }
+         };
+       }
+     };
+
+    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    L.P.new If(isFullButOne)
+     {void Then()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Parent must not be full");
+           }
+         };
+       }
+     };
+
+    isLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
+    L.P.new If(isLeaf)
+     {void Else()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Child must be a leaf");
+           }
+         };
+       }
+     };
+
+    isLeaf(cr, isFull);                                                         // The child stuck must be a leaf
+    L.P.new If(isFull)
+     {void Else()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Child must be full");
+           }
+         };
+       }
+     };
+
+    c.splitLow(l, stuckSize / 2);                                               // Split the leaf in two down the middle copying out the lower half
+    allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
+                      saveStuckInto(c, cr);                                     // Allocate and save left leaf
+                                                                                // Update root with new children
+    l.lastElement();   pl.iMove(l.stuckKeys);                                   // Last element of left child
+    c.firstElement();  pr.iMove(c.stuckKeys);                                   // First element of right child
+    plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
+
+    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.push();                    // Add reference to left child
+    p.stuckKeys.iZero();    p.stuckData.iMove(cr); p.setPastLastElement();      // Add reference to not split top child on the right
+    saveStuckIntoRoot(p);                                                       // Save the parent stuck back into the btree
    }
 
 //D1 Find                                                                       // Find a key in a btree
@@ -947,6 +1084,126 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
 """);
    }
 
+  static void test_splitLeafNotTop()
+   {final Btree b = test_create();
+    final Stuck r = b.stuck();
+    final Stuck l = b.stuck();
+    final Layout.Field Found = b.bit("Found");
+    final Layout.Field R     = b.btreeIndex();
+    final Layout.Field I     = r.index();
+    final Layout.Field L     = b.btreeIndex();
+
+    b.L.P.maxSteps = 500;
+
+    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.push();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.push();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.setPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+
+    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.push(); b.runProgram();
+
+    b.clearProgram();
+    b.saveStuckIntoRoot(r);                     b.setRootAsBranch();
+    b.allocateLeaf(L); b.saveStuckInto(l, L);   b.setLeaf(L);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
+stuckSize: value=2
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=1, 1=0, 2=0, 3=0
+Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=4, 0=1, 1=2, 2=3, 3=4
+""");
+
+    b.clearProgram();
+    R.iZero();
+    I.iZero();
+    b.splitLeafNotTop(R, I);
+    b.runProgram();
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=30, 0=2, 1=10, 2=20, 3=30
+stuckData: value=0, 0=2, 1=1, 2=0, 3=0
+Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=4, 0=3, 1=4, 2=3, 3=4
+stuckData: value=4, 0=3, 1=4, 2=3, 3=4
+Stuck:  2   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=0, 3=0
+stuckData: value=0, 0=1, 1=2, 2=0, 3=0
+""");
+   }
+
+  static void test_splitLeafAtTop()
+   {final Btree b = test_create();
+    final Stuck r = b.stuck();
+    final Stuck l = b.stuck();
+    final Layout.Field Found = b.bit("Found");
+    final Layout.Field R     = b.btreeIndex();
+    final Layout.Field I     = r.index();
+    final Layout.Field L     = b.btreeIndex();
+
+    b.L.P.maxSteps = 500;
+
+    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.push();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.push();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.setPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+
+    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.push(); b.runProgram();
+
+    b.clearProgram();
+    b.saveStuckIntoRoot(r);                     b.setRootAsBranch();
+    b.allocateLeaf(L); b.saveStuckInto(l, L);   b.setLeaf(L);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+Btree
+Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
+stuckSize: value=2
+stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckData: value=0, 0=0, 1=0, 2=1, 3=0
+Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
+stuckSize: value=4
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=4, 0=1, 1=2, 2=3, 3=4
+""");
+
+    b.clearProgram();
+    R.iZero();
+    I.iZero();
+    b.splitLeafAtTop(R);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+Btree
+Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=0, 0=10, 1=20, 2=2, 3=0
+stuckData: value=1, 0=0, 1=0, 2=2, 3=1
+Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=4, 0=3, 1=4, 2=3, 3=4
+stuckData: value=4, 0=3, 1=4, 2=3, 3=4
+Stuck:  2   size: 2   free: 0   next:  0  leaf: 1
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=0, 3=0
+stuckData: value=0, 0=1, 1=2, 2=0, 3=0
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -957,11 +1214,13 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
     test_isLeaf();
     test_splitLeafRoot();
     test_splitBranchRoot();
+    test_splitLeafNotTop();
+    test_splitLeafAtTop();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_splitBranchRoot();
+   {oldTests();
+    test_splitLeafAtTop();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

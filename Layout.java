@@ -295,6 +295,14 @@ class Layout extends Test                                                       
         break;
        };
      }
+
+    void iHalf()                                                                // Divide the value of a field by two
+     {P.new Instruction()
+       {void action()
+         {value >>>= 1;
+         }
+       };
+     }
    }
 
 //D2 Programs                                                                   // Define a program to manipulate the layout
@@ -768,6 +776,19 @@ f var 4
 """);
    }
 
+  protected static void test_half()
+   {Layout l = new Layout("""
+a var 4
+""");
+
+    Field a = l.locateFieldByName("a");
+    a.iWrite(3);
+    a.iHalf();
+    l.runProgram();
+    //stop(a);
+    ok(a, "a: value=1");
+   }
+
   protected static void test_if()
    {Layout l = new Layout("""
 a var 4
@@ -912,6 +933,7 @@ a var 4
     test_vars();
     test_array();
     test_add();
+    test_half();
     test_if();
     test_block();
     test_for();

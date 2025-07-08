@@ -235,9 +235,7 @@ stucks         array  %d
     stuckSizeField.iRead(i);
     L.P.new Instruction()
      {void action()
-       {isFull.value = stuckSizeField.value >= size ? 1 : 0;
-say("CCCC", stuckSizeField.value, stuckSize, isFull, Btree.this);
-
+       {isFull.value = stuckSizeField.value >= stuckSize ? 1 : 0;
        }
      };
    }
@@ -248,8 +246,7 @@ say("CCCC", stuckSizeField.value, stuckSize, isFull, Btree.this);
     stuckSizeField.iRead(i);
     L.P.new Instruction()
      {void action()
-       {say("BBBB", stuckSizeField);
-         isFullButOne.value = stuckSizeField.value >= stuckSize-1 ? 1 : 0;
+       {isFullButOne.value = stuckSizeField.value >= stuckSize-1 ? 1 : 0;
        }
      };
    }
@@ -1485,10 +1482,10 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
     final Layout.Field f = b.bit("leafFull");
     final Layout.Field F = b.bit("branchFull");
 
-    b.clearProgram(); b.stuckKeysField.iWrite(10); b.stuckDataField.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
-    b.clearProgram(); b.stuckKeysField.iWrite(20); b.stuckDataField.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
-    b.clearProgram(); b.stuckKeysField.iWrite(30); b.stuckDataField.iWrite(31); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
-    b.clearProgram(); b.stuckKeysField.iWrite(40); b.stuckDataField.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
+    b.clearProgram(); b.stuckKeysField.iWrite(10); b.stuckDataField.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
+    b.clearProgram(); b.stuckKeysField.iWrite(20); b.stuckDataField.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
+    b.clearProgram(); b.stuckKeysField.iWrite(30); b.stuckDataField.iWrite(31); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=1");
+    b.clearProgram(); b.stuckKeysField.iWrite(40); b.stuckDataField.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=1"); ok(F, "branchFull: value=1");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -1505,11 +1502,11 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
     test_splitLeafAtTop();
     test_splitBranchNotTop();
     test_splitBranchAtTop();
+    test_isRootLeafFull();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_isRootLeafFull();
+   {oldTests();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

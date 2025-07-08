@@ -229,6 +229,30 @@ stucks         array  %d
     isLeaf.iMove(stuckIsLeafField);
    }
 
+  void isRootLeafFull(Layout.Field isFull)                                      // Is the root assumed to be a leaf full?
+   {final Layout.Field i = btreeIndex();
+    i.iZero();
+    stuckSizeField.iRead(i);
+    L.P.new Instruction()
+     {void action()
+       {isFull.value = stuckSizeField.value >= size ? 1 : 0;
+say("CCCC", stuckSizeField.value, stuckSize, isFull, Btree.this);
+
+       }
+     };
+   }
+
+  void isRootBranchFull(Layout.Field isFullButOne)                              // Is the root assumed to be a root full?
+   {final Layout.Field i = btreeIndex();
+    i.iZero();
+    stuckSizeField.iRead(i);
+    L.P.new Instruction()
+     {void action()
+       {say("BBBB", stuckSizeField);
+         isFullButOne.value = stuckSizeField.value >= stuckSize-1 ? 1 : 0;
+       }
+     };
+   }
 
 //D1 Print                                                                      // Print the tree
 
@@ -684,32 +708,35 @@ stucks         array  %d
    }
 
   public void put()                                                             // Insert a key, data pair into the tree or update and existing key with a new datum
-   {final Stuck  S           = stuck();
-    Layout.Field Key         = S.key();
-    Layout.Field Data        = S.data();
-    Layout.Field btreeIndex  = btreeIndex();
-    Layout.Field stuckIndex  = S.index();
-    Layout.Field empty       = S.empty();
-    Layout.Field full        = S.full();
-    final Layout.Field found = S.found();
+   {final Stuck  S                  = stuck();
+    final Layout.Field Key          = S.key();
+    final Layout.Field Data         = S.data();
+    final Layout.Field btreeIndex   = btreeIndex();
+    final Layout.Field stuckIndex   = S.index();
+    final Layout.Field empty        = S.empty();
+    final Layout.Field full         = S.full();
+    final Layout.Field found        = S.found();
+    final Layout.Field isLeaf       = bit("isLeaf");
+    final Layout.Field isFullButOne = bit("isFullButOne");
 
-//    L.P.new Block()
-//     {void code()
-//       {findAndInsert(found);    // hand target label in directly               // Try direct insertion with no modifications to the shape of the tree
-//        L.P.GoNotZero(end, found);                                              // Direct insertion succeeded
-//        nT.loadRoot();                                                          // Load root
-//        nT.isFull();
-//        P.new If (T.at(isFull))                                                 // Start the insertion at the root(), after splitting it if necessary
-//         {void Then()
-//           {nT.isLeaf(T.at(IsLeaf));
-//            P.new If (T.at(IsLeaf))
-//             {void Then() {splitLeafRoot  ();}
-//              void Else() {splitBranchRoot();}
-//             };
-//            z();
-//            findAndInsert(Return);                                              // Splitting the root() might have been enough
-//           }
-//         };
+    L.P.new Block()
+     {void code()
+       {findAndInsert(found);    // hand target label in directly               // Try direct insertion with no modifications to the shape of the tree
+        L.P.GoNotZero(end, found);                                              // Direct insertion succeeded
+        isRootLeaf(isLeaf);                                                     // Failed to insert because the root is a leaf and must therefore be full
+        L.P.new If (isLeaf)                                                       // Root is a leaf
+         {void Then()
+           {splitRootLeaf();                                                    // Split the leaf root to make room
+            findAndInsert(found);                                               // Splitting a leaf root will make more space in the tree
+            L.P.Goto(end);                                                      // Direct insertion succeeded
+           }
+         };
+        isRootBranchFull(isFullButOne);                                         // Root is a full branch so split it
+        L.P.new If (isFullButOne)
+         {void Then()
+           {splitRootBranch();                                                  // Split the branch root to make room
+           }
+         };
 //        nT.loadRootStuck(bT);                                                   // Load root as branch. If it were a leaf and had spae find and insert would have worked or the root would have been split and so must be branch.
 //        T.at(parent).zero();
 //
@@ -759,8 +786,8 @@ stucks         array  %d
 //            P.Goto(start);
 //           }
 //         };
-//       }
-//     };
+       }
+     };
    }
 
 //D1 Tests                                                                      // Test the btree
@@ -1453,6 +1480,17 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
+  static void test_isRootLeafFull()
+   {final Btree b = test_create();
+    final Layout.Field f = b.bit("leafFull");
+    final Layout.Field F = b.bit("branchFull");
+
+    b.clearProgram(); b.stuckKeysField.iWrite(10); b.stuckDataField.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
+    b.clearProgram(); b.stuckKeysField.iWrite(20); b.stuckDataField.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
+    b.clearProgram(); b.stuckKeysField.iWrite(30); b.stuckDataField.iWrite(31); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
+    b.clearProgram(); b.stuckKeysField.iWrite(40); b.stuckDataField.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, ""); ok(F, "");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -1470,7 +1508,8 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
+   {//oldTests();
+    test_isRootLeafFull();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

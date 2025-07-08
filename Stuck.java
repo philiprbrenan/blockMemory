@@ -3,7 +3,7 @@
 // Philip R Brenan at appaapps dot com, Appa Apps Ltd Inc., 2024
 //------------------------------------------------------------------------------
 package com.AppaApps.Silicon;                                                   // Btree in a block on the surface of a silicon chip.
-
+// Tighten up the tests in the splits for the number of lengths in the source stuck
 import java.util.*;
 
 class Stuck extends Test                                                        // A fixed size collection of key, data pairs
@@ -502,6 +502,35 @@ Stuck        array  %d
      };
    }
 
+  void splitLowButOne(Stuck Left, int Copy, Layout.Field One)                   // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
+   {L.P.new Instruction()
+     {void action()
+       {if (Copy >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Left.size  <  Copy)
+         {L.P.stopProgram("Left stuck too small");
+          return;
+         }
+
+        for (int i = 0; i < Copy; ++i)                                          // Copy to left
+         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+         }
+        Left.stuckSize.value = Copy;                                            // New size of left
+
+        One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Central key
+
+        for (int i = 0; i < Copy; ++i)                                          // Move down right
+         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+         }
+        stuckSize.value = Copy;                                                 // New size of right
+       }
+     };
+   }
+
   void splitHigh(Stuck Right, int Copy)                                         // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
@@ -525,36 +554,7 @@ Stuck        array  %d
      };
    }
 
-  void splitLowButOne(Stuck Left, int Copy, Layout.Field Key)                   // Copy the specified number of key, data pairs into the left stuck then move the remainder down
-   {L.P.new Instruction()
-     {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Left.size  <  Copy)
-         {L.P.stopProgram("Left stuck too small");
-          return;
-         }
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to left
-         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
-         }
-        Left.stuckSize.value = Copy;                                            // New size of left
-
-        Key.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);
-
-        for (int i = 0; i < Copy; ++i)                                          // Move down right
-         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
-         }
-        stuckSize.value = Copy;                                                 // New size of right
-       }
-     };
-   }
-
-  void splitHighButOne(Stuck Right, int Copy, Layout.Field Key)                 // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
+  void splitHighButOne(Stuck Right, int Copy, Layout.Field One)                 // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -567,7 +567,7 @@ Stuck        array  %d
          }
 
         stuckSize.value = Copy;                                                 // New size of left
-        Key.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Intervening key
+        One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Central key
 
         for (int i = 0; i < Copy; ++i)                                          // Copy to right
          {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
@@ -577,6 +577,7 @@ Stuck        array  %d
        }
      };
    }
+
 
 //D1 Tests                                                                      // Tests
 

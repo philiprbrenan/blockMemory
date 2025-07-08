@@ -475,6 +475,109 @@ Stuck        array  %d
      };
    }
 
+  void splitLow(Stuck Left, int Copy)                                           // Copy the specified number of key, data pairs into the left stuck then move the remainder down
+   {L.P.new Instruction()
+     {void action()
+       {if (Copy >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Left.size  <  Copy)
+         {L.P.stopProgram("Left stuck too small");
+          return;
+         }
+
+        for (int i = 0; i < Copy; ++i)                                          // Copy to left
+         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+         }
+        Left.stuckSize.value = Copy;                                            // New size of left
+
+        for (int i = 0; i < Copy; ++i)                                          // Move down right
+         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+         }
+        stuckSize.value = Copy;                                                 // New size of right
+       }
+     };
+   }
+
+  void splitHigh(Stuck Right, int Copy)                                         // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
+   {L.P.new Instruction()
+     {void action()
+       {if (Copy >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Right.size <  Copy)
+         {L.P.stopProgram("Right stuck too small");
+          return;
+         }
+
+        stuckSize.value = Copy;                                                 // New size of left
+
+        for (int i = 0; i < Copy; ++i)                                          // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+         }
+        Right.stuckSize.value = Copy;                                           // New size of right
+       }
+     };
+   }
+
+  void splitLowButOne(Stuck Left, int Copy, Layout.Field Key)                   // Copy the specified number of key, data pairs into the left stuck then move the remainder down
+   {L.P.new Instruction()
+     {void action()
+       {if (Copy >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Left.size  <  Copy)
+         {L.P.stopProgram("Left stuck too small");
+          return;
+         }
+
+        for (int i = 0; i < Copy; ++i)                                          // Copy to left
+         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+         }
+        Left.stuckSize.value = Copy;                                            // New size of left
+
+        Key.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);
+
+        for (int i = 0; i < Copy; ++i)                                          // Move down right
+         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+         }
+        stuckSize.value = Copy;                                                 // New size of right
+       }
+     };
+   }
+
+  void splitHighButOne(Stuck Right, int Copy, Layout.Field Key)                 // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
+   {L.P.new Instruction()
+     {void action()
+       {if (Copy >= stuckSize.value)
+         {L.P.stopProgram("Cannot copy beyond end of stuck");
+          return;
+         }
+        if (Right.size <  Copy)
+         {L.P.stopProgram("Right stuck too small");
+          return;
+         }
+
+        stuckSize.value = Copy;                                                 // New size of left
+        Key.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Intervening key
+
+        for (int i = 0; i < Copy; ++i)                                          // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+         }
+        Right.stuckSize.value = Copy;                                           // New size of right
+       }
+     };
+   }
+
 //D1 Tests                                                                      // Tests
 
   static void test_parse()                                                      // Parse the stuck
@@ -984,6 +1087,124 @@ stuckData: value=0, 0=6, 1=4, 2=6, 3=8
 """);
    }
 
+  protected static void test_splitLow()
+   {final Stuck R = test_push();
+
+    ok(R, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    final Stuck L = test_push(); L.L.P = R.L.P;
+
+    R.clearProgram();
+    R.splitLow(L, 2);
+    R.runProgram();
+
+    ok(L, """
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(R, """
+stuckSize: value=2
+stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
+""");
+   }
+
+  protected static void test_splitHigh()
+   {final Stuck L = test_push();
+
+    ok(L, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    final Stuck R = test_push(); R.L.P = L.L.P;
+
+    L.clearProgram();
+    L.splitHigh(R, 2);
+    L.runProgram();
+
+    ok(L, """
+stuckSize: value=2
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(R, """
+stuckSize: value=2
+stuckKeys: value=0, 0=3, 1=4, 2=3, 3=4
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
+""");
+   }
+
+  protected static void test_splitLowButOne()
+   {final Stuck R = test_push();
+    final Layout.Field key = R.key();
+
+    ok(R, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    final Stuck L = test_push(); L.L.P = R.L.P;
+
+    R.clearProgram();
+    R.splitLowButOne(L, 1, key);
+    R.runProgram();
+
+    ok(L, """
+stuckSize: value=1
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(key, "key: value=2");
+
+    ok(R, """
+stuckSize: value=1
+stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
+stuckData: value=0, 0=6, 1=4, 2=6, 3=8
+""");
+   }
+
+  protected static void test_splitHighButOne()
+   {final Stuck L = test_push();
+    final Layout.Field key = L.key();
+
+    ok(L, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    final Stuck R = test_push(); R.L.P = L.L.P;
+
+    L.clearProgram();
+    L.splitHighButOne(R, 1, key);
+    L.runProgram();
+
+    ok(L, """
+stuckSize: value=1
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    ok(key, "key: value=2");
+
+    ok(R, """
+stuckSize: value=1
+stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
+stuckData: value=0, 0=6, 1=4, 2=6, 3=8
+""");
+   }
+
   protected static void test_firstLastPast()
    {final Stuck s = test_push();
 
@@ -1161,6 +1382,10 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     test_concatenate();
     test_splitIntoTwo();
     test_splitIntoThree();
+    test_splitLow();
+    test_splitHigh();
+    test_splitLowButOne();
+    test_splitHighButOne();
     test_firstLastPast();
     test_setFirstLastPast();
     test_emptyFull();
@@ -1168,6 +1393,8 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
+    test_splitLowButOne();
+    test_splitHighButOne();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

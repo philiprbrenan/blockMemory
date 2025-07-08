@@ -3,7 +3,7 @@
 // Philip R Brenan at appaapps dot com, Appa Apps Ltd Inc., 2024
 //------------------------------------------------------------------------------
 package com.AppaApps.Silicon;                                                   // Btree in a block on the surface of a silicon chip.
-// Tighten up the tests in the splits for the number of lengths in the source stuck
+
 import java.util.*;
 
 class Stuck extends Test                                                        // A fixed size collection of key, data pairs
@@ -416,7 +416,7 @@ Stuck        array  %d
   void splitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
+       {if (Copy > stuckSize.value)
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
@@ -518,6 +518,7 @@ Stuck        array  %d
          {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
           Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
          }
+        Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
         Left.stuckSize.value = Copy;                                            // New size of left
 
         One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Central key
@@ -526,6 +527,7 @@ Stuck        array  %d
          {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
           stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
          }
+        stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
         stuckSize.value = Copy;                                                 // New size of right
        }
      };
@@ -573,6 +575,7 @@ Stuck        array  %d
          {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
           Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
          }
+        Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
         Right.stuckSize.value = Copy;                                           // New size of right
        }
      };
@@ -1171,7 +1174,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     ok(R, """
 stuckSize: value=1
 stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
-stuckData: value=0, 0=6, 1=4, 2=6, 3=8
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 """);
    }
 
@@ -1202,7 +1205,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     ok(R, """
 stuckSize: value=1
 stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
-stuckData: value=0, 0=6, 1=4, 2=6, 3=8
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 """);
    }
 
@@ -1394,8 +1397,6 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
-    test_splitLowButOne();
-    test_splitHighButOne();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

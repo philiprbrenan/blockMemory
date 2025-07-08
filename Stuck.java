@@ -78,6 +78,7 @@ Stuck        array  %d
   Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
   Layout.Field key()   {return variable("key",        bitsPerKey);}             // A field capable of holding a key value
   Layout.Field data()  {return variable("data",       bitsPerData);}            // A field capable of holding a data value
+  Layout.Field fullButOne() {return variable("fullButOne",         1);}         // Whether the stuck is full except for one
 
   void runProgram  () {L.runProgram();}                                         // Runb the program
   void clearProgram() {L.clearProgram();}                                       // Clear the current program
@@ -96,6 +97,14 @@ Stuck        array  %d
    {L.P.new Instruction()
      {void action()
        {full.value = stuckSize.value >= size ? 1 : 0;
+       }
+     };
+   }
+
+  void isFullButOne(Layout.Field full)                                          // Whether the stuck is full except for one
+   {L.P.new Instruction()
+     {void action()
+       {full.value = stuckSize.value >= size - 1 ? 1 : 0;
        }
      };
    }
@@ -404,75 +413,66 @@ Stuck        array  %d
      };
    }
 
-  void splitIntoTwo(Stuck Left, Stuck Right, Layout.Field Copy)                 // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
+  void splitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
-       {if (Copy.value >= stuckSize.value)
+       {if (Copy >= stuckSize.value)
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  < Copy.value)
+        if (Left.size  < Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
-        if (Right.size < stuckSize.value - Copy.value)
+        if (Right.size < stuckSize.value - Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
 
-        for (int i = 0; i < Copy.value; ++i)                                    // Copy to left
+        for (int i = 0; i < Copy; ++i)                                          // Copy to left
          {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
           Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
          }
-        Left.stuckSize.value = Copy.value;                                      // New size of left
+        Left.stuckSize.value = Copy;                                            // New size of left
 
-        for (int i = 0; i < stuckSize.value - Copy.value; ++i)                  // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy.value + i].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy.value + i].clone();
+        for (int i = 0; i < stuckSize.value - Copy; ++i)                        // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
          }
-        Right.stuckSize.value = stuckSize.value - Copy.value;                   // New size of right
+        Right.stuckSize.value = stuckSize.value - Copy;                         // New size of right
        }
      };
    }
 
-  void splitIntoThree(Stuck Left, Stuck Right, Layout.Field Copy,               // Copy the first key, data pairs into the left stuck, insert the next the pair  into the parent at the indicated position and copy the reminder to the right stuck
-    Stuck Parent, Layout.Field At)
+  void splitIntoThree(Stuck Left, Stuck Right, int Copy)                        // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
    {L.P.new Instruction()
      {void action()
-       {if (Copy.value >= stuckSize.value)
+       {if (Copy >= stuckSize.value)
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  <  Copy.value)
+        if (Left.size  <  Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
-        if (Right.size <  stuckSize.value - Copy.value -1)
+        if (Right.size <  Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
-        if (At.value   >  Parent.stuckSize.value)
-         {L.P.stopProgram("At is too big for parent");
-          return;
-         }
 
-        for (int i = 0; i < Copy.value; ++i)                                    // Copy to left
+        for (int i = 0; i < Copy; ++i)                                          // Copy to left
          {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
           Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
          }
-        Left.stuckSize.value = Copy.value;                                      // New size of left
+        Left.stuckSize.value = Copy;                                            // New size of left
 
-        for (int i = 0; i < stuckSize.value - Copy.value - 1; ++i)              // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy.value + i + 1].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy.value + i + 1].clone();
+        for (int i = 0; i < Copy; ++i)                                          // Copy to right
+         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
          }
-        Right.stuckSize.value  = stuckSize.value - Copy.value - 1;              // New size of right
-        Parent.stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy.value]);
-        Parent.stuckData.value = stuckData.getIntFromBits(stuckData.memory[Copy.value]);
+        Right.stuckSize.value = Copy;                                           // New size of right
        }
      };
-
-    Parent.insertElementAt(At);
    }
 
 //D1 Tests                                                                      // Tests
@@ -910,7 +910,6 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
   protected static void test_splitIntoTwo()
    {final Stuck s = test_push();
     final Stuck S = testSmallStuck(); S.L.P = s.L.P;
-    Layout.Field count = s.count();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
@@ -922,29 +921,24 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    count.iWrite(6);
-
-    s.splitIntoTwo(L, R, count);
+    s.splitIntoTwo(L, R, 6);
     s.runProgram();
     ok(s.L.P.rc, "Cannot copy beyond end of stuck");
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    count.iWrite(3);
-    s.splitIntoTwo(S, R, count);
+    s.splitIntoTwo(S, R, 3);
     s.runProgram();
     ok(s.L.P.rc, "Left stuck too small");
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    count.iWrite(1);
-    s.splitIntoTwo(L, S, count);
+    s.splitIntoTwo(L, S, 1);
     s.runProgram();
     ok(s.L.P.rc, "Right stuck too small");
 
     s.clearProgram();
-    count.iWrite(2);
-    s.splitIntoTwo(L, R, count);
+    s.splitIntoTwo(L, R, 2);
     s.runProgram();
 
     ok(L, """
@@ -962,8 +956,6 @@ stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 
   protected static void test_splitIntoThree()
    {final Stuck s = test_push();
-    Layout.Field at    = s.at();
-    Layout.Field count = s.count();
 
     ok(s, """
 stuckSize: value=4
@@ -971,44 +963,25 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    final Stuck P = test_push(); P.L.P = s.L.P;
     final Stuck L = test_push(); L.L.P = s.L.P;
     final Stuck R = test_push(); R.L.P = s.L.P;
 
     s.clearProgram();
-    s.L.P.supressErrorMessagePrint = true;
-    at.iWrite(7);
-    count.iWrite(2);
-
-    s.splitIntoThree(L, R, count, P, at);
-    s.runProgram();
-    ok(s.L.P.rc, "At is too big for parent");
-
-    s.clearProgram();
-    at.iWrite(1);
-    count.iWrite(2);
-    P.pop();
-    s.splitIntoThree(L, R, count, P, at);
+    s.pop();
+    s.splitIntoThree(L, R, 1);
     s.runProgram();
 
     ok(L, """
-stuckSize: value=2
+stuckSize: value=1
 stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
     ok(R, """
 stuckSize: value=1
-stuckKeys: value=0, 0=4, 1=2, 2=3, 3=4
-stuckData: value=0, 0=8, 1=4, 2=6, 3=8
+stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
+stuckData: value=0, 0=6, 1=4, 2=6, 3=8
 """);
-
-    ok(P, """
-stuckSize: value=4
-stuckKeys: value=3, 0=1, 1=3, 2=2, 3=3
-stuckData: value=6, 0=2, 1=6, 2=4, 3=6
-""");
-
    }
 
   protected static void test_firstLastPast()
@@ -1140,6 +1113,7 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
    {final Stuck s = test_push();
     final Layout.Field e = s.empty();
     final Layout.Field f = s.full();
+    final Layout.Field F = s.fullButOne();
 
     s.clearProgram();
     s.isEmpty(e);
@@ -1147,14 +1121,27 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     s.runProgram();
     ok(e, "empty: value=0");
     ok(f, "full: value=1");
+    ok(F, "fullButOne: value=0");
 
     s.clearProgram();
-    for (int i = 0; i < 4; i++) s.pop();
-    s.isEmpty(e);
-    s.isFull (f);
+    s.pop();
+    s.isEmpty     (e);
+    s.isFull      (f);
+    s.isFullButOne(F);
+    s.runProgram();
+    ok(e, "empty: value=0");
+    ok(f, "full: value=0");
+    ok(F, "fullButOne: value=1");
+
+    s.clearProgram();
+    s.pop(); s.pop(); s.pop();
+    s.isEmpty     (e);
+    s.isFull      (f);
+    s.isFullButOne(F);
     s.runProgram();
     ok(e, "empty: value=1");
     ok(f, "full: value=0");
+    ok(F, "fullButOne: value=0");
    }
 
   static void oldTests()                                                        // Tests thought to be in good shape
@@ -1180,8 +1167,7 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_emptyFull();
+   {oldTests();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

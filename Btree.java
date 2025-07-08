@@ -69,6 +69,7 @@ stucks         array  %d
 
   Layout.Field bit(String name) {return variable(name, 1);}                     // Create a bit
   Layout.Field btreeIndex()     {return variable("btreeIndex", logTwo(size)+1);}// Create an index for a stuck in a btree
+  Layout.Field isLeaf()         {return variable("isLeaf", 1);}                 // Create a bit for is full
 
   void runProgram()                      {L.runProgram();}
   void clearProgram()                    {L.clearProgram();}
@@ -705,7 +706,9 @@ stucks         array  %d
    }
 
   public void put()                                                             // Insert a key, data pair into the tree or update and existing key with a new datum
-   {final Stuck  S                  = stuck();
+   {final Stuck        S            = stuck();
+    final Layout.Field p            = btreeIndex();                             // Previous or parent position in the btree
+    final Layout.Field s            = btreeIndex();                             // Current position in the btree
     final Layout.Field Key          = S.key();
     final Layout.Field Data         = S.data();
     final Layout.Field btreeIndex   = btreeIndex();
@@ -714,7 +717,9 @@ stucks         array  %d
     final Layout.Field full         = S.full();
     final Layout.Field found        = S.found();
     final Layout.Field isLeaf       = bit("isLeaf");
-    final Layout.Field isFullButOne = bit("isFullButOne");
+    final Layout.Field fullButOne   = S.fullButOne();
+
+    Key.iMove(stuckKeysField); Data.iMove(stuckDataField);
 
     L.P.new Block()
      {void code()
@@ -728,61 +733,62 @@ stucks         array  %d
             L.P.Goto(end);                                                      // Direct insertion succeeded
            }
          };
-        isRootBranchFull(isFullButOne);                                         // Root is a full branch so split it
-        L.P.new If (isFullButOne)
+        isRootBranchFull(fullButOne);                                           // Root is a full branch so split it
+        L.P.new If (fullButOne)
          {void Then()
            {splitRootBranch();                                                  // Split the branch root to make room
            }
          };
-//        nT.loadRootStuck(bT);                                                   // Load root as branch. If it were a leaf and had spae find and insert would have worked or the root would have been split and so must be branch.
-//        T.at(parent).zero();
-//
-//        P.new Block()                                                           // Step down through the tree, splitting as we go
-//         {void code()
-//           {findFirstGreaterThanOrEqualInBranch                                 // Step down from parent to child
-//             (nT, T.at(Key), null, T.at(first), T.at(child));
-//
-//            P.new Block()                                                       // Reached a leaf
-//             {void code()
-//               {nC.loadNode(T.at(child));
-//                nC.isLeaf(T.at(IsLeaf));
-//                P.GoOff(end, T.at(IsLeaf));
-//                P.parallelStart();   tt(index,          first);                 // Index of the matching key
-//                tt(node_splitLeaf, child);
-//                tt(splitParent,   parent);
-//
-//
-//                splitLeaf();                                                    // Split the child leaf
-//                findAndInsert(null);                                            // Now guaranteed to work
-//
-//                merge();                                                        // Improve the tree along the path to the key
-//                P.Goto(Return);
-//               }
-//             };
-//            z();
-//
-//            nC.loadNode(T.at(child));
-//            nC.branchSize(T.at(childSize));
-//            T.at(childSize).equal(T.at(maxKeysPerBranch), T.at(branchIsFull));  // Check whether the child needs splitting because it is full
-//
-//            P.new If (T.at(branchIsFull))                                       // Step down, splitting full branches as we go
-//             {void Then()
-//               {P.parallelStart();   tt(index, first);
-//                tt(node_splitBranch, child);
-//                tt(splitParent, parent);
-//
-//
-//                splitBranch();                                                  // Split the child branch in the search path for the key from the parent so the the search path does not contain a full branch above the containing leaf
-//
-//                findFirstGreaterThanOrEqualInBranch                             // Perform the step down again as the split will have altered the local layout
-//                 (nT, T.at(Key), null, null, T.at(child));
-//               }
-//             };
-//            nT.loadStuck(bT, child);                                            // Step down "From the heights"
-//            tt(parent, child);
-//            P.Goto(start);
-//           }
-//         };
+
+        s.iZero(); p.iZero();                                                    // Start at the root and step down through the tree to the key splitting as we go
+        L.P.new Block()
+         {void code()
+           {copyStuckFrom(S, s);                                                // Set search key
+            S.stuckKeys.iMove(Key);
+
+            S.search_le(found, stuckIndex);                                     // Step down
+            p.iMove(s);                                                         // Parent
+            s.iMove(S.stuckData);                                               // Child
+
+            new IsLeaf(s)
+             {void Leaf()                                                       // At a leaf - search for exact match
+               {S.isFull(full);
+                L.P.new If (full)
+                 {void Then()                                                   // Child branch is full
+                   {L.P.new If (found)
+                     {void Then()
+                       {splitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
+                       }
+                      void Else()
+                       {splitLeafAtTop(p);                                      // Split the child leaf known to be top
+                       }
+                     };
+                   }
+                 };
+                stuckKeysField.iMove(Key); stuckDataField.iMove(Data);          // Key, data pair to be inserted
+                findAndInsert(found);                                           // Must be insertable now necuase we have split everything in the path of the key
+                L.P.Goto  (end);                                                // Successfully found the key
+               }
+              void Branch()                                                     // Child is a branch
+               {S.isFullButOne(fullButOne);
+                L.P.new If (fullButOne)
+                 {void Then()                                                   // Child branch is full
+                   {L.P.new If (found)
+                     {void Then()
+                       {splitBranchNotTop(p, stuckIndex);                       // Split the child branch known not to be top
+                       }
+                      void Else()
+                       {splitBranchAtTop(p);                                    // Split the child branch known to be top
+                       }
+                     };
+                    s.iMove(p);                                                 // Restart atthe aprent so we enter the child stuck that contains the key
+                   }
+                 };
+                L.P.Goto(start);                                                // Try again
+               }
+             };
+           };
+         };
        }
      };
    }

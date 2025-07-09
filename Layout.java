@@ -239,7 +239,7 @@ class Layout extends Test                                                       
             return;
            }
           if (logTwo(value) > f.rep())
-           {P.stopProgram("Value too big to be wrtitten into array");
+           {P.stopProgram("Value too big to be written into array");
             return;
            }
           final int index = convolute(indices);

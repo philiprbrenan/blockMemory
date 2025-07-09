@@ -261,43 +261,44 @@ stucks         array  %d
     final int next;
     final boolean leaf;
     final boolean free;
-    Stack<Integer>keys = new Stack<>();
-    Stack<Integer>data = new Stack<>();
+    final Stack<Integer>keys = new Stack<>();
+    final Stack<Integer>data = new Stack<>();
     final Integer top;
+    final Stuck stuck = stuck();
 
     DumpStuck(int Index)
      {index = Index;
-      Stuck S = stuck();
       Layout.Field btreeIndex = btreeIndex(); btreeIndex.value = index;
 
       final Layout.Program p = L.startNewProgram();
       stuckIsLeafField.iRead(btreeIndex);
       stuckIsFreeField.iRead(btreeIndex);
       freeNextField   .iRead(btreeIndex);
-      copyStuckFrom(S, btreeIndex);
+      copyStuckFrom(stuck, btreeIndex);
       L.runProgram();
       L.continueProgram(p);
 
       leaf = stuckIsLeafField.value > 0;
+
       free = stuckIsFreeField.value > 0;
       next = freeNextField.value;
-      size = S.stuckSize.value;
+      size = stuck.stuckSize.value;
 
       for (int i = 0; i < size; i++)
        {final Layout.Program P = L.startNewProgram();
-        S.stuckKeys.iRead(i);
-        S.stuckData.iRead(i);
+        stuck.stuckKeys.iRead(i);
+        stuck.stuckData.iRead(i);
         L.runProgram();
         L.continueProgram(P);
-        keys.push(S.stuckKeys.value);
-        data.push(S.stuckData.value);
+        keys.push(stuck.stuckKeys.value);
+        data.push(stuck.stuckData.value);
        }
       if (!leaf)
        {final Layout.Program P = L.startNewProgram();
-        S.stuckData.iRead(size);
+        stuck.stuckData.iRead(size);
         L.runProgram();
         L.continueProgram(P);
-        top = S.stuckData.value;
+        top = stuck.stuckData.value;
        }
       else top = null;
      }
@@ -320,19 +321,12 @@ stucks         array  %d
     final Layout.Field stuckIndex = t.index();
     s.append("Btree\n");
     for (int i = 0; i < size; i++)                                              // Each stuck in the btree
-     {final Layout.Program p = L.startNewProgram();
-      btreeIndex.iWrite(i);                                                     // Index the stuck
-      stuckIsLeafField.iRead(btreeIndex);
-      stuckIsFreeField.iRead(btreeIndex);
-      freeNextField   .iRead(btreeIndex);
-      copyStuckFrom(t, btreeIndex);                                             // Copy content of stuck in btree to a local stuck
-      L.runProgram();
-      L.continueProgram(p);
-      if (stuckIsFreeField.value > 0) continue;                                 // Not in use as it is on the free chain
+     {final DumpStuck d = new DumpStuck(i);                                     // Load stuck description
+      if (d.free) continue;                                                     // Not in use as it is on the free chain
 
       s.append(String.format("Stuck: %2d   size: %d   free: %d   next: %2d  leaf: %d\n",
-        i, t.stuckSize.value, freeNextField.value, freeNextField.value, stuckIsLeafField.value));
-      s.append(""+t);
+        i, d.size, d.free ? 1 : 0, d.next, d.leaf ? 1 : 0));
+      s.append(""+d.stuck);
      }
     return ""+s;
    }
@@ -1104,7 +1098,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
 stuckSize: value=4
@@ -1205,8 +1199,8 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 Btree
 Stuck:  0   size: 1   free: 0   next:  0  leaf: 1
 stuckSize: value=1
-stuckKeys: value=0, 0=20, 1=0, 2=0, 3=0
-stuckData: value=0, 0=21, 1=0, 2=0, 3=0
+stuckKeys: value=20, 0=20, 1=0, 2=0, 3=0
+stuckData: value=21, 0=21, 1=0, 2=0, 3=0
 """);
 
     b.clearProgram();
@@ -1218,8 +1212,8 @@ stuckData: value=0, 0=21, 1=0, 2=0, 3=0
 Btree
 Stuck:  0   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=0, 3=0
-stuckData: value=0, 0=1, 1=21, 2=0, 3=0
+stuckKeys: value=20, 0=10, 1=20, 2=0, 3=0
+stuckData: value=21, 0=1, 1=21, 2=0, 3=0
 """);
 
     b.clearProgram();
@@ -1231,8 +1225,8 @@ stuckData: value=0, 0=1, 1=21, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 1
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
-stuckData: value=0, 0=1, 1=21, 2=31, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
+stuckData: value=31, 0=1, 1=21, 2=31, 3=0
 """);
 
     Layout.Field index = b.btreeIndex();
@@ -1244,7 +1238,7 @@ stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Stuck:  1   size: 0   free: 0   next:  0  leaf: 1
 stuckSize: value=0
@@ -1261,12 +1255,12 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Stuck:  1   size: 1   free: 0   next:  0  leaf: 1
 stuckSize: value=1
-stuckKeys: value=0, 0=4, 1=0, 2=0, 3=0
-stuckData: value=0, 0=5, 1=0, 2=0, 3=0
+stuckKeys: value=4, 0=4, 1=0, 2=0, 3=0
+stuckData: value=5, 0=5, 1=0, 2=0, 3=0
 """);
 
     b.clearProgram();
@@ -1278,12 +1272,12 @@ stuckData: value=0, 0=5, 1=0, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=4, 1=5, 2=0, 3=0
-stuckData: value=0, 0=5, 1=6, 2=0, 3=0
+stuckKeys: value=5, 0=4, 1=5, 2=0, 3=0
+stuckData: value=6, 0=5, 1=6, 2=0, 3=0
 """);
 
     b.clearProgram();
@@ -1295,12 +1289,12 @@ stuckData: value=0, 0=5, 1=6, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Stuck:  1   size: 3   free: 0   next:  0  leaf: 1
 stuckSize: value=3
-stuckKeys: value=0, 0=3, 1=4, 2=5, 3=0
-stuckData: value=0, 0=4, 1=5, 2=6, 3=0
+stuckKeys: value=5, 0=3, 1=4, 2=5, 3=0
+stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 """);
     return b;
    }
@@ -1353,16 +1347,16 @@ stuckData: value=41, 0=11, 1=21, 2=31, 3=41
 Btree
 Stuck:  0   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=40, 0=25, 1=25, 2=30, 3=40
-stuckData: value=41, 0=1, 1=2, 2=31, 3=41
+stuckKeys: value=25, 0=25, 1=25, 2=30, 3=40
+stuckData: value=2, 0=1, 1=2, 2=31, 3=41
 Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=0, 3=0
-stuckData: value=0, 0=11, 1=21, 2=0, 3=0
+stuckKeys: value=20, 0=10, 1=20, 2=0, 3=0
+stuckData: value=21, 0=11, 1=21, 2=0, 3=0
 Stuck:  2   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=30, 1=40, 2=0, 3=0
-stuckData: value=0, 0=31, 1=41, 2=0, 3=0
+stuckKeys: value=40, 0=30, 1=40, 2=0, 3=0
+stuckData: value=41, 0=31, 1=41, 2=0, 3=0
 """);
    }
 
@@ -1375,34 +1369,34 @@ stuckData: value=0, 0=31, 1=41, 2=0, 3=0
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=30, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=21, 2=31, 3=0
 Stuck:  1   size: 3   free: 0   next:  0  leaf: 1
 stuckSize: value=3
-stuckKeys: value=0, 0=3, 1=4, 2=5, 3=0
-stuckData: value=0, 0=4, 1=5, 2=6, 3=0
+stuckKeys: value=5, 0=3, 1=4, 2=5, 3=0
+stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 """);
 
     b.clearProgram();
     b.splitRootBranch();
     b.runProgram();
-    ok(""+b, """
+    ok(b, """
 Btree
 Stuck:  0   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=0, 0=20, 1=20, 2=30, 3=0
-stuckData: value=0, 0=2, 1=3, 2=31, 3=0
+stuckKeys: value=20, 0=20, 1=20, 2=30, 3=0
+stuckData: value=3, 0=2, 1=3, 2=31, 3=0
 Stuck:  1   size: 3   free: 0   next:  0  leaf: 1
 stuckSize: value=3
-stuckKeys: value=0, 0=3, 1=4, 2=5, 3=0
-stuckData: value=0, 0=4, 1=5, 2=6, 3=0
+stuckKeys: value=5, 0=3, 1=4, 2=5, 3=0
+stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 Stuck:  2   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=0, 0=10, 1=0, 2=0, 3=0
+stuckKeys: value=10, 0=10, 1=0, 2=0, 3=0
 stuckData: value=0, 0=1, 1=0, 2=0, 3=0
 Stuck:  3   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=0, 0=30, 1=0, 2=0, 3=0
+stuckKeys: value=30, 0=30, 1=0, 2=0, 3=0
 stuckData: value=0, 0=31, 1=0, 2=0, 3=0
 """);
    }
@@ -1436,7 +1430,7 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
 Btree
 Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=20, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=0, 2=0, 3=0
 Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
 stuckSize: value=4
@@ -1453,7 +1447,7 @@ stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=30, 0=2, 1=10, 2=20, 3=30
+stuckKeys: value=20, 0=2, 1=10, 2=20, 3=30
 stuckData: value=0, 0=2, 1=1, 2=0, 3=0
 Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
@@ -1461,8 +1455,8 @@ stuckKeys: value=4, 0=3, 1=4, 2=3, 3=4
 stuckData: value=4, 0=3, 1=4, 2=3, 3=4
 Stuck:  2   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=1, 1=2, 2=0, 3=0
-stuckData: value=0, 0=1, 1=2, 2=0, 3=0
+stuckKeys: value=2, 0=1, 1=2, 2=0, 3=0
+stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
@@ -1495,8 +1489,8 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
 Btree
 Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
-stuckData: value=0, 0=0, 1=0, 2=1, 3=0
+stuckKeys: value=20, 0=10, 1=20, 2=30, 3=0
+stuckData: value=1, 0=0, 1=0, 2=1, 3=0
 Stuck:  1   size: 4   free: 0   next:  0  leaf: 1
 stuckSize: value=4
 stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
@@ -1512,7 +1506,7 @@ stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=2, 3=0
+stuckKeys: value=2, 0=10, 1=20, 2=2, 3=0
 stuckData: value=1, 0=0, 1=0, 2=2, 3=1
 Stuck:  1   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
@@ -1520,8 +1514,8 @@ stuckKeys: value=4, 0=3, 1=4, 2=3, 3=4
 stuckData: value=4, 0=3, 1=4, 2=3, 3=4
 Stuck:  2   size: 2   free: 0   next:  0  leaf: 1
 stuckSize: value=2
-stuckKeys: value=0, 0=1, 1=2, 2=0, 3=0
-stuckData: value=0, 0=1, 1=2, 2=0, 3=0
+stuckKeys: value=2, 0=1, 1=2, 2=0, 3=0
+stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
@@ -1555,11 +1549,11 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
 Btree
 Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
+stuckKeys: value=20, 0=10, 1=20, 2=30, 3=0
 stuckData: value=0, 0=1, 1=0, 2=0, 3=0
 Stuck:  1   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
 stuckData: value=5, 0=2, 1=3, 2=4, 3=5
 """);
 
@@ -1573,16 +1567,16 @@ stuckData: value=5, 0=2, 1=3, 2=4, 3=5
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=30, 0=2, 1=10, 2=20, 3=30
+stuckKeys: value=20, 0=2, 1=10, 2=20, 3=30
 stuckData: value=0, 0=2, 1=1, 2=0, 3=0
 Stuck:  1   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=4, 0=3, 1=2, 2=3, 3=4
+stuckKeys: value=3, 0=3, 1=2, 2=3, 3=4
 stuckData: value=5, 0=4, 1=5, 2=4, 3=5
 Stuck:  2   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=0, 0=1, 1=0, 2=0, 3=0
-stuckData: value=0, 0=2, 1=3, 2=0, 3=0
+stuckKeys: value=1, 0=1, 1=0, 2=0, 3=0
+stuckData: value=3, 0=2, 1=3, 2=0, 3=0
 """);
    }
 
@@ -1601,10 +1595,10 @@ stuckData: value=0, 0=2, 1=3, 2=0, 3=0
     b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.setPastLastElement(); b.runProgram();
     b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
 
-    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.push(); b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.push(); b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.push(); b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.push(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.push();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.push();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.push();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.setPastLastElement();  b.runProgram();
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                       b.setRootAsBranch();
@@ -1615,11 +1609,11 @@ stuckData: value=0, 0=2, 1=3, 2=0, 3=0
 Btree
 Stuck:  0   size: 2   free: 0   next:  0  leaf: 0
 stuckSize: value=2
-stuckKeys: value=0, 0=10, 1=20, 2=30, 3=0
-stuckData: value=0, 0=0, 1=0, 2=1, 3=0
-Stuck:  1   size: 4   free: 0   next:  0  leaf: 0
-stuckSize: value=4
-stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckKeys: value=20, 0=10, 1=20, 2=30, 3=0
+stuckData: value=1, 0=0, 1=0, 2=1, 3=0
+Stuck:  1   size: 3   free: 0   next:  0  leaf: 0
+stuckSize: value=3
+stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
 stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 """);
 
@@ -1632,16 +1626,16 @@ stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
 stuckSize: value=3
-stuckKeys: value=0, 0=10, 1=20, 2=2, 3=0
+stuckKeys: value=2, 0=10, 1=20, 2=2, 3=0
 stuckData: value=1, 0=0, 1=0, 2=2, 3=1
 Stuck:  1   size: 1   free: 0   next:  0  leaf: 0
 stuckSize: value=1
-stuckKeys: value=4, 0=3, 1=2, 2=3, 3=4
+stuckKeys: value=3, 0=3, 1=2, 2=3, 3=4
 stuckData: value=4, 0=3, 1=4, 2=3, 3=4
 Stuck:  2   size: 1   free: 0   next:  0  leaf: 1
 stuckSize: value=1
-stuckKeys: value=0, 0=1, 1=0, 2=0, 3=0
-stuckData: value=0, 0=1, 1=2, 2=0, 3=0
+stuckKeys: value=1, 0=1, 1=0, 2=0, 3=0
+stuckData: value=1, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
@@ -1704,7 +1698,7 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
-//    test_put7();
+    //test_put7();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

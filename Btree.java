@@ -255,6 +255,64 @@ stucks         array  %d
 
 //D1 Print                                                                      // Print the tree
 
+  class DumpStuck                                                               // Dump the stuck at the specified index
+   {final int index;
+    final int size;
+    final int next;
+    final boolean leaf;
+    final boolean free;
+    Stack<Integer>keys = new Stack<>();
+    Stack<Integer>data = new Stack<>();
+    final Integer top;
+
+    DumpStuck(int Index)
+     {index = Index;
+      Stuck S = stuck();
+      Layout.Field btreeIndex = btreeIndex(); btreeIndex.value = index;
+
+      final Layout.Program p = L.startNewProgram();
+      stuckIsLeafField.iRead(btreeIndex);
+      stuckIsFreeField.iRead(btreeIndex);
+      freeNextField   .iRead(btreeIndex);
+      copyStuckFrom(S, btreeIndex);
+      L.runProgram();
+      L.continueProgram(p);
+
+      leaf = stuckIsLeafField.value > 0;
+      free = stuckIsFreeField.value > 0;
+      next = freeNextField.value;
+      size = S.stuckSize.value;
+
+      for (int i = 0; i < size; i++)
+       {final Layout.Program P = L.startNewProgram();
+        S.stuckKeys.iRead(i);
+        S.stuckData.iRead(i);
+        L.runProgram();
+        L.continueProgram(P);
+        keys.push(S.stuckKeys.value);
+        data.push(S.stuckData.value);
+       }
+      if (!leaf)
+       {final Layout.Program P = L.startNewProgram();
+        S.stuckData.iRead(size);
+        L.runProgram();
+        L.continueProgram(P);
+        top = S.stuckData.value;
+       }
+      else top = null;
+     }
+
+    public String toString()
+     {final StringBuilder s = new StringBuilder();
+      s.append( "index: "+index);
+      s.append("  size: "+size);
+      s.append("  leaf: "+leaf);
+      s.append("  keys: "+keys);
+      s.append("  data: "+data);
+      return ""+s;
+     }
+   }
+
   public String toString()
    {final StringBuilder s = new StringBuilder();
     final Stuck t = stuck();
@@ -277,57 +335,6 @@ stucks         array  %d
       s.append(""+t);
      }
     return ""+s;
-   }
-
-  class DumpStuck                                                               // Dump the stuck at the specified index
-   {int index;
-    int size;
-    int top;
-    boolean leaf;
-    Stack<Integer>keys = new Stack<>();
-    Stack<Integer>data = new Stack<>();
-
-    DumpStuck(int Index)
-     {index = Index;
-      Stuck S = stuck();
-      Layout.Field btreeIndex = btreeIndex();
-      Layout.Field isLeaf     = bit("isLeaf");
-      btreeIndex.value = index;
-
-      final Layout.Program p = L.startNewProgram();
-      isLeaf(btreeIndex, isLeaf);
-      copyStuckFrom(S, btreeIndex);
-      L.runProgram();
-      L.continueProgram(p);
-
-      leaf = isLeaf.value > 0;
-      size = S.stuckSize.value;
-
-      for (int i = 0; i < size; i++)
-       {final Layout.Program P = L.startNewProgram();
-        S.stuckKeys.iRead(i);
-        S.stuckData.iRead(i);
-        L.runProgram();
-        L.continueProgram(P);
-        keys.push(S.stuckKeys.value);
-        data.push(S.stuckData.value);
-       }
-      if (!leaf)
-       {final Layout.Program P = L.startNewProgram();
-        S.stuckData.iRead(size);
-        L.runProgram();
-        L.continueProgram(P);
-        top = S.stuckData.value;
-       }
-     }
-    public String toString()
-     {final StringBuilder s = new StringBuilder();
-      s.append( "index: "+index);
-      s.append("  size: "+size);
-      s.append("  keys: "+keys);
-      s.append("  data: "+data);
-      return ""+s;
-     }
    }
 
 //D2 Horizontally                                                               // Print the tree horizontally
@@ -1653,7 +1660,7 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
    {final Btree b = test_create();
     final Layout.Field Found = b.bit("Found");
 
-    b.L.P.maxSteps = 5000;
+    b.L.P.maxSteps = 600;
 
     final int N = 7;
     for (int i = 1; i <= N; i++)
@@ -1664,10 +1671,10 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
       b.put();
       b.runProgram();
      }
-    ok(b.new DumpStuck(0), "index: 0  size: 2  keys: [2, 4]  data: [1, 3]");
-    ok(b.new DumpStuck(1), "index: 1  size: 2  keys: [1, 2]  data: [2, 3]");
-    ok(b.new DumpStuck(2), "index: 2  size: 3  keys: [5, 6, 7]  data: [6, 7, 8]");
-    ok(b.new DumpStuck(3), "index: 3  size: 2  keys: [3, 4]  data: [4, 5]");
+    ok(b.new DumpStuck(0), "index: 0  size: 2  leaf: false  keys: [2, 4]  data: [1, 3]");
+    ok(b.new DumpStuck(1), "index: 1  size: 2  leaf: true  keys: [1, 2]  data: [2, 3]");
+    ok(b.new DumpStuck(2), "index: 2  size: 3  leaf: true  keys: [5, 6, 7]  data: [6, 7, 8]");
+    ok(b.new DumpStuck(3), "index: 3  size: 2  leaf: true  keys: [3, 4]  data: [4, 5]");
     ok(b.print(), """
       2      4          |
       0      0.1        |

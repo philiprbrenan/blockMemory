@@ -22,6 +22,7 @@ class Btree extends Test                                                        
   final Layout.Field stuckSizeField;                                            // Current size of stuck up to the maximum size
   final Layout.Field stuckKeysField;                                            // Keys field
   final Layout.Field stuckDataField;                                            // Data field
+static boolean debug = false;
 
 //D1 Construction                                                               // Construct and layout a btree
 
@@ -720,6 +721,7 @@ stucks         array  %d
     final Layout.Field fullButOne   = S.fullButOne();
 
     Key.iMove(stuckKeysField); Data.iMove(stuckDataField);
+if (debug) say("AAAA", Key, Data);
 
     L.P.new Block()
      {void code()
@@ -729,6 +731,10 @@ stucks         array  %d
         L.P.new If (isLeaf)                                                       // Root is a leaf
          {void Then()
            {splitRootLeaf();                                                    // Split the leaf root to make room
+if (debug) say("AAAA11", Key, Data);
+            stuckKeysField.iMove(Key); stuckDataField.iMove(Data);          // Key, data pair to be inserted
+if (debug) say("AAAA22", Key, Data);
+
             findAndInsert(found);                                               // Splitting a leaf root will make more space in the tree
             L.P.Goto(end);                                                      // Direct insertion succeeded
            }
@@ -781,7 +787,7 @@ stucks         array  %d
                        {splitBranchAtTop(p);                                    // Split the child branch known to be top
                        }
                      };
-                    s.iMove(p);                                                 // Restart atthe aprent so we enter the child stuck that contains the key
+                    s.iMove(p);                                                 // Restart at the parent so we enter the child stuck that contains the key
                    }
                  };
                 L.P.Goto(start);                                                // Try again
@@ -1494,6 +1500,31 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); b.stuckKeysField.iWrite(40); b.stuckDataField.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=1"); ok(F, "branchFull: value=1");
    }
 
+  static void test_put()
+   {final Btree b = test_create();
+    final Layout.Field Found = b.bit("Found");
+
+    b.L.P.maxSteps = 500;
+
+    final int N = 5;
+    for (int i = 1; i <= N; i++)
+     {debug = i >= N;
+      b.clearProgram();
+      b.stuckKeysField.iWrite(i);
+      b.stuckDataField.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    stop(b);
+    ok(b, """
+Btree
+Stuck:  0   size: 1   free: 0   next:  0  leaf: 1
+stuckSize: value=1
+stuckKeys: value=0, 0=20, 1=0, 2=0, 3=0
+stuckData: value=0, 0=21, 1=0, 2=0, 3=0
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -1512,7 +1543,8 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
+   {//oldTests();
+    test_put();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

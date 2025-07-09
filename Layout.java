@@ -39,7 +39,8 @@ class Layout extends Test                                                       
     BitSet[]memory;                                                             // Memory for this field
     int     value;                                                              // The last value read from the memory of this field
 
-    Field(int line, int indent, String name, String cmd, Integer rep, Integer parent) // Constructor
+    Field(int line, int indent, String name, String cmd,
+          Integer rep, Integer parent)
      {this.layout = Layout.this;
       this.line   = line;
       this.indent = indent;
@@ -373,7 +374,7 @@ class Layout extends Test                                                       
      }
 
     abstract class For                                                          // A for loop
-     {final Label start     = new Label(), end = new Label();                       // Labels at start and end of block to facilitate continuing or exiting
+     {final Label start     = new Label(), end = new Label();                   // Labels at start and end of block to facilitate continuing or exiting
       final Field loop      = variable("loop",      Integer.SIZE);
       final Field condition = variable("condition", 1);
 
@@ -434,7 +435,9 @@ class Layout extends Test                                                       
 
     void stopProgram(final String message)                                      // Halt program execution with a message
      {rc = message;                                                             // Use the message as a result code
-      if (!supressErrorMessagePrint) say(message, code.elementAt(cpc).traceBack);// Write the supplied message
+      if (!supressErrorMessagePrint)
+       {say(message, code.elementAt(cpc).traceBack);                            // Write the supplied message
+       }
       pc = code.size();                                                         // Halt the program
      }
 
@@ -530,7 +533,7 @@ class Layout extends Test                                                       
        }
      }
 
-    for(Field p : fields)                                                        // Check children counts
+    for(Field p : fields)                                                       // Check children counts
      {final int    line = p.line + 1;
       final String name = p.name;
       final String cmd  = p.cmd;

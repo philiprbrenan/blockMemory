@@ -279,6 +279,157 @@ stucks         array  %d
     return ""+s;
    }
 
+  class DumpStuck                                                               // Dump the stuck at the specified index
+   {int index;
+    int size;
+    int top;
+    boolean leaf;
+    Stack<Integer>keys = new Stack<>();
+    Stack<Integer>data = new Stack<>();
+
+    DumpStuck(int Index)
+     {index = Index;
+      Stuck S = stuck();
+      Layout.Field btreeIndex = btreeIndex();
+      Layout.Field isLeaf     = bit("isLeaf");
+      btreeIndex.value = index;
+
+      final Layout.Program p = L.startNewProgram();
+      isLeaf(btreeIndex, isLeaf);
+      copyStuckFrom(S, btreeIndex);
+      L.runProgram();
+      L.continueProgram(p);
+
+      leaf = isLeaf.value > 0;
+      size = S.stuckSize.value;
+
+      for (int i = 0; i < size; i++)
+       {final Layout.Program P = L.startNewProgram();
+        S.stuckKeys.iRead(i);
+        S.stuckData.iRead(i);
+        L.runProgram();
+        L.continueProgram(P);
+        keys.push(S.stuckKeys.value);
+        data.push(S.stuckData.value);
+       }
+      if (!leaf)
+       {final Layout.Program P = L.startNewProgram();
+        S.stuckData.iRead(size);
+        L.runProgram();
+        L.continueProgram(P);
+        top = S.stuckData.value;
+       }
+     }
+    public String toString()
+     {final StringBuilder s = new StringBuilder();
+      s.append( "index: "+index);
+      s.append("  size: "+size);
+      s.append("  keys: "+keys);
+      s.append("  data: "+data);
+      return ""+s;
+     }
+   }
+
+//D2 Horizontally                                                               // Print the tree horizontally
+
+    final int linesToPrintABranch =  4;                                         // The number of lines required to print a branch
+    final int maxPrintLevels      = 10;                                         // The maximum nu ber of levels to pront =- this avoids enless print loops when something goes wrong
+
+    void printLeaf(int BtreeIndex, Stack<StringBuilder>P, int level)            // Print leaf horizontally
+     {padStrings(P, level);
+      final DumpStuck     S = new DumpStuck(BtreeIndex);
+
+      final StringBuilder s = new StringBuilder();                              // String builder
+      for  (int i = 0; i < S.size; i++)
+       {s.append(""+S.keys.elementAt(i)+",");
+       }
+      if (s.length() > 0) s.setLength(s.length()-1);                            // Remove trailing comma if present
+      s.append("="+BtreeIndex+" ");
+      P.elementAt(level*linesToPrintABranch).append(s.toString());
+      padStrings(P, level);
+     }
+
+    void printBranch(int BtreeIndex, Stack<StringBuilder>P, int level)          // Print branch horizontally
+     {if (level > maxPrintLevels) return;
+      padStrings(P, level);
+      final DumpStuck S = new DumpStuck(BtreeIndex);
+      final int       L = level * linesToPrintABranch;                          // Start line at which to print branch
+      final int       K = S.size;                                               // Size of branch
+
+      if (K > 0)                                                                // Branch has key, next pairs
+       {for  (int i = 0; i < K; i++)
+         {final int key  = S.keys.elementAt(i);
+          final int data = S.data.elementAt(i);
+          final DumpStuck C = new DumpStuck(data);
+          if (C.leaf)
+           {printLeaf  (data, P, level+1);
+           }
+          else
+           {printBranch(data, P, level+1);
+           }
+
+          P.elementAt(L+0).append(""+S.keys.elementAt(i));                      // Key
+          P.elementAt(L+1).append(""+BtreeIndex+(i > 0 ?  "."+i : ""));         // Branch,key, next pair
+          P.elementAt(L+2).append(""+S.data.elementAt(i));
+         }
+       }
+      else                                                                      // Branch is empty so print just the index of the branch
+       {P.elementAt(L+0).append(""+BtreeIndex+"Empty");
+       }
+      final int top = S.top;                                                    // Top next will always be present
+      P.elementAt(L+3).append(top);                                             // Append top next
+
+      final DumpStuck T = new DumpStuck(top);
+      if (T.leaf)                                                               // Print leaf
+       {printLeaf  (top, P, level+1);
+       }
+      else                                                                      // Print branch
+       {printBranch(top, P, level+1);
+       }
+
+      padStrings(P, level);
+     }
+
+   String printBoxed()                                                          // Print a tree in a box
+    {final String  s = toString();
+     final int     n = longestLine(s)-1;
+     final String[]L = s.split("\n");
+     final StringBuilder t = new StringBuilder();
+     t.append("+"); t.append("-".repeat(n)); t.append("+\n");
+     for(String l : L) t.append("| "+l+"\n");
+     t.append("+"); t.append("-".repeat(n)); t.append("+\n");
+     return t.toString();
+    }
+
+  void padStrings(Stack<StringBuilder> S, int level)                            // Pad the strings at each level of the tree so we have a vertical face to continue with - a bit like Marc Brunel's tunneling shield
+   {final int N = level * linesToPrintABranch + stuckSize;                      // Number of lines we might want
+    for (int i = S.size(); i <= N; ++i) S.push(new StringBuilder());            // Make sure we have a full deck of strings
+    int m = 0;                                                                  // Maximum length
+    for (StringBuilder s : S) m = m < s.length() ? s.length() : m;              // Find maximum length
+    for (StringBuilder s : S)                                                   // Pad each string to maximum length
+     {if (s.length() < m) s.append(" ".repeat(m - s.length()));                 // Pad string to maximum length
+     }
+   }
+
+  String printCollapsed(Stack<StringBuilder> S)                                 // Collapse horizontal representation into a string
+   {z();
+    final StringBuilder t = new StringBuilder();                                // Print the lines of the tree that are not blank
+    for  (StringBuilder s : S)
+     {z();
+      final String l = s.toString();
+      if (l.isBlank()) continue;
+      t.append(l+"|\n");
+     }
+    return t.toString();
+   }
+
+  String print()                                                                // Print a tree horizontally
+   {final Stack<StringBuilder> P = new Stack<>();
+    final DumpStuck d = new DumpStuck(0);
+    if (d.leaf) printLeaf(0, P, 0); else printBranch(0, P, 0);
+    return printCollapsed(P);
+   }
+
 //D1 Split                                                                      // Split nodes in half to increase the number of nodes in the tree
 
   private void splitRootLeaf()                                                  // Split a full root leaf
@@ -721,7 +872,6 @@ stucks         array  %d
     final Layout.Field fullButOne   = S.fullButOne();
 
     Key.iMove(stuckKeysField); Data.iMove(stuckDataField);
-if (debug) say("AAAA", Key, Data);
 
     L.P.new Block()
      {void code()
@@ -731,10 +881,7 @@ if (debug) say("AAAA", Key, Data);
         L.P.new If (isLeaf)                                                       // Root is a leaf
          {void Then()
            {splitRootLeaf();                                                    // Split the leaf root to make room
-if (debug) say("AAAA11", Key, Data);
             stuckKeysField.iMove(Key); stuckDataField.iMove(Data);          // Key, data pair to be inserted
-if (debug) say("AAAA22", Key, Data);
-
             findAndInsert(found);                                               // Splitting a leaf root will make more space in the tree
             L.P.Goto(end);                                                      // Direct insertion succeeded
            }
@@ -746,19 +893,21 @@ if (debug) say("AAAA22", Key, Data);
            }
          };
 
-        s.iZero(); p.iZero();                                                    // Start at the root and step down through the tree to the key splitting as we go
+        s.iZero(); p.iZero();                                                   // Start at the root and step down through the tree to the key splitting as we go
+        copyStuckFrom(S, s);                                                    // Load root
+
         L.P.new Block()
          {void code()
-           {copyStuckFrom(S, s);                                                // Set search key
-            S.stuckKeys.iMove(Key);
+           {S.stuckKeys.iMove(Key);
 
             S.search_le(found, stuckIndex);                                     // Step down
             p.iMove(s);                                                         // Parent
             s.iMove(S.stuckData);                                               // Child
-
-            new IsLeaf(s)
+            copyStuckFrom(S, s);                                                // Load child
+            new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - search for exact match
                {S.isFull(full);
+
                 L.P.new If (full)
                  {void Then()                                                   // Child branch is full
                    {L.P.new If (found)
@@ -1500,13 +1649,13 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); b.stuckKeysField.iWrite(40); b.stuckDataField.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=1"); ok(F, "branchFull: value=1");
    }
 
-  static void test_put()
+  static void test_put7()
    {final Btree b = test_create();
     final Layout.Field Found = b.bit("Found");
 
-    b.L.P.maxSteps = 500;
+    b.L.P.maxSteps = 5000;
 
-    final int N = 5;
+    final int N = 7;
     for (int i = 1; i <= N; i++)
      {debug = i >= N;
       b.clearProgram();
@@ -1515,13 +1664,16 @@ stuckData: value=0, 0=1, 1=2, 2=0, 3=0
       b.put();
       b.runProgram();
      }
-    stop(b);
-    ok(b, """
-Btree
-Stuck:  0   size: 1   free: 0   next:  0  leaf: 1
-stuckSize: value=1
-stuckKeys: value=0, 0=20, 1=0, 2=0, 3=0
-stuckData: value=0, 0=21, 1=0, 2=0, 3=0
+    ok(b.new DumpStuck(0), "index: 0  size: 2  keys: [2, 4]  data: [1, 3]");
+    ok(b.new DumpStuck(1), "index: 1  size: 2  keys: [1, 2]  data: [2, 3]");
+    ok(b.new DumpStuck(2), "index: 2  size: 3  keys: [5, 6, 7]  data: [6, 7, 8]");
+    ok(b.new DumpStuck(3), "index: 3  size: 2  keys: [3, 4]  data: [4, 5]");
+    ok(b.print(), """
+      2      4          |
+      0      0.1        |
+      1      3          |
+             2          |
+1,2=1  3,4=3    5,6,7=2 |
 """);
    }
 
@@ -1540,11 +1692,12 @@ stuckData: value=0, 0=21, 1=0, 2=0, 3=0
     test_splitBranchNotTop();
     test_splitBranchAtTop();
     test_isRootLeafFull();
+    test_put7();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_put();
+   {oldTests();
+//    test_put7();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

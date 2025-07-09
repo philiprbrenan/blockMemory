@@ -308,8 +308,10 @@ stucks         array  %d
       s.append( "index: "+index);
       s.append("  size: "+size);
       s.append("  leaf: "+leaf);
+      s.append("  free: "+free);
       s.append("  keys: "+keys);
       s.append("  data: "+data);
+      if (top != null) s.append("  top: "+top);
       return ""+s;
      }
    }
@@ -1665,10 +1667,10 @@ stuckData: value=1, 0=1, 1=2, 2=0, 3=0
       b.put();
       b.runProgram();
      }
-    ok(b.new DumpStuck(0), "index: 0  size: 2  leaf: false  keys: [2, 4]  data: [1, 3]");
-    ok(b.new DumpStuck(1), "index: 1  size: 2  leaf: true  keys: [1, 2]  data: [2, 3]");
-    ok(b.new DumpStuck(2), "index: 2  size: 3  leaf: true  keys: [5, 6, 7]  data: [6, 7, 8]");
-    ok(b.new DumpStuck(3), "index: 3  size: 2  leaf: true  keys: [3, 4]  data: [4, 5]");
+    ok(b.new DumpStuck(0), "index: 0  size: 2  leaf: false  free: false  keys: [2, 4]  data: [1, 3]  top: 2");
+    ok(b.new DumpStuck(1), "index: 1  size: 2  leaf: true  free: false  keys: [1, 2]  data: [2, 3]");
+    ok(b.new DumpStuck(2), "index: 2  size: 3  leaf: true  free: false  keys: [5, 6, 7]  data: [6, 7, 8]");
+    ok(b.new DumpStuck(3), "index: 3  size: 2  leaf: true  free: false  keys: [3, 4]  data: [4, 5]");
     ok(b.print(), """
       2      4          |
       0      0.1        |

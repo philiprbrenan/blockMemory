@@ -465,12 +465,14 @@ Stuck        array  %d
           Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
          }
         Left.stuckSize.value = Copy;                                            // New size of left
+        Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
 
         for (int i = 0; i < Copy; ++i)                                          // Copy to right
          {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
           Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
          }
         Right.stuckSize.value = Copy;                                           // New size of right
+        Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
        }
      };
    }
@@ -1087,7 +1089,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     ok(R, """
 stuckSize: value=1
 stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
-stuckData: value=0, 0=6, 1=4, 2=6, 3=8
+stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 """);
    }
 

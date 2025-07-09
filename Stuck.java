@@ -379,7 +379,7 @@ Stuck        array  %d
           return;
          }
 
-        for (int i = 0; i < stuckSize.value; ++i)                             // Check each key not including the last
+        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key not including the last
          {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
           if (stuckKeys.value <= v)                                             // Found a matching key
            {Found.value = 1; Index.value = i;
@@ -630,7 +630,7 @@ stuckData: value=8, 0=2, 1=4, 2=6, 3=8
     s.runProgram();
     ok(s.L.P.rc, "Cannot push to a full stuck");
 
-    s.clearProgram(); k.iWrite(0); d.iWrite(0); s.runProgram();             // Clean up key and data value
+    s.clearProgram(); k.iWrite(0); d.iWrite(0); s.runProgram();                 // Clean up key and data value
 
     return s;
    }

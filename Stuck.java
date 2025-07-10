@@ -271,6 +271,32 @@ Stuck        array  %d
     stuckData.iWrite(index);
    }
 
+  void setKeyAt(Layout.Field index)                                             // Set the key at the specified index
+   {L.P.new Instruction()
+     {void action()
+       {if (index.value > stuckSize.value)
+         {L.stopProgram("Cannot set key more than one step beyond current end of stuck");
+          return;
+         }
+        if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
+       }
+     };
+    stuckKeys.iWrite(index);
+   }
+
+  void setDataAt(Layout.Field index)                                            // Set the data element at the specified index
+   {L.P.new Instruction()
+     {void action()
+       {if (index.value > stuckSize.value)
+         {L.stopProgram("Cannot set data more than one step beyond current end of stuck");
+          return;
+         }
+        if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
+       }
+     };
+    stuckData.iWrite(index);
+   }
+
   void setFirstElement()                                                        // Get the first key, data pair
    {L.P.new Instruction()
      {void action()
@@ -352,7 +378,7 @@ Stuck        array  %d
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Index.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[Index.value]);
 
-        for (int i = Index.value; i < stuckSize.value-1; ++i)
+        for (int i = Index.value; i < size-1; ++i)
          {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
           stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
          }
@@ -923,6 +949,58 @@ stuckData: value=12, 0=2, 1=11, 2=12, 3=8
 """);
    }
 
+  protected static void test_setKeyAt()
+   {final Stuck s = test_push();
+    Layout.Field index = s.index();
+    s.clearProgram();
+    index.iWrite(1);
+    s.stuckKeys.iWrite(9);
+    s.stuckData.iWrite(11);
+    s.setKeyAt(index);
+    s.runProgram();
+
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=9, 0=1, 1=9, 2=3, 3=4
+stuckData: value=11, 0=2, 1=4, 2=6, 3=8
+""");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.pop();
+    s.pop();
+    index.iWrite(3);
+    s.setKeyAt(index);
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot set key more than one step beyond current end of stuck");
+   }
+
+  protected static void test_setData()
+   {final Stuck s = test_push();
+    Layout.Field index = s.index();
+    s.clearProgram();
+    index.iWrite(1);
+    s.stuckKeys.iWrite(9);
+    s.stuckData.iWrite(11);
+    s.setDataAt(index);
+    s.runProgram();
+
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=9, 0=1, 1=2, 2=3, 3=4
+stuckData: value=11, 0=2, 1=11, 2=6, 3=8
+""");
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.pop();
+    s.pop();
+    index.iWrite(3);
+    s.setDataAt(index);
+    s.runProgram();
+    ok(s.L.P.rc, "Cannot set data more than one step beyond current end of stuck");
+   }
+
   protected static void test_insertElementAt()
    {final Stuck s = test_push();
     Layout.Field index = s.index();
@@ -1004,8 +1082,8 @@ stuckData: value=8, 0=2, 1=8, 2=8, 3=8
     s.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=0
-stuckKeys: value=1, 0=1, 1=4, 2=4, 3=4
-stuckData: value=2, 0=2, 1=8, 2=8, 3=8
+stuckKeys: value=1, 0=4, 1=4, 2=4, 3=4
+stuckData: value=2, 0=8, 1=8, 2=8, 3=8
 """);
 
     s.clearProgram();
@@ -1520,6 +1598,8 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     test_shift();
     test_elementAt();
     test_setElementAt();
+    test_setKeyAt();
+    test_setData();
     test_insertElementAt();
     test_removeElementAt();
     test_search_eq();

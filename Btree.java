@@ -824,8 +824,8 @@ stucks         array  %d
            };
          };
 
-        p.stuckData.iRead    (LeftLeaf); li.iMove(p.stuckData);
-        p.stuckData.iReadNext(LeftLeaf); ri.iMove(p.stuckData);
+        p.stuckData.iRead    (LeftLeaf); li.iMove(p.stuckData);                 // Get the btree index of the left child leaf
+        p.stuckData.iReadNext(LeftLeaf); ri.iMove(p.stuckData);                 // Get the btree index of the right child leaf
 
         new IsLeaf(li)                                                          // Check that the children are leaves
          {void Branch()                                                         // Children are not leaves
@@ -864,8 +864,8 @@ stucks         array  %d
 
         ls.iMove(p.stuckSize); ls.iDec();                                       // Index of left leaf known to be valid as the parent contains at least one entry resulting in two children
         rs.iMove(p.stuckSize);                                                  // Index of right leaf
-        p.stuckData.iRead(ls); li.iMove(p.stuckData);
-        p.stuckData.iRead(rs); ri.iMove(p.stuckData);
+        p.stuckData.iRead(ls); li.iMove(p.stuckData);                           // Get the btree index of the left child leaf
+        p.stuckData.iRead(rs); ri.iMove(p.stuckData);                           // Get the btree index of the right child leaf
 
         new IsLeaf(li)                                                          // Check that the children are leaves
          {void Branch()                                                         // Children are not leaves
@@ -875,7 +875,7 @@ stucks         array  %d
         copyStuckFrom(l, li);                                                   // Load left  leaf from btree
         copyStuckFrom(r, ri);                                                   // Load right leaf from btree
         l.merge(r);                                                             // Merge leaves into left child
-        p.stuckSize.iDec();                                                     // The left child is now topmost - we know this is ok beciuase the parent has at elast one entry
+        p.stuckSize.iDec();                                                     // The left child is now topmost - we know this is ok because the parent has at elast one entry
         saveStuckInto(l, li);                                                  // Save the modified left child back into the tree
         saveStuckInto(p, Parent);                                               // Save the modified root back into the tree
         free(ri);                                                               // Free right leaf as it is no longer in use
@@ -909,6 +909,82 @@ stucks         array  %d
         p.mergeButOne(l, k, r);                                                 // Merge left branch, splitting key, right branch into root
         saveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
         free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
+       }
+     };
+   }
+
+  private void mergeBranchesNotTop(Layout.Field Parent, Layout.Field LeftBranch)// Merge the two consecutive child branches of a branch that is not the root. Neither of the child branches is the topmost leaf.
+   {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
+    final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
+    final Layout.Field li = btreeIndex(), ri = btreeIndex();                    // Btree indexes of left and right children of parent that we want to merge
+    copyStuckFrom(p, Parent);                                                   // Load parent
+
+    L.P.new Block()
+     {void code()
+       {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {if (p.stuckSize.value < 2)
+             {L.P.stopProgram("Parent must have at least two entries");
+             }
+           };
+         };
+
+        p.stuckData.iRead    (LeftBranch); li.iMove(p.stuckData);               // Get the btree index of the left child branch
+        p.stuckData.iReadNext(LeftBranch); ri.iMove(p.stuckData);               // Get the btree index of the right child branch
+
+        new IsLeaf(li)                                                          // Check that the children are branches
+         {void Leaf()                                                           // Children are not branches
+           {L.P.iGoto(end);
+           }
+         };
+        copyStuckFrom(l, li);                                                   // Load left  branch from btree
+        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        p.stuckKeys.iRead(LeftBranch);                                          // Key associated with left child branch
+        l.mergeButOne(p.stuckKeys, r);                                          // Merge branches into left child
+        p.removeElementAt(LeftBranch);                                          // Remove the left child
+        p.stuckData.iMove(li); p.setDataAt(LeftBranch);                         // Replace the right child with the left child
+        saveStuckInto(l, li);                                                   // Save the modified left child back into the tree
+        saveStuckInto(p, Parent);                                               // Save the modified root back into the tree
+        free(ri);                                                               // Free right branch as it is no longer in use
+       }
+     };
+   }
+
+  private void mergeBranchesAtTop(Layout.Field Parent)                          // Merge the top most two child branches of a branch that is not the root
+   {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
+    final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
+    final Layout.Field li = btreeIndex(), ri = btreeIndex();                    // Btree indexes of left and right children of parent that we want to merge
+    copyStuckFrom(p, Parent);                                                   // Load parent
+
+    L.P.new Block()
+     {void code()
+       {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {if (p.stuckSize.value == 0)
+             {L.P.stopProgram("Parent must have at least one entry and hence two children for a merge");
+             }
+           };
+         };
+
+        ls.iMove(p.stuckSize); ls.iDec();                                       // Index of left branch known to be valid as the parent contains at least one entry resulting in two children
+        rs.iMove(p.stuckSize);                                                  // Index of right branch
+        p.stuckData.iRead(ls); li.iMove(p.stuckData);                           // Get the btree index of the left branch branch
+        p.stuckData.iRead(rs); ri.iMove(p.stuckData);                           // Get the btree index of the right branch branch
+
+        new IsLeaf(li)                                                          // Check that the children are branches
+         {void Leaf()                                                           // Children are branches
+           {L.P.iGoto(end);
+           }
+         };
+        copyStuckFrom(l, li);                                                   // Load left  branch from btree
+        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        p.pop();                                                                // Key associated with left child branch
+        l.mergeButOne(p.stuckKeys, r);                                          // Merge leaves into left child
+        p.stuckData.iMove(li);                                                  // Index of left branch that now contains the combined branches
+        p.setPastLastData();                                                    // Make newly combined left branch top most
+        saveStuckInto(l, li);                                                   // Save the modified left child back into the tree
+        saveStuckInto(p, Parent);                                               // Save the modified root back into the tree
+        free(ri);                                                               // Free right branch as it is no longer in use
        }
      };
    }
@@ -2062,6 +2138,104 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
+  static void test_mergeBranchesNotTop()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field btreeIndex = b.btreeIndex();
+    final Layout.Field stuckIndex = s.index();
+    b.L.P.maxSteps = 2000;
+
+    final int N = 20;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    //stop(b);
+    ok(b, """
+             4             8                    12                                      |
+             0             0.1                  0.2                                     |
+             5             9                    12                                      |
+                                                6                                       |
+      2             6                10                     14         16               |
+      5             9                12                     6          6.1              |
+      1             4                8                      11         13               |
+      3             7                10                                2                |
+1,2=1  3,4=3  5,6=4  7,8=7    9,10=8   11,12=10    13,14=11   15,16=13    17,18,19,20=2 |
+""");
+    btreeIndex.value = 0;
+    stuckIndex.value = 0;
+    b.clearProgram();
+    b.mergeBranchesNotTop(btreeIndex, stuckIndex);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+                               8                  12                                      |
+                               0                  0.1                                     |
+                               5                  12                                      |
+                                                  6                                       |
+      2      4        6                10                     14         16               |
+      5      5.1      5.2              12                     6          6.1              |
+      1      3        4                8                      11         13               |
+                      7                10                                2                |
+1,2=1  3,4=3    5,6=4    7,8=7  9,10=8   11,12=10    13,14=11   15,16=13    17,18,19,20=2 |
+""");
+   }
+
+  static void test_mergeBranchesAtTop()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field index = b.btreeIndex();
+    b.L.P.maxSteps = 2000;
+
+    final int N = 15;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    //stop(b);
+    index.value = 6;
+    b.clearProgram();
+    b.copyStuckFrom(s, index);
+    s.pop();
+    b.saveStuckInto(s, index);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+             4             8                    |
+             0             0.1                  |
+             5             9                    |
+                           6                    |
+      2             6                10         |
+      5             9                6          |
+      1             4                8          |
+      3             7                10         |
+1,2=1  3,4=3  5,6=4  7,8=7    9,10=8   11,12=10 |
+""");
+
+    index.value = 0;
+    b.clearProgram();
+    b.mergeBranchesAtTop(index);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+             4                                   |
+             0                                   |
+             5                                   |
+             9                                   |
+      2             6      8         10          |
+      5             9      9.1       9.2         |
+      1             4      7         8           |
+      3                              10          |
+1,2=1  3,4=3  5,6=4  7,8=7    9,10=8    11,12=10 |
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -2084,6 +2258,8 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     test_mergeLeavesAtTop();
     test_mergeLeavesNotTop();
     test_mergeBranchesIntoRoot();
+    test_mergeBranchesAtTop();
+    test_mergeBranchesNotTop();
    }
 
   static void newTests()                                                        // Tests being worked on

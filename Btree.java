@@ -2082,12 +2082,12 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     test_putRandom();
     test_mergeLeavesIntoRoot();
     test_mergeLeavesAtTop();
+    test_mergeLeavesNotTop();
     test_mergeBranchesIntoRoot();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_mergeLeavesNotTop();
+   {oldTests();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

@@ -335,26 +335,36 @@ class Layout extends Test                                                       
       void set() {offset = P.code.size(); P.labels.push(this);}                 // Track all labels created
      }
 
-    void Goto(Label label)                                                      // Goto a label unconditionally
+    void Goto     (Label label)                                                 // Goto a label unconditionally
+     {pc = label.offset;
+     }
+    void GoNotZero(Label label, Field condition)                                // Go to a specified label if the value of a field is not zero
+     {if (condition.value > 0) pc = label.offset;
+     }
+    void GoZero   (Label label, Field condition)                                // Go to a specified label if the value of a field is zero
+     {if (condition.value == 0) pc = label.offset;
+     }
+
+    void iGoto(Label label)                                                     // Goto a label unconditionally
      {P.new Instruction()
        {void   action()
-         {pc = label.offset;
+         {Goto(label);
          }
        };
      }
 
-    void GoNotZero(Label label, Field condition)                                // Go to a specified label if the value of a field is not zero
+    void iGoNotZero(Label label, Field condition)                               // Go to a specified label if the value of a field is not zero
      {P.new Instruction()
        {void action()
-         {if (condition.value > 0) pc = label.offset;
+         {GoNotZero(label, condition);
          }
        };
      }
 
-    void GoZero(Label label, Field condition)                                   // Go to a specified label if the value of a field is zero
+    void iGoZero(Label label, Field condition)                                  // Go to a specified label if the value of a field is zero
      {P.new Instruction()
        {void action()
-         {if (condition.value == 0) pc = label.offset;
+         {GoZero(label, condition);
          }
        };
      }
@@ -363,9 +373,9 @@ class Layout extends Test                                                       
      {final Label Else = new Label(), End = new Label();                        // Components of an if statement
 
       If (Field Condition)                                                      // If a condition
-       {GoZero(Else, Condition);                                                // Branch on the current value of condition
+       {iGoZero(Else, Condition);                                                // Branch on the current value of condition
         Then();
-        Goto(End);
+        iGoto(End);
         Else.set();
         Else();
         End.set();
@@ -402,10 +412,10 @@ class Layout extends Test                                                       
            }
          };
 
-        GoZero(end, condition);
+        iGoZero(end, condition);
         code();
         loop.iInc();
-        Goto(start);
+        iGoto(start);
         end.set();
        }
       void code() {};
@@ -858,7 +868,7 @@ d var 4
     l.P.new Block()
      {void code()
        {c.iWrite(1);
-        l.P.GoNotZero(end, a);
+        l.P.iGoNotZero(end, a);
         d.iWrite(2);
        };
      };

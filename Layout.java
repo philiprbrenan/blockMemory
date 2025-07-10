@@ -177,12 +177,22 @@ class Layout extends Test                                                       
        };
      }
 
-    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the variable indexed element of the memory associated with this field
+    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
          {final int index = convolute(indices);
           f.value = f.getIntFromBits(memory[index]);
+         }
+       };
+     }
+
+    void iReadNext(Field...indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
+     {final Field f = checkVar();
+      P.new Instruction()
+       {void action()
+         {final int index = convolute(indices);
+          f.value = f.getIntFromBits(memory[index+1]);
          }
        };
      }
@@ -741,6 +751,11 @@ v var 4
 
     l.clearProgram(); i.iWrite(1); j.iWrite(1); b.iOne (i, j); l.runProgram();
     ok(b, "b: value=1, 0=0, 1=1, 2=2, 3=2, 4=1, 5=4");
+
+    l.clearProgram(); i.iWrite(0); j.iWrite(0); b.iReadNext(i, j); l.runProgram(); ok(b.value, 1);
+    l.clearProgram(); i.iWrite(0); j.iWrite(1); b.iReadNext(i, j); l.runProgram(); ok(b.value, 2);
+    l.clearProgram(); i.iWrite(1); j.iWrite(0); b.iReadNext(i, j); l.runProgram(); ok(b.value, 1);
+    l.clearProgram(); i.iWrite(1); j.iWrite(1); b.iReadNext(i, j); l.runProgram(); ok(b.value, 4);
    }
 
   protected static void test_add()

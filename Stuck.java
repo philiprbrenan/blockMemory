@@ -80,6 +80,12 @@ Stuck        array  %d
   Layout.Field data()  {return variable("data",       bitsPerData);}            // A field capable of holding a data value
   Layout.Field fullButOne() {return variable("fullButOne",         1);}         // Whether the stuck is full except for one
 
+  Layout.Field key(int Value)
+   {final Layout.Field k = key();
+    k.value = Value;
+    return k;
+   }
+
   void runProgram  () {L.runProgram();}                                         // Runb the program
   void clearProgram() {L.clearProgram();}                                       // Clear the current program
 
@@ -395,23 +401,7 @@ Stuck        array  %d
      };
    }
 
-  void concatenate(Stuck source)                                                // Concatenate the indicated stuck on to the end one
-   {L.P.new Instruction()
-     {void action()
-       {final int sourceSize = source.stuckSize.value;
-        final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize > size)
-         {L.P.stopProgram("Not enough room in target to concatenate source as well");
-          return;
-         }
-        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
-         {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
-          stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
-         }
-        stuckSize.value += sourceSize;                                          // New size of target
-       }
-     };
-   }
+// Split                                                                        // Split a stuck in various ways
 
   void splitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
@@ -583,6 +573,95 @@ Stuck        array  %d
      };
    }
 
+//D1 Merge                                                                      // Merge stucks in various weays
+
+  void merge(Stuck source)                                                      // Concatenate the indicated stuck on to the end of the current one
+   {L.P.new Instruction()
+     {void action()
+       {final int sourceSize = source.stuckSize.value;
+        final int targetSize =        stuckSize.value;
+        if (sourceSize + targetSize > size)
+         {L.P.stopProgram("Not enough room in target to merge source as well");
+          return;
+         }
+        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
+         {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
+          stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
+         }
+        stuckSize.value += sourceSize;                                          // New size of target
+       }
+     };
+   }
+
+  void merge(Stuck Left, Stuck Right)                                           // Replace the current stuck with the concatenation of the left and right stucks
+   {L.P.new Instruction()
+     {void action()
+       {final int leftSize  = Left .stuckSize.value;
+        final int rightSize = Right.stuckSize.value;
+        if (leftSize + rightSize > size)
+         {L.P.stopProgram("Not enough room in target for left and right");
+          return;
+         }
+        for (int i = 0; i < leftSize; ++i)                                      // Copy in left
+         {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
+          stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
+         }
+        for (int i = 0; i < rightSize; ++i)                                     // Copy in right
+         {stuckKeys.memory[leftSize+i] = (BitSet)Right.stuckKeys.memory[i].clone();
+          stuckData.memory[leftSize+i] = (BitSet)Right.stuckData.memory[i].clone();
+         }
+        stuckSize.value = leftSize + rightSize;                                 // New size of target
+       }
+     };
+   }
+
+  void mergeButOne(Layout.Field Key, Stuck source)                              // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
+   {L.P.new Instruction()
+     {void action()
+       {final int sourceSize = source.stuckSize.value;
+        final int targetSize =        stuckSize.value;
+        if (sourceSize + targetSize + 1 > size)                                 // Check size
+         {L.P.stopProgram("Not enough room in target to merge key and source as well");
+          return;
+         }
+        stuckKeys.setBitsFromInt(stuckKeys.memory[targetSize], Key.value);      // Add key over past last data element
+        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair from source
+         {stuckKeys.memory[targetSize+i+1] = (BitSet)source.stuckKeys.memory[i].clone();
+          stuckData.memory[targetSize+i+1] = (BitSet)source.stuckData.memory[i].clone();
+         }
+        stuckData.memory[targetSize+sourceSize+1] =                             // Past last data element from source
+         (BitSet)source.stuckData.memory[sourceSize].clone();
+        stuckSize.value += sourceSize + 1;                                      // New size of target
+       }
+     };
+   }
+
+  void mergeButOne(Stuck Left, Layout.Field Key, Stuck Right)                   // Concatenate the left and right stucks separated by the key over th past last data element of the left stuck into the target
+   {L.P.new Instruction()
+     {void action()
+       {final int leftSize  = Left .stuckSize.value;
+        final int rightSize = Right.stuckSize.value;
+        if (leftSize + rightSize + 1 > size)                                    // Check size
+         {L.P.stopProgram("Not enough room in target to left, key and right");
+          return;
+         }
+        for (int i = 0; i < leftSize; ++i)                                      // Concatenate each key, data pair from source
+         {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
+          stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
+         }
+        stuckKeys.setBitsFromInt(stuckKeys.memory[leftSize], Key.value);        // Place key over past last data element from left
+        stuckData.memory[leftSize] = (BitSet)Left.stuckData.memory[leftSize].clone();
+
+        for (int i = 0; i < rightSize; ++i)                                     // Concatenate each key, data pair from right
+         {stuckKeys.memory[leftSize+i+1] = (BitSet)Right.stuckKeys.memory[i].clone();
+          stuckData.memory[leftSize+i+1] = (BitSet)Right.stuckData.memory[i].clone();
+         }
+        stuckData.memory[leftSize+rightSize+1] =                                // Past last data element from source
+         (BitSet)Right.stuckData.memory[rightSize].clone();
+        stuckSize.value = leftSize + rightSize + 1;                             // New size of target
+       }
+     };
+   }
 
 //D1 Tests                                                                      // Tests
 
@@ -981,7 +1060,7 @@ stuckData: value=2, 0=2, 1=8, 2=8, 3=8
     ok(found.value, 0);
    }
 
-  protected static void test_concatenate()
+  protected static void test_merge()
    {final Stuck s = test_push();
     ok(s, """
 stuckSize: value=4
@@ -990,29 +1069,89 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
     final Stuck t = test_push(); t.L.P = s.L.P;
-    ok(t, """
-stuckSize: value=4
-stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
-stuckData: value=0, 0=2, 1=4, 2=6, 3=8
-""");
+    final Stuck m = test_push(); m.L.P = s.L.P;
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.concatenate(t);
+    s.merge(t);
     s.runProgram();
-    ok(s.L.P.rc, "Not enough room in target to concatenate source as well");
+    ok(s.L.P.rc, "Not enough room in target to merge source as well");
 
     s.clearProgram();
     s.pop();
     s.pop();
     t.pop();
     t.pop();
-    s.concatenate(t);
+    s.merge(t);
     s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2
 stuckData: value=6, 0=2, 1=4, 2=2, 3=4
+""");
+
+    m.clearProgram();
+    m.L.P.supressErrorMessagePrint = true;
+    m.merge(s, t);
+    m.runProgram();
+    ok(s.L.P.rc, "Not enough room in target for left and right");
+
+    m.clearProgram();
+    s.pop();
+    s.pop();
+    m.merge(s, t);
+    m.runProgram();
+    ok(m, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=1, 3=2
+stuckData: value=0, 0=2, 1=4, 2=2, 3=4
+""");
+   }
+
+  protected static void test_mergeButOne()
+   {final Stuck s = test_push();
+    ok(s, """
+stuckSize: value=4
+stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+""");
+
+    final Stuck t = test_push(); t.L.P = s.L.P;
+    final Stuck m = test_push(); m.L.P = s.L.P;
+
+    final Layout.Field k = t.key(11);
+
+    s.clearProgram();
+    s.L.P.supressErrorMessagePrint = true;
+    s.mergeButOne(k, t);
+    s.runProgram();
+    ok(s.L.P.rc, "Not enough room in target to merge key and source as well");
+
+    s.clearProgram();
+    s.pop(); s.pop(); s.pop();
+    t.pop(); t.pop(); t.pop();
+    s.mergeButOne(k, t);
+    s.runProgram();
+    ok(s, """
+stuckSize: value=3
+stuckKeys: value=2, 0=1, 1=11, 2=1, 3=4
+stuckData: value=4, 0=2, 1=4, 2=2, 3=4
+""");
+
+    m.clearProgram();
+    m.L.P.supressErrorMessagePrint = true;
+    m.mergeButOne(s, k, t);
+    m.runProgram();
+    ok(m.L.P.rc, "Not enough room in target to left, key and right");
+
+    m.clearProgram();
+    s.pop(); s.pop();
+    m.mergeButOne(s, k, t);
+    m.runProgram();
+    ok(m, """
+stuckSize: value=3
+stuckKeys: value=0, 0=1, 1=11, 2=1, 3=4
+stuckData: value=0, 0=2, 1=4, 2=2, 3=4
 """);
    }
 
@@ -1385,7 +1524,8 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     test_removeElementAt();
     test_search_eq();
     test_search_le();
-    test_concatenate();
+    test_merge();
+    test_mergeButOne();
     test_splitIntoTwo();
     test_splitIntoThree();
     test_splitLow();

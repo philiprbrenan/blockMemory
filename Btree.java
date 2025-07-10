@@ -3,7 +3,7 @@
 // Philip R Brenan at appaapps dot com, Appa Apps Ltd Inc., 2025
 //------------------------------------------------------------------------------
 package com.AppaApps.Silicon;                                                   // Btree in a block on the surface of a silicon chip.
-
+// Reduce b.btreeIndex to b.index or better make a class BtreeIndex
 import java.util.*;
 
 class Btree extends Test                                                        // Manipulate a btree in a block of memory
@@ -777,12 +777,120 @@ stucks         array  %d
     saveStuckInto(p, parentIndex);                                              // Save the parent stuck back into the btree
    }
 
+//D1 Merge                                                                      // Merge two nodes
+
+  private void mergeLeavesIntoRoot()                                            // Merge two leaves into the root
+   {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Root and left, right children
+    final Layout.Field li  = btreeIndex(), ri = btreeIndex();                   // Btree indexes of left and right children of root
+    final Layout.Field one = bit("one");                                        // Whether the root has just one entry
+
+    copyStuckFromRoot(p);                                                       // Load root
+    L.P.new Block()
+     {void code()
+       {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
+         {void action()
+           {one.value = p.stuckSize.value == 1 ? 1 : 0;
+           };
+         };
+        L.P.GoZero(end, one);                                                   // Wrong number of entries in root
+        p.stuckData.iRead(0); li.iMove(p.stuckData);                            // Index of left leaf
+        p.stuckData.iRead(1); ri.iMove(p.stuckData);                            // Index of right leaf
+        new IsLeaf(li)                                                          // Check that the children are leaves
+         {void Branch()                                                         // Children are not leaves
+           {L.P.Goto(end);
+           }
+         };
+        copyStuckFrom(l, li);                                                   // Load left  leaf from btree
+        copyStuckFrom(r, ri);                                                   // Load right leaf from btree
+        p.merge(l, r);                                                          // Merge leaves into root
+        saveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
+        setRootAsLeaf();                                                        // Set the root to be a leaf
+        free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
+       }
+     };
+   }
+
+  private void mergeLeaves(Layout.Field Parent, Layout.Field StuckIndex)        // Merge two leaves into a branch that is not the root
+   {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent, left and right children
+    final Layout.Field li      = btreeIndex(), ri = btreeIndex();               // Btree indexes of left and right children of parent that we want to merge
+
+    L.P.new If(Parent)                                                          // Check that we are not trying to merge into the root
+     {void Else()
+       {L.P.new Instruction()
+         {void action()
+           {L.P.stopProgram("Use mergeLeavesIntoRoot()");
+           }
+         };
+       }
+     };
+
+    copyStuckFrom(p, Parent);                                                   // Load parent
+
+    L.P.new Block()
+     {void code()
+       {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {if (p.stuckSize.value > StuckIndex.value)
+             {L.P.stopProgram("Invalid child specified");
+             }
+           };
+         };
+
+        p.stuckData.iRead    (StuckIndex); li.iMove(p.stuckData);               // Index of left leaf
+        p.stuckData.iReadNext(StuckIndex); ri.iMove(p.stuckData);               // Index of right leaf
+        new IsLeaf(li)                                                          // Check that the children are leaves
+         {void Branch()                                                         // Children are not leaves
+           {L.P.Goto(end);
+           }
+         };
+        copyStuckFrom(l, li);                                                   // Load left  leaf from btree
+        copyStuckFrom(r, ri);                                                   // Load right leaf from btree
+        l.merge(r);                                                             // Merge leaves into left child
+        saveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
+        setRootAsLeaf();                                                        // Set the root to be a leaf
+        free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
+       }
+     };
+   }
+
+  private void mergeBranchesIntoRoot()                                          // Merge two branches into the root
+   {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Root and left, right children
+    final Layout.Field li  = btreeIndex(), ri = btreeIndex();                   // Btree indexes of left and right children of root
+    final Layout.Field one = bit("one");                                        // Whether the root has just one entry
+    final Layout.Field k   = p.key();                                           // Splitting key
+
+    copyStuckFromRoot(p);                                                       // Load root
+    L.P.new Block()
+     {void code()
+       {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
+         {void action()
+           {one.value = p.stuckSize.value == 1 ? 1 : 0;
+           };
+         };
+        L.P.GoZero(end, one);                                                   // Wrong number of entries in root
+        p.stuckKeys.iRead(0); k .iMove(p.stuckKeys);                            // Splitting key
+        p.stuckData.iRead(0); li.iMove(p.stuckData);                            // Index of left branch
+        p.stuckData.iRead(1); ri.iMove(p.stuckData);                            // Index of right branch
+        new IsLeaf(li)                                                          // Check that the children are leaves
+         {void Leaf()                                                           // Children are not leaves
+           {L.P.Goto(end);
+           }
+         };
+        copyStuckFrom(l, li);                                                   // Load left  branch from btree
+        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        p.mergeButOne(l, k, r);                                                 // Merge left branch, splitting key, right branch into root
+        saveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
+        free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
+       }
+     };
+   }
+
 //D1 Find                                                                       // Find a key in a btree
 
   class IsLeaf                                                                  // Process a stuck depending on wnether it is a leaf or a branch
    {IsLeaf(Layout.Field index)
      {stuckIsLeaf.iRead(index);
-      final IsLeaf  l = this;
+      final IsLeaf l = this;
       L.P.new If(stuckIsLeaf)
        {void Then() {l.Leaf();}
         void Else() {l.Branch();}
@@ -1764,6 +1872,127 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
+  static void test_mergeLeavesIntoRoot()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field index = b.btreeIndex();
+    b.L.P.maxSteps = 2000;
+
+    final int N = 6;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    index.value = 2;
+    b.clearProgram();
+    b.copyStuckFrom(s, index);
+    s.pop(); s.pop();
+    b.saveStuckInto(s, index);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+      2      |
+      0      |
+      1      |
+      2      |
+1,2=1  3,4=2 |
+""");
+    b.clearProgram();
+    b.mergeLeavesIntoRoot();
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+1,2,3,4=0 |
+""");
+   }
+
+  static void test_mergeLeaves()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field index = b.btreeIndex();
+    b.L.P.maxSteps = 2000;
+
+    final int N = 5;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    stop(b);
+    index.value = 2;
+    b.clearProgram();
+    b.copyStuckFrom(s, index);
+    s.pop(); s.pop();
+    b.saveStuckInto(s, index);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+      2      |
+      0      |
+      1      |
+      2      |
+1,2=1  3,4=2 |
+""");
+    b.clearProgram();
+    b.mergeLeavesIntoRoot();
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+1,2,3,4=0 |
+""");
+   }
+
+  static void test_mergeBranchesIntoRoot()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field index = b.btreeIndex();
+    b.L.P.maxSteps = 2000;
+
+    final int N = 11;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    //stop(b);
+    index.value = 6;
+    b.clearProgram();
+    b.copyStuckFrom(s, index);
+    s.pop();
+    b.saveStuckInto(s, index);
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+             4             |
+             0             |
+             5             |
+             6             |
+      2             6      |
+      5             6      |
+      1             4      |
+      3             7      |
+1,2=1  3,4=3  5,6=4  7,8=7 |
+""");
+    b.clearProgram();
+    b.mergeBranchesIntoRoot();
+    b.runProgram();
+    //stop(b);
+    ok(b, """
+      2      4        6        |
+      0      0.1      0.2      |
+      1      3        4        |
+                      7        |
+1,2=1  3,4=3    5,6=4    7,8=7 |
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -1782,10 +2011,13 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     test_put();
     test_putReverse();
     test_putRandom();
+    test_mergeLeavesIntoRoot();
+    test_mergeBranchesIntoRoot();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {oldTests();
+   {//oldTests();
+    test_mergeLeaves();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

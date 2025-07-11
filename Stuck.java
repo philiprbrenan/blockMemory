@@ -7,7 +7,7 @@ package com.AppaApps.Silicon;                                                   
 import java.util.*;
 
 class Stuck extends Test                                                        // A fixed size collection of key, data pairs
- {final int size;                                                               // The maximum number of entries in the stuck.
+ {final int maxStuckSize;                                                       // The maximum number of entries in the stuck.
   final int bitsPerKey;                                                         // The number of bits needed to define a key
   final int bitsPerData;                                                        // The number of bits needed to define a data field
   final Layout L;                                                               // Layout of the stuck
@@ -17,14 +17,14 @@ class Stuck extends Test                                                        
 
 //D1 Construction                                                               // Create a stuck
 
-  Stuck(int Size, int BitsPerKey, int BitsPerData)                              // Create the stuck. The memory layout containing the stuck
-   {size        = Size;                                                         // The maximum number of entries in the stuck.
-    bitsPerKey  = BitsPerKey;                                                   // The number of bits needed to define a key
-    bitsPerData = BitsPerData;                                                  // The number of bits needed to define a data field
-    L           = layout();
-    stuckSize   = L.locateFieldByName("stuckSize");                             // Current size of stuck up to the maximum size
-    stuckKeys   = L.locateFieldByName("stuckKeys");                             // Keys field
-    stuckData   = L.locateFieldByName("stuckData");                             // Data field
+  Stuck(int MaxStuckSize, int BitsPerKey, int BitsPerData)                      // Create the stuck. The memory layout containing the stuck
+   {maxStuckSize = MaxStuckSize;                                                // The maximum number of entries in the stuck.
+    bitsPerKey   = BitsPerKey;                                                  // The number of bits needed to define a key
+    bitsPerData  = BitsPerData;                                                 // The number of bits needed to define a data field
+    L            = layout();
+    stuckSize    = L.locateFieldByName("stuckSize");                            // Current size of stuck up to the maximum size
+    stuckKeys    = L.locateFieldByName("stuckKeys");                            // Keys field
+    stuckData    = L.locateFieldByName("stuckData");                            // Data field
    }
 
   Layout layout()                                                               // Layout describing stuck, Having the keys ordered sequqntiall makes it easy to compare them in parallel and find the first key greater than or equal to a search key, this being the most common operation.
@@ -33,18 +33,18 @@ stuckSize    var    %d
 Stuck        array  %d
   stuckKeys  var    %d
   stuckData  var    %d
-""", logTwo(size)+1, size, bitsPerKey, bitsPerData));
+""", logTwo(maxStuckSize)+1, maxStuckSize, bitsPerKey, bitsPerData));
    }
 
   Stuck duplicate()                                                             // Duplicate this struck
-   {final Stuck s = new Stuck(size, bitsPerKey, bitsPerData);
+   {final Stuck s = new Stuck(maxStuckSize, bitsPerKey, bitsPerData);
     s.copy(this);
     s.L.P = L.P;
     return s;
    }
 
   void copy(Stuck Source)                                                       // Copy one stuck into another
-   {if (size != Source.size)
+   {if (maxStuckSize != Source.maxStuckSize)
      {L.P.stopProgram("Size mismatch");
       return;
      }
@@ -59,7 +59,7 @@ Stuck        array  %d
     stuckSize.value = Source.stuckSize.value;
     stuckKeys.value = Source.stuckKeys.value;
     stuckData.value = Source.stuckData.value;
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < maxStuckSize; i++)
      {stuckKeys.memory[i] = (BitSet)Source.stuckKeys.memory[i].clone();
       stuckData.memory[i] = (BitSet)Source.stuckData.memory[i].clone();
      }
@@ -73,9 +73,9 @@ Stuck        array  %d
   Layout.Field found() {return variable("found",                   1);}         // Whether a key was found in a stuck or not
   Layout.Field empty() {return variable("empty",                   1);}         // Whether the stuck is empty
   Layout.Field full()  {return variable("full",                    1);}         // Whether the stuck is full
-  Layout.Field index() {return variable("stuckIndex", logTwo(size)+1);}         // Index a key, data pair in a stuck
-  Layout.Field count() {return variable("count",      logTwo(size)+1);}         // Number of key, data pairs to copy
-  Layout.Field at()    {return variable("at",         logTwo(size)+1);}         // Position in which to insert in parent
+  Layout.Field index() {return variable("stuckIndex", logTwo(maxStuckSize)+1);} // Index a key, data pair in a stuck
+  Layout.Field count() {return variable("count",      logTwo(maxStuckSize)+1);} // Number of key, data pairs to copy
+  Layout.Field at()    {return variable("at",         logTwo(maxStuckSize)+1);} // Position in which to insert in parent
   Layout.Field key()   {return variable("key",        bitsPerKey);}             // A field capable of holding a key value
   Layout.Field data()  {return variable("data",       bitsPerData);}            // A field capable of holding a data value
   Layout.Field fullButOne() {return variable("fullButOne",         1);}         // Whether the stuck is full except for one
@@ -102,7 +102,7 @@ Stuck        array  %d
   void isFull(Layout.Field full)                                                // Whether the stuck is full
    {L.P.new Instruction()
      {void action()
-       {full.value = stuckSize.value >= size ? 1 : 0;
+       {full.value = stuckSize.value >= maxStuckSize ? 1 : 0;
        }
      };
    }
@@ -110,7 +110,7 @@ Stuck        array  %d
   void isFullButOne(Layout.Field full)                                          // Whether the stuck is full except for one
    {L.P.new Instruction()
      {void action()
-       {full.value = stuckSize.value >= size - 1 ? 1 : 0;
+       {full.value = stuckSize.value >= maxStuckSize - 1 ? 1 : 0;
        }
      };
    }
@@ -137,7 +137,7 @@ Stuck        array  %d
   void push()                                                                   // Push a new key, data pair on the stack
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot push to a full stuck");
           return;
          }
@@ -165,12 +165,12 @@ Stuck        array  %d
   void unshift()                                                                // Unshift a key, data pair into the stack after moving all the existing elements up one
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot unshift into a full stuck");
           return;
          }
 
-        for (int i = size; i > 1; --i)
+        for (int i = maxStuckSize; i > 1; --i)
          {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
           stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
          }
@@ -232,7 +232,7 @@ Stuck        array  %d
   void pastLastElement()                                                        // Get the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value > size-1)
+       {if (stuckSize.value > maxStuckSize - 1)
          {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
           return;
          }
@@ -328,7 +328,7 @@ Stuck        array  %d
   void setPastLastElement()                                                     // Set the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot set the element beyond the last element because the stuck is full");
           return;
          }
@@ -342,7 +342,7 @@ Stuck        array  %d
   void setPastLastKey()                                                         // Set the key beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot set the key element beyond the last element because the stuck is full");
           return;
          }
@@ -354,7 +354,7 @@ Stuck        array  %d
   void setPastLastData()                                                        // Set the data element beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot set the data element beyond the last element because the stuck is full");
           return;
          }
@@ -366,12 +366,12 @@ Stuck        array  %d
   void insertElementAt(Layout.Field Index)                                      // Insert a key, data pair at the specified index moving the elements above this position up one place to make room
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot insert into a full stuck");
           return;
          }
 
-        for (int i = size; i > Index.value+1; --i)
+        for (int i = maxStuckSize; i > Index.value+1; --i)
          {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
           stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
          }
@@ -398,7 +398,7 @@ Stuck        array  %d
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Index.value]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[Index.value]);
 
-        for (int i = Index.value; i < size-1; ++i)
+        for (int i = Index.value; i < maxStuckSize-1; ++i)
          {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
           stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
          }
@@ -426,7 +426,7 @@ Stuck        array  %d
   void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= size)
+       {if (stuckSize.value >= maxStuckSize)
          {L.stopProgram("Cannot search a full stuck because the first element past the last element is needed as the return value if no key matches");
           return;
          }
@@ -456,11 +456,11 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  < Copy)
+        if (Left.maxStuckSize  < Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
-        if (Right.size < stuckSize.value - Copy)
+        if (Right.maxStuckSize < stuckSize.value - Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
@@ -487,11 +487,11 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  <  Copy)
+        if (Left.maxStuckSize  <  Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
-        if (Right.size <  Copy)
+        if (Right.maxStuckSize <  Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
@@ -520,7 +520,7 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  <  Copy)
+        if (Left.maxStuckSize  <  Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
@@ -547,7 +547,7 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Left.size  <  Copy)
+        if (Left.maxStuckSize  <  Copy)
          {L.P.stopProgram("Left stuck too small");
           return;
          }
@@ -578,7 +578,7 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Right.size <  Copy)
+        if (Right.maxStuckSize <  Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
@@ -601,7 +601,7 @@ Stuck        array  %d
          {L.P.stopProgram("Cannot copy beyond end of stuck");
           return;
          }
-        if (Right.size <  Copy)
+        if (Right.maxStuckSize < Copy)
          {L.P.stopProgram("Right stuck too small");
           return;
          }
@@ -626,7 +626,7 @@ Stuck        array  %d
      {void action()
        {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize > size)
+        if (sourceSize + targetSize > maxStuckSize)
          {L.P.stopProgram("Not enough room in target to merge source as well");
           return;
          }
@@ -644,7 +644,7 @@ Stuck        array  %d
      {void action()
        {final int leftSize  = Left .stuckSize.value;
         final int rightSize = Right.stuckSize.value;
-        if (leftSize + rightSize > size)
+        if (leftSize + rightSize > maxStuckSize)
          {L.P.stopProgram("Not enough room in target for left and right");
           return;
          }
@@ -666,7 +666,7 @@ Stuck        array  %d
      {void action()
        {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize + 1 > size)                                 // Check size
+        if (sourceSize + targetSize + 1 > maxStuckSize)                         // Check size
          {L.P.stopProgram("Not enough room in target to merge key and source as well");
           return;
          }
@@ -687,7 +687,7 @@ Stuck        array  %d
      {void action()
        {final int leftSize  = Left .stuckSize.value;
         final int rightSize = Right.stuckSize.value;
-        if (leftSize + rightSize + 1 > size)                                    // Check size
+        if (leftSize + rightSize + 1 > maxStuckSize)                            // Check size
          {L.P.stopProgram("Not enough room in target to left, key and right");
           return;
          }

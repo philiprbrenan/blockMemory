@@ -84,8 +84,8 @@ stucks         array  %d
 //D2 Allocation                                                                 // Allocate stucks from the free chain
 
   void createFreeChain()                                                        // Create the free chain
-   {final Layout.Field index = index();
-    final Layout.Program p = L.startNewProgram();
+   {final Layout.Field   index = index();
+    final Layout.Program p     = L.startNewProgram();
     freeStart.iWrite(1);
     for (int i = 1; i < size; i++)
      {final int I = i;
@@ -104,7 +104,7 @@ stucks         array  %d
     L.continueProgram(p);
    }
 
-  private void allocate(Layout.Field ref)                                       // Allocate a stuck and set a ref to the allocated node
+  private void allocate(Layout.Field ref, boolean leaf)                         // Allocate a stuck and set a ref to the allocated node
    {final Layout.Field index = index();
     L.P.new Instruction()
      {void action()
@@ -112,30 +112,19 @@ stucks         array  %d
          {stopProgram("Out of memory");
           return;
          }
-        ref.value = index.value = freeStart.value;                              // Head of free chain gives allocated stuck
+        index.move(freeStart);                                                  // Head of free chain gives allocated stuck
+        ref  .move(freeStart);                     ;                            // Head of free chain gives allocated stuck
+        stuckIsFree.zero(index);                                                // Show as in use
+        freeNext.read(index);                                                   // Locate next stuck on free chain to become new first stuck on free chain
+        freeStart.move(freeNext);                                               // Next stuck on free chain becomes head of free chain
+        freeNext.zero(index);                                                   // Clear the next field from the current stuck
+        if (leaf) setLeaf(ref); else setBranch(ref);
        }
      };
-
-    stuckIsFree.iZero(index);                                                   // Show as in use
-    freeNext.iRead(index);                                                      // Locate next stuck on free chain to become new first stuck on free chain
-
-    L.P.new Instruction()
-     {void action()
-       {freeStart.value = freeNext.value;                                       // Next stuck on free chain becomes head of free chain
-       }
-     };
-    freeNext.iZero(index);                                                      // Clear the next field from the current stuck
    }
 
-  private void allocateLeaf(Layout.Field ref)                                   // Allocate a stuck, set a ref to the allocated node and mark it a leaf
-   {allocate(ref);
-    setLeaf(ref);
-   }
-
-  private void allocateBranch(Layout.Field ref)                                 // Allocate a stuck, set a ref to the allocated node and mark it a branch
-   {allocate(ref);
-    setBranch(ref);
-   }
+  private void allocateLeaf  (Layout.Field ref) {allocate(ref, true);}          // Allocate a stuck, set a ref to the allocated node and mark it a leaf
+  private void allocateBranch(Layout.Field ref) {allocate(ref, false);}         // Allocate a stuck, set a ref to the allocated node and mark it a branch
 
   private void free(Layout.Field ref)                                           // Free the indicated stuck to make it available for reuse
    {L.P.new Instruction()
@@ -147,9 +136,9 @@ stucks         array  %d
         freeNext.move(freeStart);
         freeNext.write(ref);                                                    // Append the free chain to this stuck
         freeStart.move(ref);                                                    // This stuck becomes the first stuick on the free chain
+        stuckIsFree.one(ref);                                                   // Show as free
        }
      };
-    stuckIsFree.iOne(ref);                                                      // Show as free
    }
 
 //D2 Stuck                                                                      // Get and set stucks within btree
@@ -213,8 +202,11 @@ stucks         array  %d
     stuckIsLeaf.iZero(i);
    }
 
-  void setLeaf  (Layout.Field i) {stuckIsLeaf.iOne (i);}                        // Set a stuck in the btree to be a leaf
-  void setBranch(Layout.Field i) {stuckIsLeaf.iZero(i);}                        // Set a stuck in the btree to be a branch
+  void setLeaf  (Layout.Field i)  {stuckIsLeaf.one (i);}                        // Set a stuck in the btree to be a leaf
+  void setBranch(Layout.Field i)  {stuckIsLeaf.zero(i);}                        // Set a stuck in the btree to be a branch
+
+  void iSetLeaf  (Layout.Field i) {stuckIsLeaf.iOne (i);}                       // Set a stuck in the btree to be a leaf
+  void iSetBranch(Layout.Field i) {stuckIsLeaf.iZero(i);}                       // Set a stuck in the btree to be a branch
 
   void isLeaf(Layout.Field index, Layout.Field isLeaf)                          // Is leaf at indicated index
    {stuckIsLeaf.iRead(index);
@@ -1053,7 +1045,7 @@ stucks         array  %d
 
 //D1 Insertion                                                                  // Insert a key, data pair into the tree if ther is room for it or update and existing key with a new datum
 
-  private void findAndInsert(Layout.Field Found)                                // Find the leaf that should contain this key and insert or update it is possible setting Found to true if found else to false indocatying that the key, data pair still needs to be inserted
+  private void findAndInsert(Layout.Field Found)                                // Find the leaf that should contain this key and insert or update it is possible setting Found to true if found else to false indicating that the key, data pair still needs to be inserted
    {final Stuck  S          = stuck();
     Layout.Field Key        = S.key();
     Layout.Field Data       = S.data();
@@ -1264,6 +1256,32 @@ stucks         array  %d
      };
    }
 
+//D1 Deletion                                                                   // Delete a key data pair from the btree returning the data associated with the key
+
+  private void delete(Layout.Field Data)                                        // Find the leaf that contains this key and delete it
+   {final Stuck  S          = stuck();
+    Layout.Field Key        = S.key();
+    Layout.Field index      = index();
+    Layout.Field stuckIndex = S.index();
+    Layout.Field found      = found();
+
+    L.P.new Block()
+     {void code()
+       {Key.iMove(stuckKeys);
+        find(Key, found, Data, index, stuckIndex);                              // Find the leaf that should contain the key and possibly the key.
+        copyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
+        L.P.new If (found)                                                      // Found the key in the leaf so remove it
+         {void Then()
+           {S.removeElementAt(stuckIndex);                                      // Remove the key
+            saveStuckInto(S, index);                                            // Save modified stuck back into btree
+            stuckKeys.iMove(Key);                                               // Reload key
+            merge();                                                            // Merge along key path
+           }
+         };
+       }
+     };
+   }
+
 //D1 Tests                                                                      // Test the btree
 
   final static int[]random_100 = {27, 442, 545, 317, 511, 578, 391, 993, 858, 586, 472, 906, 658, 704, 882, 246, 261, 501, 354, 903, 854, 279, 526, 686, 987, 403, 401, 989, 650, 576, 436, 560, 806, 554, 422, 298, 425, 912, 503, 611, 135, 447, 344, 338, 39, 804, 976, 186, 234, 106, 667, 494, 690, 480, 288, 151, 773, 769, 260, 809, 438, 237, 516, 29, 376, 72, 946, 103, 961, 55, 358, 232, 229, 90, 155, 657, 681, 43, 907, 564, 377, 615, 612, 157, 922, 272, 490, 679, 830, 839, 437, 826, 577, 937, 884, 13, 96, 273, 1, 188};
@@ -1309,8 +1327,8 @@ stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
 stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 """);
 
-    b.allocate(x);
-    b.allocate(y);
+    b.allocate(x, false);
+    b.allocate(y, false);
     b.runProgram();
 
     ok(x, "index: value=1");
@@ -1362,10 +1380,10 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     final Stuck X = b.stuck();
     final Stuck Y = b.stuck();
     final Stuck Z = b.stuck();
-    b.allocate(s);
-    b.allocate(t);
-    b.allocate(x);
-    b.allocate(y);
+    b.allocate(s, true);
+    b.allocate(t, true);
+    b.allocate(x, true);
+    b.allocate(y, true);
     b.runProgram();
 
     b.clearProgram();
@@ -1404,10 +1422,10 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.runProgram();
 
     b.clearProgram();
-    b.saveStuckInto(S, s);   b.setLeaf(s);
-    b.saveStuckInto(T, t);   b.setLeaf(t);
-    b.saveStuckInto(X, x);   b.setLeaf(x);
-    b.saveStuckInto(Y, y);   b.setLeaf(y);
+    b.saveStuckInto(S, s);   b.iSetLeaf(s);
+    b.saveStuckInto(T, t);   b.iSetLeaf(t);
+    b.saveStuckInto(X, x);   b.iSetLeaf(x);
+    b.saveStuckInto(Y, y);   b.iSetLeaf(y);
     b.saveStuckIntoRoot(Z);  b.setRootAsBranch();
     b.runProgram();
 //stop(b.dump());
@@ -1742,7 +1760,7 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                     b.setRootAsBranch();
-    b.allocateLeaf(L); b.saveStuckInto(l, L);   b.setLeaf(L);
+    b.allocateLeaf(L); b.saveStuckInto(l, L);   b.iSetLeaf(L);
     b.runProgram();
     ok(b.dump(), """
 Btree
@@ -1800,7 +1818,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                       b.setRootAsBranch();
-    b.allocateBranch(L); b.saveStuckInto(l, L);   b.setLeaf(L);
+    b.allocateBranch(L); b.saveStuckInto(l, L);   b.iSetLeaf(L);
     b.runProgram();
     //stop(b.dump());
     ok(b.dump(), """
@@ -1860,7 +1878,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                     b.setRootAsBranch();
-    b.allocateBranch(L); b.saveStuckInto(l, L); b.setBranch(L);
+    b.allocateBranch(L); b.saveStuckInto(l, L); b.iSetBranch(L);
     b.runProgram();
     //stop(b.dump());
     ok(b.dump(), """
@@ -1920,7 +1938,7 @@ stuckData: value=3, 0=2, 1=3, 2=0, 3=0
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                       b.setRootAsBranch();
-    b.allocateBranch(L); b.saveStuckInto(l, L);   b.setBranch(L);
+    b.allocateBranch(L); b.saveStuckInto(l, L);   b.iSetBranch(L);
     b.runProgram();
     //stop(b.dump());
     ok(b.dump(), """
@@ -2442,6 +2460,259 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
+  static void test_delete()
+   {final Btree b = test_create();
+    final Stuck s = b.stuck();
+    final Layout.Field d = s.data();
+    b.L.P.maxSteps = 9000;
+
+    final int N = 32;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    //stop(b);
+    ok(b, """
+                                                      16                                                                   |
+                                                      0                                                                    |
+                                                      6                                                                    |
+                                                      11                                                                   |
+          4          8               12                               20               24                28                |
+          6          6.1             6.2                              11               11.1              11.2              |
+          1          3               4                                8                10                9                 |
+                                     7                                                                   2                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,26,27,28=9     29,30,31,32=2 |
+""");
+
+    final StringBuilder t = new StringBuilder();
+    for (int i = N; i >= 2; i -= 2)                                             // Delete evens in reverse
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.delete(d);
+      b.runProgram();
+      t.append(""+b);
+      ok(d, "data: value="+(i+1));
+     }
+    for (int i = 1; i <= N; i += 2)                                             // Delete odds
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.delete(d);
+      b.runProgram();
+      t.append(""+b);
+      ok(d, "data: value="+(i+1));
+     }
+    //stop(t);
+    ok(""+t, """
+                                                      16                                                                |
+                                                      0                                                                 |
+                                                      6                                                                 |
+                                                      11                                                                |
+          4          8               12                               20               24                28             |
+          6          6.1             6.2                              11               11.1              11.2           |
+          1          3               4                                8                10                9              |
+                                     7                                                                   2              |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,26,27,28=9     29,30,31=2 |
+                                                      16                                                             |
+                                                      0                                                              |
+                                                      6                                                              |
+                                                      11                                                             |
+          4          8               12                               20               24                28          |
+          6          6.1             6.2                              11               11.1              11.2        |
+          1          3               4                                8                10                9           |
+                                     7                                                                   2           |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,26,27,28=9     29,31=2 |
+                                                      16                                                          |
+                                                      0                                                           |
+                                                      6                                                           |
+                                                      11                                                          |
+          4          8               12                               20               24             28          |
+          6          6.1             6.2                              11               11.1           11.2        |
+          1          3               4                                8                10             9           |
+                                     7                                                                2           |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,26,27=9     29,31=2 |
+                                                      16                                                 |
+                                                      0                                                  |
+                                                      6                                                  |
+                                                      11                                                 |
+          4          8               12                               20               24                |
+          6          6.1             6.2                              11               11.1              |
+          1          3               4                                8                10                |
+                                     7                                                 9                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,27,29,31=9 |
+                                                      16                                              |
+                                                      0                                               |
+                                                      6                                               |
+                                                      11                                              |
+          4          8               12                               20            24                |
+          6          6.1             6.2                              11            11.1              |
+          1          3               4                                8             10                |
+                                     7                                              9                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23=10     25,27,29,31=9 |
+                                                      16                                           |
+                                                      0                                            |
+                                                      6                                            |
+                                                      11                                           |
+          4          8               12                               20         24                |
+          6          6.1             6.2                              11         11.1              |
+          1          3               4                                8          10                |
+                                     7                                           9                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,23=10     25,27,29,31=9 |
+                                                      16                                        |
+                                                      0                                         |
+                                                      6                                         |
+                                                      11                                        |
+          4          8               12                            20         24                |
+          6          6.1             6.2                           11         11.1              |
+          1          3               4                             8          10                |
+                                     7                                        9                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19=8   21,23=10     25,27,29,31=9 |
+                                                      16                              |
+                                                      0                               |
+                                                      6                               |
+                                                      11                              |
+          4          8               12                               24              |
+          6          6.1             6.2                              11              |
+          1          3               4                                8               |
+                                     7                                9               |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,19,21,23=8   25,27,29,31=9 |
+                                                   16                              |
+                                                   0                               |
+                                                   6                               |
+                                                   11                              |
+          4          8               12                            24              |
+          6          6.1             6.2                           11              |
+          1          3               4                             8               |
+                                     7                             9               |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15=7   17,19,21,23=8   25,27,29,31=9 |
+                                                16                              |
+                                                0                               |
+                                                6                               |
+                                                11                              |
+          4          8               12                         24              |
+          6          6.1             6.2                        11              |
+          1          3               4                          8               |
+                                     7                          9               |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,15=7   17,19,21,23=8   25,27,29,31=9 |
+                                             16                              |
+                                             0                               |
+                                             6                               |
+                                             11                              |
+          4          8            12                         24              |
+          6          6.1          6.2                        11              |
+          1          3            4                          8               |
+                                  7                          9               |
+1,2,3,4=1  5,6,7,8=3    9,10,11=4    13,15=7   17,19,21,23=8   25,27,29,31=9 |
+                                     16                              |
+                                     0                               |
+                                     6                               |
+                                     11                              |
+          4          8                               24              |
+          6          6.1                             11              |
+          1          3                               8               |
+                     4                               9               |
+1,2,3,4=1  5,6,7,8=3    9,11,13,15=4   17,19,21,23=8   25,27,29,31=9 |
+                                   16                              |
+                                   0                               |
+                                   6                               |
+                                   11                              |
+          4        8                               24              |
+          6        6.1                             11              |
+          1        3                               8               |
+                   4                               9               |
+1,2,3,4=1  5,6,7=3    9,11,13,15=4   17,19,21,23=8   25,27,29,31=9 |
+                                 16                              |
+                                 0                               |
+                                 6                               |
+                                 11                              |
+          4      8                               24              |
+          6      6.1                             11              |
+          1      3                               8               |
+                 4                               9               |
+1,2,3,4=1  5,7=3    9,11,13,15=4   17,19,21,23=8   25,27,29,31=9 |
+                               16                              |
+                               0                               |
+                               6                               |
+                               11                              |
+        4      8                               24              |
+        6      6.1                             11              |
+        1      3                               8               |
+               4                               9               |
+1,2,3=1  5,7=3    9,11,13,15=4   17,19,21,23=8   25,27,29,31=9 |
+                        16                              |
+                        0                               |
+                        6                               |
+                        11                              |
+          8                             24              |
+          6                             11              |
+          1                             8               |
+          4                             9               |
+1,3,5,7=1  9,11,13,15=4   17,19,21,23=8   25,27,29,31=9 |
+        8             16               24               |
+        0             0.1              0.2              |
+        1             4                8                |
+                                       9                |
+3,5,7=1  9,11,13,15=4    17,19,21,23=8    25,27,29,31=9 |
+      8             16               24               |
+      0             0.1              0.2              |
+      1             4                8                |
+                                     9                |
+5,7=1  9,11,13,15=4    17,19,21,23=8    25,27,29,31=9 |
+    8             16               24               |
+    0             0.1              0.2              |
+    1             4                8                |
+                                   9                |
+7=1  9,11,13,15=4    17,19,21,23=8    25,27,29,31=9 |
+             16              24               |
+             0               0.1              |
+             1               8                |
+                             9                |
+9,11,13,15=1   17,19,21,23=8    25,27,29,31=9 |
+           16              24               |
+           0               0.1              |
+           1               8                |
+                           9                |
+11,13,15=1   17,19,21,23=8    25,27,29,31=9 |
+        16              24               |
+        0               0.1              |
+        1               8                |
+                        9                |
+13,15=1   17,19,21,23=8    25,27,29,31=9 |
+     16              24               |
+     0               0.1              |
+     1               8                |
+                     9                |
+15=1   17,19,21,23=8    25,27,29,31=9 |
+              24              |
+              0               |
+              1               |
+              9               |
+17,19,21,23=1   25,27,29,31=9 |
+           24              |
+           0               |
+           1               |
+           9               |
+19,21,23=1   25,27,29,31=9 |
+        24              |
+        0               |
+        1               |
+        9               |
+21,23=1   25,27,29,31=9 |
+     24              |
+     0               |
+     1               |
+     9               |
+23=1   25,27,29,31=9 |
+25,27,29,31=0 |
+27,29,31=0 |
+29,31=0 |
+31=0 |
+=0 |
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -2467,11 +2738,11 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     test_mergeBranchesAtTop();
     test_mergeBranchesNotTop();
     test_merge();
+    test_delete();
    }
 
   static void newTests()                                                        // Tests being worked on
    {oldTests();
-    //test_putRandom();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

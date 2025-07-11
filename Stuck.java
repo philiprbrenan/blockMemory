@@ -669,7 +669,7 @@ Stuck        array  %d
      {void action()
        {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize + 1 > maxStuckSize)                         // Check size
+        if (sourceSize + targetSize + 1 >= maxStuckSize)                         // Check size
          {success.value = 0;
           return;
          }
@@ -691,7 +691,7 @@ Stuck        array  %d
      {void action()
        {final int leftSize  = Left .stuckSize.value;
         final int rightSize = Right.stuckSize.value;
-        if (leftSize + rightSize + 1 > maxStuckSize)                            // Check size
+        if (leftSize + rightSize + 1 >= maxStuckSize)                           // Check size
          {success.value = 0;
           return;
          }

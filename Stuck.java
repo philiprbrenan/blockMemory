@@ -70,15 +70,16 @@ Stuck        array  %d
     return v;
    }
 
-  Layout.Field found() {return variable("found",                   1);}         // Whether a key was found in a stuck or not
-  Layout.Field empty() {return variable("empty",                   1);}         // Whether the stuck is empty
-  Layout.Field full()  {return variable("full",                    1);}         // Whether the stuck is full
-  Layout.Field index() {return variable("stuckIndex", logTwo(maxStuckSize)+1);} // Index a key, data pair in a stuck
-  Layout.Field count() {return variable("count",      logTwo(maxStuckSize)+1);} // Number of key, data pairs to copy
-  Layout.Field at()    {return variable("at",         logTwo(maxStuckSize)+1);} // Position in which to insert in parent
-  Layout.Field key()   {return variable("key",        bitsPerKey);}             // A field capable of holding a key value
-  Layout.Field data()  {return variable("data",       bitsPerData);}            // A field capable of holding a data value
-  Layout.Field fullButOne() {return variable("fullButOne",         1);}         // Whether the stuck is full except for one
+  Layout.Field found()  {return variable("found",      1);}                     // Whether a key was found in a stuck or not
+  Layout.Field empty()  {return variable("empty",      1);}                     // Whether the stuck is empty
+  Layout.Field full()   {return variable("full",       1);}                     // Whether the stuck is full
+  Layout.Field success(){return variable("success",    1);}                     // Whether a merge completed successfully
+  Layout.Field index()  {return variable("stuckIndex", logTwo(maxStuckSize)+1);}// Index a key, data pair in a stuck
+  Layout.Field count()  {return variable("count",      logTwo(maxStuckSize)+1);}// Number of key, data pairs to copy
+  Layout.Field at()     {return variable("at",         logTwo(maxStuckSize)+1);}// Position in which to insert in parent
+  Layout.Field key()    {return variable("key",        bitsPerKey);}            // A field capable of holding a key value
+  Layout.Field data()   {return variable("data",       bitsPerData);}           // A field capable of holding a data value
+  Layout.Field fullButOne() {return variable("fullButOne", 1);}                 // Whether the stuck is full except for one
 
   Layout.Field key(int Value)
    {final Layout.Field k = key();
@@ -621,13 +622,13 @@ Stuck        array  %d
 
 //D1 Merge                                                                      // Merge stucks in various weays
 
-  void merge(Stuck source)                                                      // Concatenate the indicated stuck on to the end of the current one
+  void merge(Stuck source, Layout.Field success)                                // Concatenate the indicated stuck on to the end of the current one
    {L.P.new Instruction()
      {void action()
        {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
         if (sourceSize + targetSize > maxStuckSize)
-         {L.P.stopProgram("Not enough room in target to merge source as well");
+         {success.value = 0;
           return;
          }
         for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
@@ -635,17 +636,18 @@ Stuck        array  %d
           stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
          }
         stuckSize.value += sourceSize;                                          // New size of target
+        success.value = 1;
        }
      };
    }
 
-  void merge(Stuck Left, Stuck Right)                                           // Replace the current stuck with the concatenation of the left and right stucks
+  void merge(Stuck Left, Stuck Right, Layout.Field success)                     // Replace the current stuck with the concatenation of the left and right stucks
    {L.P.new Instruction()
      {void action()
        {final int leftSize  = Left .stuckSize.value;
         final int rightSize = Right.stuckSize.value;
         if (leftSize + rightSize > maxStuckSize)
-         {L.P.stopProgram("Not enough room in target for left and right");
+         {success.value = 0;
           return;
          }
         for (int i = 0; i < leftSize; ++i)                                      // Copy in left
@@ -657,17 +659,18 @@ Stuck        array  %d
           stuckData.memory[leftSize+i] = (BitSet)Right.stuckData.memory[i].clone();
          }
         stuckSize.value = leftSize + rightSize;                                 // New size of target
+        success.value = 1;
        }
      };
    }
 
-  void mergeButOne(Layout.Field Key, Stuck source)                              // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
+  void mergeButOne(Layout.Field Key, Stuck source, Layout.Field success)        // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
    {L.P.new Instruction()
      {void action()
        {final int sourceSize = source.stuckSize.value;
         final int targetSize =        stuckSize.value;
         if (sourceSize + targetSize + 1 > maxStuckSize)                         // Check size
-         {L.P.stopProgram("Not enough room in target to merge key and source as well");
+         {success.value = 0;
           return;
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[targetSize], Key.value);      // Add key over past last data element
@@ -678,17 +681,18 @@ Stuck        array  %d
         stuckData.memory[targetSize+sourceSize+1] =                             // Past last data element from source
          (BitSet)source.stuckData.memory[sourceSize].clone();
         stuckSize.value += sourceSize + 1;                                      // New size of target
+        success.value = 1;
        }
      };
    }
 
-  void mergeButOne(Stuck Left, Layout.Field Key, Stuck Right)                   // Concatenate the left and right stucks separated by the key over th past last data element of the left stuck into the target
+  void mergeButOne(Stuck Left, Layout.Field Key, Stuck Right, Layout.Field success) // Concatenate the left and right stucks separated by the key over th past last data element of the left stuck into the target
    {L.P.new Instruction()
      {void action()
        {final int leftSize  = Left .stuckSize.value;
         final int rightSize = Right.stuckSize.value;
         if (leftSize + rightSize + 1 > maxStuckSize)                            // Check size
-         {L.P.stopProgram("Not enough room in target to left, key and right");
+         {success.value = 0;
           return;
          }
         for (int i = 0; i < leftSize; ++i)                                      // Concatenate each key, data pair from source
@@ -705,6 +709,7 @@ Stuck        array  %d
         stuckData.memory[leftSize+rightSize+1] =                                // Past last data element from source
          (BitSet)Right.stuckData.memory[rightSize].clone();
         stuckSize.value = leftSize + rightSize + 1;                             // New size of target
+        success.value = 1;
        }
      };
    }
@@ -1168,20 +1173,22 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     final Stuck t = test_push(); t.L.P = s.L.P;
     final Stuck m = test_push(); m.L.P = s.L.P;
+    final Layout.Field success = s.success();
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.merge(t);
+    s.merge(t, success);
     s.runProgram();
-    ok(s.L.P.rc, "Not enough room in target to merge source as well");
+    ok(success, "success: value=0");
 
     s.clearProgram();
     s.pop();
     s.pop();
     t.pop();
     t.pop();
-    s.merge(t);
+    s.merge(t, success);
     s.runProgram();
+    ok(success, "success: value=1");
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2
@@ -1190,15 +1197,16 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
 
     m.clearProgram();
     m.L.P.supressErrorMessagePrint = true;
-    m.merge(s, t);
+    m.merge(s, t, success);
     m.runProgram();
-    ok(s.L.P.rc, "Not enough room in target for left and right");
+    ok(success, "success: value=0");
 
     m.clearProgram();
     s.pop();
     s.pop();
-    m.merge(s, t);
+    m.merge(s, t, success);
     m.runProgram();
+    ok(success, "success: value=1");
     ok(m, """
 stuckSize: value=4
 stuckKeys: value=0, 0=1, 1=2, 2=1, 3=2
@@ -1216,20 +1224,21 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     final Stuck t = test_push(); t.L.P = s.L.P;
     final Stuck m = test_push(); m.L.P = s.L.P;
-
+    final Layout.Field success = s.success();
     final Layout.Field k = t.key(11);
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.mergeButOne(k, t);
+    s.mergeButOne(k, t, success);
     s.runProgram();
-    ok(s.L.P.rc, "Not enough room in target to merge key and source as well");
+    ok(success, "success: value=0");
 
     s.clearProgram();
     s.pop(); s.pop(); s.pop();
     t.pop(); t.pop(); t.pop();
-    s.mergeButOne(k, t);
+    s.mergeButOne(k, t, success);
     s.runProgram();
+    ok(success, "success: value=1");
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=2, 0=1, 1=11, 2=1, 3=4
@@ -1238,14 +1247,15 @@ stuckData: value=4, 0=2, 1=4, 2=2, 3=4
 
     m.clearProgram();
     m.L.P.supressErrorMessagePrint = true;
-    m.mergeButOne(s, k, t);
+    m.mergeButOne(s, k, t, success);
     m.runProgram();
-    ok(m.L.P.rc, "Not enough room in target to left, key and right");
+    ok(success, "success: value=0");
 
     m.clearProgram();
     s.pop(); s.pop();
-    m.mergeButOne(s, k, t);
+    m.mergeButOne(s, k, t, success);
     m.runProgram();
+    ok(success, "success: value=1");
     ok(m, """
 stuckSize: value=3
 stuckKeys: value=0, 0=1, 1=11, 2=1, 3=4

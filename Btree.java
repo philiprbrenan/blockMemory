@@ -19,6 +19,7 @@ class Btree extends Test                                                        
   final Layout.Field stuckSize;                                                 // Current size of stuck up to the maximum size
   final Layout.Field stuckKeys;                                                 // Keys field
   final Layout.Field stuckData;                                                 // Data field
+  boolean supressMerge = false;                                                 // Supress merges during put to allow merge steps to be tested individually.  If this is on the trees built for testing are already merged so there is nothing to test.
   static boolean debug = false;                                                 // Debug if enabled
 
 //D1 Construction                                                               // Construct and layout a btree
@@ -820,9 +821,7 @@ stucks         array  %d
      {void code()
        {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
          {void action()
-           {if (p.stuckSize.value < 2)
-             {L.P.stopProgram("Parent must have at least two entries");
-             }
+           {if (p.stuckSize.value < 2) L.P.Goto(end);
            };
          };
 
@@ -861,13 +860,7 @@ stucks         array  %d
 
     L.P.new Block()
      {void code()
-       {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
-         {void action()
-           {if (p.stuckSize.value == 0)
-             {L.P.stopProgram("Parent must have at least one entry and hence two children for a merge");
-             }
-           };
-         };
+       {L.P.GoZero(end, p.stuckSize);                                           // Stuck must have at least one entry
 
         ls.iMove(p.stuckSize); ls.iDec();                                       // Index of left leaf known to be valid as the parent contains at least one entry resulting in two children
         rs.iMove(p.stuckSize);                                                  // Index of right leaf
@@ -1198,89 +1191,71 @@ stucks         array  %d
          };
        }
      };
+    if (!supressMerge)                                                          // Switch of combined merge during testing so that the individual merges can tested
+     {stuckKeys.iMove(Key);                                                     // Key being inserted or updated
+      merge();                                                                  // Merge along path to key
+     }
    }
 
   public void merge()                                                           // Merge stucks on either side of the path to the key
    {final Stuck        S          = stuck();
-    final Layout.Field p          = index();                                    // Previous or parent position in the btree
     final Layout.Field s          = index();                                    // Current position in the btree
     final Layout.Field Key        = S.key();
-    final Layout.Field Data       = S.data();
-    final Layout.Field index      = index();
     final Layout.Field stuckIndex = S.index();
-    final Layout.Field full       = S.full();
     final Layout.Field found      = S.found();
+    final Layout.Field within     = bit("within");                              // In the body of the stuck and not at the top
     final Layout.Field isLeaf     = bit("isLeaf");
-    final Layout.Field fullButOne = S.fullButOne();
+    final Layout.Field success    = S.success();
 
     Key.iMove(stuckKeys);                                                       // Save path key
 
     L.P.new Block()                                                             // The block is left as soon as possible
      {void code()
-       {stuckKeys.iMove(Key);
-        isRootLeaf(isLeaf);
-        L.P.new If (isLeaf)                                                     // Root is a leaf so it cannot be merged
-         {void Then()
+       {s.iZero();                                                              // Start at the root and step down through the tree along the path of the key merging on each side of the key as we go
+        new IsLeaf(s)                                                           // Root is a leaf or a branch
+         {void Leaf()                                                           // Root is a leaf - nothing to merge
            {L.P.iGoto(end);
            }
          };
-        isRootBranchFull(fullButOne);                                           // Root is a full branch so split it
-        L.P.new If (fullButOne)
-         {void Then()
-           {splitRootBranch();                                                  // Split the branch root to make room
-            L.P.iGoto(start);                                                   // Restart descent to make sure we are on the right path
-           }
-         };
 
-        s.iZero(); p.iZero();                                                   // Start at the root and step down through the tree to the key splitting as we go
+        mergeLeavesIntoRoot(success);                                           // Try merging leaves into root
+        L.P.iGoNotZero(end, success);                                           // A successful merge makes the root a leaf so we can return
+
+        mergeBranchesIntoRoot(success);                                         // Try merging branches into root
+
         copyStuckFrom(S, s);                                                    // Load root
 
         L.P.new Block()
          {void code()
-           {S.stuckKeys.iMove(Key);
+           {mergeLeavesAtTop  (s, success);                                     // Try merging leaves at top into parent
+            mergeBranchesAtTop(s, success);                                     // Try merging branches at top into parent
+            for (int i = 0; i < maxStuckSize-1; i++)
+             {final int I = i;
+              stuckIndex.iWrite(i);
+              L.P.new Instruction()                                             // Check we are in the body of the stuck
+               {void action()
+                 {within.value = I < S.stuckSize.value ? 1 : 0;
+                 }
+               };
+              L.P.new If(within)                                                // Within body of stuck
+               {void Then()
+                 {mergeLeavesNotTop  (s, stuckIndex, success);                  // Try merging leaves not at top into parent
+                  mergeBranchesNotTop(s, stuckIndex, success);                  // Try merging branches not at top into parent
+                 }
+               };
+             }
 
+            S.stuckKeys.iMove(Key);                                             // Following the path made by this key
             S.search_le(found, stuckIndex);                                     // Step down
-            p.iMove(s);                                                         // Parent
             s.iMove(S.stuckData);                                               // Child
             copyStuckFrom(S, s);                                                // Load child
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
-             {void Leaf()                                                       // At a leaf - search for exact match
-               {S.isFull(full);
-
-                L.P.new If (full)
-                 {void Then()                                                   // Child branch is full
-                   {L.P.new If (found)
-                     {void Then()
-                       {splitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
-                       }
-                      void Else()
-                       {splitLeafAtTop(p);                                      // Split the child leaf known to be top
-                       }
-                     };
-                   }
-                 };
-                stuckKeys.iMove(Key); stuckData.iMove(Data);                    // Key, data pair to be inserted
-                findAndInsert(found);                                           // Must be insertable now necuase we have split everything in the path of the key
-                L.P.Goto(end);                                                  // Successfully found the key
+             {void Leaf()                                                       // At a leaf - end of merging
+               {L.P.iGoto(end);
                }
-              void Branch()                                                     // Child is a branch
-               {S.isFullButOne(fullButOne);
-                L.P.new If (fullButOne)
-                 {void Then()                                                   // Child branch is full
-                   {L.P.new If (found)
-                     {void Then()
-                       {splitBranchNotTop(p, stuckIndex);                       // Split the child branch known not to be top
-                       }
-                      void Else()
-                       {splitBranchAtTop(p);                                    // Split the child branch known to be top
-                       }
-                     };
-                    s.iMove(p);                                                 // Restart at the parent so we enter the child stuck that contains the key
-                    copyStuckFrom(S, s);                                        // Reload stuck so we start again at the parent level
-                   }
-                 };
-                L.P.iGoto(start);                                                // Try again
+              void Branch()                                                     // Child is a branch - try again
+               {L.P.iGoto(start);
                }
              };
            };
@@ -2008,19 +1983,15 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
      }
     //stop(b);
     ok(b, """
-                            8                                         16                                                                                    |
-                            0                                         0.1                                                                                   |
-                            14                                        22                                                                                    |
-                                                                      15                                                                                    |
-             4                                  12                                           20                    24                                       |
-             14                                 22                                           15                    15.1                                     |
-             5                                  12                                           20                    24                                       |
-             9                                  17                                                                 6                                        |
-      2              6               10                    14                     18                    22                      26         28               |
-      5              9               12                    17                     20                    24                      6          6.1              |
-      1              4               8                     11                     16                    19                      23         25               |
-      3              7               10                    13                     18                    21                                 2                |
-1,2=1  3,4=3   5,6=4  7,8=7   9,10=8   11,12=10   13,14=11   15,16=13    17,18=16   19,20=18   21,22=19   23,24=21     25,26=23   27,28=25    29,30,31,32=2 |
+                                                      16                                                                   |
+                                                      0                                                                    |
+                                                      6                                                                    |
+                                                      11                                                                   |
+          4          8               12                               20               24                28                |
+          6          6.1             6.2                              11               11.1              11.2              |
+          1          3               4                                8                10                9                 |
+                                     7                                                                   2                 |
+1,2,3,4=1  5,6,7,8=3    9,10,11,12=4    13,14,15,16=7   17,18,19,20=8   21,22,23,24=10     25,26,27,28=9     29,30,31,32=2 |
 """);
    }
 
@@ -2039,26 +2010,22 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
      }
     //stop(b);
     ok(b, """
-                                                                            16                                        24                                       |
-                                                                            0                                         0.1                                      |
-                                                                            22                                        14                                       |
-                                                                                                                      15                                       |
-                               8                    12                                            20                                       28                  |
-                               22                   22.1                                          14                                       15                  |
-                               24                   20                                            12                                       5                   |
-                                                    17                                            9                                        6                   |
-           4        6                    10                      14                    18                   22                   26                  30        |
-           24       24.1                 20                      17                    12                   9                    5                   6         |
-           25       23                   19                      16                    11                   8                    4                   1         |
-                    21                   18                      13                    10                   7                    3                   2         |
-1,2,3,4=25   5,6=23     7,8=21   9,10=19   11,12=18     13,14=16   15,16=13   17,18=11   19,20=10   21,22=8   23,24=7    25,26=4   27,28=3   29,30=1   31,32=2 |
+                                                           16                                                                |
+                                                           0                                                                 |
+                                                           11                                                                |
+                                                           6                                                                 |
+           4            8                12                                20              24               28               |
+           11           11.1             11.2                              6               6.1              6.2              |
+           12           10               8                                 4               3                2                |
+                                         7                                                                  1                |
+1,2,3,4=12   5,6,7,8=10     9,10,11,12=8     13,14,15,16=7   17,18,19,20=4   21,22,23,24=3    25,26,27,28=2    29,30,31,32=1 |
 """);
    }
 
   static void test_putRandom()
    {final Btree b = new Btree(64, 4, 16, 16);
 
-    b.L.P.maxSteps = 2000;
+    b.L.P.maxSteps = 8000;
 
     final int N = 32;
     for (int i = 0; i < random_100.length; ++i)
@@ -2070,23 +2037,19 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
      }
     //stop(b);
     ok(b, """
-                                                                                                                                                                                                                                                                                                                                                    528                                                                                                                                                                                                                                                                  |
-                                                                                                                                                                                                                                                                                                                                                    0                                                                                                                                                                                                                                                                    |
-                                                                                                                                                                                                                                                                                                                                                    38                                                                                                                                                                                                                                                                   |
-                                                                                                                                                                                                                                                                                                                                                    39                                                                                                                                                                                                                                                                   |
-                                                                                                                                253                                                                                          379                                                                                                                                                                                                                                        718                                                                                                                                              |
-                                                                                                                                38                                                                                           38.1                                                                                                                                                                                                                                       39                                                                                                                                               |
-                                                                                                                                50                                                                                           29                                                                                                                                                                                                                                         36                                                                                                                                               |
-                                                                                                                                                                                                                             16                                                                                                                                                                                                                                         17                                                                                                                                               |
-                                                               143                                                                                                             298                                                                            429                                                   497                                                                    582                                                                                                                                                    894                                                                    |
-                                                               50                                                                                                              29                                                                             16                                                    16.1                                                                   36                                                                                                                                                     17                                                                     |
-                                                               40                                                                                                              44                                                                             21                                                    48                                                                     27                                                                                                                                                     31                                                                     |
-                                                               25                                                                                                              14                                                                                                                                   5                                                                      11                                                                                                                                                     6                                                                      |
-              34               87               104                          156               210                235                         266               283                          341           356                              402                                 440          457                                   506                                    568                                    630                   672                688                             805           819                    856                                  909                   946               988          |
-              40               40.1             40.2                         25                25.1               25.2                        44                44.1                         14            14.1                             21                                  48           48.1                                  5                                      27                                     11                    11.1               11.2                            31            31.1                   31.2                                 6                     6.1               6.2          |
-              41               24               51                           53                26                 42                          52                33                           34            45                               15                                  49           8                                     22                                     18                                     28                    13                 46                              32            47                     23                                   43                    12                37           |
-                                                35                                                                9                                             19                                         1                                20                                               30                                    3                                      7                                                                               4                                                                    10                                                                           2            |
-1,13,27,29=41   39,43,55,72=24     90,96,103=51     106,135=35    151,155=53    157,186,188=26     229,232,234=42     237,246=9    260,261=52    272,273,279=33     288,298=19    317,338=34    344,354=45     358,376,377=1     391,401=15    403,422,425=20    436,437,438=49    442,447=8     472,480,490,494=30     501,503=22    511,516,526=3    545,554,560,564=18    576,577,578=7    586,611,612,615=28    650,657,658,667=13     679,681,686=46     690,704=4    769,773,804=32    806,809=47     826,830,839,854=23     858,882,884=10    903,906,907=43    912,922,937,946=12    961,976,987=37    989,993=2 |
+                                                                                                                                                                                                                        379                                                                                                                    528                                                                                                                                                                                                                                                                  |
+                                                                                                                                                                                                                        0                                                                                                                      0.1                                                                                                                                                                                                                                                                  |
+                                                                                                                                                                                                                        48                                                                                                                     34                                                                                                                                                                                                                                                                   |
+                                                                                                                                                                                                                                                                                                                                               39                                                                                                                                                                                                                                                                   |
+                                                               143                                                              253                                                     341                                                             429                                                   497                                                                     582                                                                          718                                                                      894                                                                     |
+                                                               48                                                               48.1                                                    48.2                                                            34                                                    34.1                                                                    39                                                                           39.1                                                                     39.2                                                                    |
+                                                               36                                                               25                                                      46                                                              14                                                    41                                                                      21                                                                           11                                                                       3                                                                       |
+                                                                                                                                                                                        10                                                                                                                    5                                                                                                                                                                                                                             6                                                                       |
+              34               87               104                          156               210                235                          266               283                                   356                            402                                 440          457                                   507                                     568                                    630                   672                688                              805           819                   856                                  909                   946               988          |
+              36               36.1             36.2                         25                25.1               25.2                         46                46.1                                  10                             14                                  41           41.1                                  5                                       21                                     11                    11.1               11.2                             3             3.1                   3.2                                  6                     6.1               6.2          |
+              37               24               45                           49                26                 38                           47                30                                    17                             15                                  44           8                                     33                                      18                                     27                    13                 42                               29            43                    32                                   40                    12                35           |
+                                                16                                                                9                                              19                                    1                              20                                               28                                    22                                      7                                                                               4                                                                    23                                                                           2            |
+1,13,27,29=37   39,43,55,72=24     90,96,103=45     106,135=16    151,155=49    157,186,188=26     229,232,234=38     237,246=9     260,261=47    272,273,279=30     288,298,317,338=19     344,354=17    358,376,377=1    391,401=15    403,422,425=20    436,437,438=44    442,447=8     472,480,490,494=28     501,503=33    511,516,526=22    545,554,560,564=18    576,577,578=7    586,611,612,615=27    650,657,658,667=13     679,681,686=42     690,704=4     769,773,804=29    806,809=43    826,830,839,854=32    858,882,884=23     903,906,907=40    912,922,937,946=12    961,976,987=35    989,993=2 |
 """);
    }
 
@@ -2135,6 +2098,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field stuckIndex = s.index();
     final Layout.Field success = s.success();
     b.L.P.maxSteps = 2000;
+    b.supressMerge = true;
 
     final int N = 10;
     for (int i = 1; i <= N; i++)
@@ -2174,6 +2138,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field index = b.index();
     final Layout.Field success = s.success();
     b.L.P.maxSteps = 2000;
+    b.supressMerge = true;
 
     final int N = 6;
     for (int i = 1; i <= N; i++)
@@ -2217,6 +2182,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field index = b.index();
     final Layout.Field success = s.success();
     b.L.P.maxSteps = 2000;
+    b.supressMerge = true;
 
     final int N = 11;
     for (int i = 1; i <= N; i++)
@@ -2266,6 +2232,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field stuckIndex = s.index();
     final Layout.Field success = s.success();
     b.L.P.maxSteps = 2000;
+    b.supressMerge = true;
 
     final int N = 20;
     for (int i = 1; i <= N; i++)
@@ -2313,6 +2280,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field index = b.index();
     final Layout.Field success = s.success();
     b.L.P.maxSteps = 2000;
+    b.supressMerge = true;
 
     final int N = 15;
     for (int i = 1; i <= N; i++)
@@ -2361,6 +2329,119 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 """);
    }
 
+  static void test_merge()
+   {final Btree b = test_create();
+    b.L.P.maxSteps = 9000;
+    b.supressMerge = true;
+
+    final int N = 32;
+    for (int i = 1; i <= N; i++)
+     {b.clearProgram();
+      b.stuckKeys.iWrite(i);
+      b.stuckData.iWrite(i+1);
+      b.put();
+      b.runProgram();
+     }
+    //stop(b);
+    ok(b, """
+                            8                                         16                                                                                    |
+                            0                                         0.1                                                                                   |
+                            14                                        22                                                                                    |
+                                                                      15                                                                                    |
+             4                                  12                                           20                    24                                       |
+             14                                 22                                           15                    15.1                                     |
+             5                                  12                                           20                    24                                       |
+             9                                  17                                                                 6                                        |
+      2              6               10                    14                     18                    22                      26         28               |
+      5              9               12                    17                     20                    24                      6          6.1              |
+      1              4               8                     11                     16                    19                      23         25               |
+      3              7               10                    13                     18                    21                                 2                |
+1,2=1  3,4=3   5,6=4  7,8=7   9,10=8   11,12=10   13,14=11   15,16=13    17,18=16   19,20=18   21,22=19   23,24=21     25,26=23   27,28=25    29,30,31,32=2 |
+""");
+
+    b.stuckKeys.value = 1; b.clearProgram(); b.merge(); b.runProgram();
+    //stop(b);
+    ok(b, """
+                                                                   16                                                                                   |
+                                                                   0                                                                                    |
+                                                                   14                                                                                   |
+                                                                   15                                                                                   |
+                     8                                                                   20                    24                                       |
+                     14                                                                  15                    15.1                                     |
+                     5                                                                   20                    24                                       |
+                     12                                                                                        6                                        |
+          4                   10         12           14                      18                    22                      26         28               |
+          5                   12         12.1         12.2                    20                    24                      6          6.1              |
+          1                   8          10           11                      16                    19                      23         25               |
+          4                                           13                      18                    21                                 2                |
+1,2,3,4=1  5,6,7,8=4   9,10=8   11,12=10     13,14=11     15,16=13   17,18=16   19,20=18   21,22=19   23,24=21     25,26=23   27,28=25    29,30,31,32=2 |
+""");
+
+    b.stuckKeys.value = 10; b.clearProgram(); b.merge(); b.runProgram();
+    //stop(b);
+    ok(b, """
+                                                     16                                                                                   |
+                                                     0                                                                                    |
+                                                     14                                                                                   |
+                                                     15                                                                                   |
+                     8                                                     20                    24                                       |
+                     14                                                    15                    15.1                                     |
+                     5                                                     20                    24                                       |
+                     12                                                                          6                                        |
+          4                         12                          18                    22                      26         28               |
+          5                         12                          20                    24                      6          6.1              |
+          1                         8                           16                    19                      23         25               |
+          4                         11                          18                    21                                 2                |
+1,2,3,4=1  5,6,7,8=4   9,10,11,12=8   13,14,15,16=11   17,18=16   19,20=18   21,22=19   23,24=21     25,26=23   27,28=25    29,30,31,32=2 |
+""");
+
+    b.stuckKeys.value = 18; b.clearProgram(); b.merge(); b.runProgram();
+    //stop(b);
+    ok(b, """
+                                                     16                                                                       |
+                                                     0                                                                        |
+                                                     14                                                                       |
+                                                     15                                                                       |
+                     8                                                                 24                                     |
+                     14                                                                15                                     |
+                     5                                                                 20                                     |
+                     12                                                                6                                      |
+          4                         12                                20                          26         28               |
+          5                         12                                20                          6          6.1              |
+          1                         8                                 16                          23         25               |
+          4                         11                                19                                     2                |
+1,2,3,4=1  5,6,7,8=4   9,10,11,12=8   13,14,15,16=11   17,18,19,20=16   21,22,23,24=19   25,26=23   27,28=25    29,30,31,32=2 |
+""");
+
+    b.stuckKeys.value = 26; b.clearProgram(); b.merge(); b.runProgram();
+    //stop(b);
+    ok(b, """
+                                                       16                                24                                |
+                                                       0                                 0.1                               |
+                                                       5                                 20                                |
+                                                                                         6                                 |
+          4          8               12                                 20                                 28              |
+          5          5.1             5.2                                20                                 6               |
+          1          4               8                                  16                                 23              |
+                                     11                                 19                                 2               |
+1,2,3,4=1  5,6,7,8=4    9,10,11,12=8    13,14,15,16=11   17,18,19,20=16   21,22,23,24=19    25,26,27,28=23   29,30,31,32=2 |
+""");
+
+    b.stuckKeys.value = 32; b.clearProgram(); b.merge(); b.runProgram();
+    //stop(b);
+    ok(b, """
+                                                       16                                                                     |
+                                                       0                                                                      |
+                                                       5                                                                      |
+                                                       20                                                                     |
+          4          8               12                                 20               24                 28                |
+          5          5.1             5.2                                20               20.1               20.2              |
+          1          4               8                                  16               19                 23                |
+                                     11                                                                     2                 |
+1,2,3,4=1  5,6,7,8=4    9,10,11,12=8    13,14,15,16=11   17,18,19,20=16   21,22,23,24=19     25,26,27,28=23     29,30,31,32=2 |
+""");
+   }
+
   static void oldTests()                                                        // Tests thought to be in good shape
    {test_create();
     test_leaf();
@@ -2385,11 +2466,12 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     test_mergeBranchesIntoRoot();
     test_mergeBranchesAtTop();
     test_mergeBranchesNotTop();
+    test_merge();
    }
 
   static void newTests()                                                        // Tests being worked on
-   {//oldTests();
-    test_mergeBranchesAtTop();
+   {oldTests();
+    //test_putRandom();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

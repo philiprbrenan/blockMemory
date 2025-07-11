@@ -3,7 +3,7 @@
 // Philip R Brenan at appaapps dot com, Appa Apps Ltd Inc., 2025
 //------------------------------------------------------------------------------
 package com.AppaApps.Silicon;                                                   // Btree in a block on the surface of a silicon chip.
-// Reduce b.index to b.index or better make a class BtreeIndex
+
 import java.util.*;
 
 class Btree extends Test                                                        // Manipulate a btree in a block of memory
@@ -66,7 +66,7 @@ stucks         array  %d
    }
 
   Layout.Field bit(String name) {return variable(name, 1);}                     // Create a bit
-  Layout.Field index()     {return variable("index", logTwo(size)+1);}// Create an index for a stuck in a btree
+  Layout.Field index()          {return variable("index", logTwo(size)+1);}     // Create an index for a stuck in a btree
   Layout.Field isLeaf()         {return variable("isLeaf", 1);}                 // Create a bit for is full
 
   void runProgram()                      {L.runProgram();}
@@ -106,19 +106,19 @@ stucks         array  %d
          {stopProgram("Out of memory");
           return;
          }
-        ref.value = index.value = freeStart.value;                         // Head of free chain gives allocated stuck
+        ref.value = index.value = freeStart.value;                              // Head of free chain gives allocated stuck
        }
      };
 
-    stuckIsFree.iZero(index);                                              // Show as in use
-    freeNext.iRead(index);                                                 // Locate next stuck on free chain to become new first stuck on free chain
+    stuckIsFree.iZero(index);                                                   // Show as in use
+    freeNext.iRead(index);                                                      // Locate next stuck on free chain to become new first stuck on free chain
 
     L.P.new Instruction()
      {void action()
        {freeStart.value = freeNext.value;                                       // Next stuck on free chain becomes head of free chain
        }
      };
-    freeNext.iZero(index);                                                 // Clear the next field from the current stuck
+    freeNext.iZero(index);                                                      // Clear the next field from the current stuck
    }
 
   private void allocateLeaf(Layout.Field ref)                                   // Allocate a stuck, set a ref to the allocated node and mark it a leaf
@@ -455,7 +455,7 @@ stucks         array  %d
        }
      };
 
-    p.splitIntoTwo(l, r, maxStuckSize / 2);                                        // Split the leaf root in two down the middle
+    p.splitIntoTwo(l, r, maxStuckSize / 2);                                     // Split the leaf root in two down the middle
     allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
     allocateLeaf(cr); saveStuckInto(r, cr);                                     // Allocate and save right leaf
                                                                                 // Update root with new children
@@ -472,8 +472,8 @@ stucks         array  %d
   private void splitRootBranch()                                                // Split a full root branch
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
     final Layout.Field isFullButOne = bit("isFullButOne");
-    final Layout.Field           cl = index(), cr = index();          // Indexes of left and right children
-    final int              midPoint = (maxStuckSize-1) / 2;                        // Mid point in parent
+    final Layout.Field           cl = index(), cr = index();                    // Indexes of left and right children
+    final int              midPoint = (maxStuckSize-1) / 2;                     // Mid point in parent
 
     copyStuckFromRoot(p);                                                       // Load branch root stuck from btree
 
@@ -627,7 +627,7 @@ stucks         array  %d
        }
      };
 
-    c.splitLow(l, maxStuckSize / 2);                                               // Split the leaf in two down the middle copying out the lower half
+    c.splitLow(l, maxStuckSize / 2);                                            // Split the leaf in two down the middle copying out the lower half
     allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
                       saveStuckInto(c, cr);                                     // Allocate and save left leaf
                                                                                 // Update root with new children
@@ -1039,8 +1039,8 @@ stucks         array  %d
      {void code()
        {Key .iMove(stuckKeys);
         Data.iMove(stuckData);
-        find(Key, Found, Data, index, stuckIndex);                         // Find the leaf that should contain the key and possibly the key.
-        copyStuckFrom(S, index);                                           // Copy the stuck that should contain the key
+        find(Key, Found, Data, index, stuckIndex);                              // Find the leaf that should contain the key and possibly the key.
+        copyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
         S.stuckKeys.iMove(Key);
         S.stuckData.iMove(Data);
         L.P.new If (Found)                                                      // Found the key in the leaf so update it with the new data
@@ -1186,7 +1186,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
   static void test_leaf()
    {final Btree b = test_create();
     final Layout.Field index = b.index();
-    final Layout.Field a          = b.variable("a", 4);
+    final Layout.Field a     = b.variable("a", 4);
 
     index.iWrite(0);
     b.new IsLeaf(index)

@@ -66,9 +66,14 @@ stucks         array  %d
     return v;
    }
 
-  Layout.Field bit(String name) {return variable(name, 1);}                     // Create a bit
-  Layout.Field index()          {return variable("index", logTwo(size)+1);}     // Create an index for a stuck in a btree
-  Layout.Field isLeaf()         {return variable("isLeaf", 1);}                 // Create a bit for is full
+  Layout.Field index()           {return variable("index", logTwo(size)+1);}    // Create an index for a stuck in a btree
+  Layout.Field isLeaf()          {return variable("isLeaf",       1);}          // Create a bit for is leaf
+  Layout.Field isFull()          {return variable("isFull",       1);}          // Create a bit for is full
+  Layout.Field isFullButOne()    {return variable("isFullButOne", 1);}          // Create a bit for is full but one
+  Layout.Field within()          {return variable("within",       1);}          // Create a bit for is within the body of the stuck and not at the top
+  Layout.Field found()           {return variable("found",        1);}          // Create a bit for whether a key has been found
+  Layout.Field leafFull()        {return variable("leafFull",     1);}          // Create a bit for a leaf is full
+  Layout.Field branchFull()      {return variable("branchFull",   1);}          // Create a bit for a branch is full
 
   void runProgram()                      {L.runProgram();}
   void clearProgram()                    {L.clearProgram();}
@@ -85,14 +90,14 @@ stucks         array  %d
     for (int i = 1; i < size; i++)
      {final int I = i;
       L.P.new Instruction()
-      {void action()
-        {index.value = I;
-         freeNext.value = I+1 == size ? 0 : I+1;
-         stuckIsFree.value = 1;
-        }
-      };
-      freeNext   .iWrite(index);
-      stuckIsFree.iWrite(index);
+       {void action()
+         {index.value = I;
+          freeNext.value = I+1 == size ? 0 : I+1;
+          stuckIsFree.value = 1;
+          freeNext   .write(index);
+          stuckIsFree.write(index);
+         }
+       };
      }
     setRootAsLeaf();
     L.runProgram();
@@ -139,18 +144,9 @@ stucks         array  %d
          {stopProgram("Cannot free the root stuck");
           return;
          }
-       }
-     };
-    L.P.new Instruction()
-     {void action()
-       {freeNext.value = freeStart.value;
-       }
-     };
-
-    freeNext.iWrite(ref);                                                       // Append the free chain to this stuck
-    L.P.new Instruction()
-     {void action()
-       {freeStart.value = ref.value;                                            // This stuck becomes the first stuick on the free chain
+        freeNext.move(freeStart);
+        freeNext.write(ref);                                                    // Append the free chain to this stuck
+        freeStart.move(ref);                                                    // This stuck becomes the first stuick on the free chain
        }
      };
     stuckIsFree.iOne(ref);                                                      // Show as free
@@ -225,31 +221,35 @@ stucks         array  %d
     isLeaf.iMove(stuckIsLeaf);
    }
 
-  void isRootLeaf(Layout.Field isLeaf)                                          // Is the root a leaf
-   {final Layout.Field i = index();
-    i.iZero();
-    stuckIsLeaf.iRead(i);
-    isLeaf.iMove(stuckIsLeaf);
+  void isRootLeaf(Layout.Field isLeaf)                                          // Is the root a leaf?
+   {L.P.new Instruction()
+     {void action()
+       {final Layout.Field i = index();
+        i.zero();
+        stuckIsLeaf.read(i);
+        isLeaf.move(stuckIsLeaf);
+       }
+     };
    }
 
   void isRootLeafFull(Layout.Field isFull)                                      // Is the root assumed to be a leaf full?
-   {final Layout.Field i = index();
-    i.iZero();
-    stuckSize.iRead(i);
-    L.P.new Instruction()
+   {L.P.new Instruction()
      {void action()
-       {isFull.value = stuckSize.value >= maxStuckSize ? 1 : 0;
+       {final Layout.Field i = index();
+        i.zero();
+        stuckSize.read(i);
+        isFull.value = stuckSize.value >= maxStuckSize ? 1 : 0;
        }
      };
    }
 
   void isRootBranchFull(Layout.Field isFullButOne)                              // Is the root assumed to be a root full?
-   {final Layout.Field i = index();
-    i.iZero();
-    stuckSize.iRead(i);
-    L.P.new Instruction()
+   {L.P.new Instruction()
      {void action()
-       {isFullButOne.value = stuckSize.value >= maxStuckSize-1 ? 1 : 0;
+       {final Layout.Field i = index();
+        i.zero();
+        stuckSize.read(i);
+        isFullButOne.value = stuckSize.value >= maxStuckSize-1 ? 1 : 0;
        }
      };
    }
@@ -439,7 +439,7 @@ stucks         array  %d
 
   private void splitRootLeaf()                                                  // Split a full root leaf
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
-    final Layout.Field isFull = bit("isFull");
+    final Layout.Field isFull = isFull();
     final Layout.Field cl = index(), cr = index();                              // Indexes of left and right children
     final Layout.Field pl = p.key(),      pr = p.key(), plr = p.key();          // Parent key must be smaller than anything in right child yet greater than or equal to anything in the left child
 
@@ -472,7 +472,7 @@ stucks         array  %d
 
   private void splitRootBranch()                                                // Split a full root branch
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
-    final Layout.Field isFullButOne = bit("isFullButOne");
+    final Layout.Field isFullButOne = isFullButOne();
     final Layout.Field           cl = index(), cr = index();                    // Indexes of left and right children
     final int              midPoint = (maxStuckSize-1) / 2;                     // Mid point in parent
 
@@ -504,8 +504,8 @@ stucks         array  %d
 
   private void splitLeafNotTop(Layout.Field parentIndex, Layout.Field stuckIndex) // Split a full leaf that is not the root and is not the last child of its parent branch which is not full
    {final Stuck p = stuck(), c = stuck(), l = stuck();                          // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
-    final Layout.Field isFull = bit("isFull"), isFullButOne = bit("isFullButOne");
-    final Layout.Field isLeaf = bit("isLeaf");
+    final Layout.Field isFull = isFull(), isFullButOne = isFullButOne();
+    final Layout.Field isLeaf = isLeaf();
     final Layout.Field cl = index(), cr = index();                              // Btree indexes of child and left and right children of child
     final Layout.Field ck = p.key(), pl = p.key(), pr = p.key(), plr = p.key(); // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
@@ -573,9 +573,9 @@ stucks         array  %d
 
   private void splitLeafAtTop(Layout.Field parentIndex)                         // Split a full leaf that is not the root and is the last child of its parent branch which is not full
    {final Stuck p = stuck(), c = stuck(), l = stuck();                          // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
-    final Layout.Field isFull       = bit("isFull");
-    final Layout.Field isFullButOne = bit("isFullButOne");
-    final Layout.Field isLeaf       = bit("isLeaf");
+    final Layout.Field isFull       = isFull();
+    final Layout.Field isFullButOne = isFullButOne();
+    final Layout.Field isLeaf       = isLeaf();
     final Layout.Field cl = index(), cr = index();                              // Btree indexes of child and left and right children of child
     final Layout.Field pl = p.key(), pr = p.key(), plr = p.key();               // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
@@ -644,8 +644,8 @@ stucks         array  %d
   private void splitBranchNotTop                                                // Split a full branch that is not the root and is not the last child of its parent branch which is not full
    (Layout.Field parentIndex, Layout.Field stuckIndex)
    {final Stuck p = stuck(), c = stuck(), l = stuck(), r = stuck();             // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
-    final Layout.Field isFullButOne = bit("isFullButOne");
-    final Layout.Field isLeaf       = bit("isLeaf");
+    final Layout.Field isFullButOne = isFullButOne();
+    final Layout.Field isLeaf       = isLeaf();
     final Layout.Field cl           = index(), cr = index();                    // Btree indexes of child and left and right children of child
     final Layout.Field ck           = p.key();                                  // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
     final Layout.Field key          = p.key();                                  // The central key
@@ -711,8 +711,8 @@ stucks         array  %d
 
   private void splitBranchAtTop(Layout.Field parentIndex)                       // Split a full leaf that is not the root and is the last child of its parent branch which is not full
    {final Stuck p = stuck(), c = stuck(), l = stuck();                          // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
-    final Layout.Field isFullButOne = bit("isFullButOne");
-    final Layout.Field isLeaf       = bit("isLeaf");
+    final Layout.Field isFullButOne = isFullButOne();
+    final Layout.Field isLeaf       = isLeaf();
     final Layout.Field cl           = index(), cr = index();                    // Btree indexes of child and left and right children of child
     final Layout.Field center       = p.key();                                  // The central key
 
@@ -1108,7 +1108,7 @@ stucks         array  %d
     final Layout.Field stuckIndex = S.index();
     final Layout.Field full       = S.full();
     final Layout.Field found      = S.found();
-    final Layout.Field isLeaf     = bit("isLeaf");
+    final Layout.Field isLeaf     = isLeaf();
     final Layout.Field fullButOne = S.fullButOne();
 
     Key.iMove(stuckKeys); Data.iMove(stuckData);                                // Save key and data to be inserted,  It is convenient for the caller to be able to use the predeclared fields but theya re overwrittne by subsequqnt activity and so they have to ba saved immediately.
@@ -1203,8 +1203,8 @@ stucks         array  %d
     final Layout.Field Key        = S.key();
     final Layout.Field stuckIndex = S.index();
     final Layout.Field found      = S.found();
-    final Layout.Field within     = bit("within");                              // In the body of the stuck and not at the top
-    final Layout.Field isLeaf     = bit("isLeaf");
+    final Layout.Field within     = within();                                   // In the body of the stuck and not at the top
+    final Layout.Field isLeaf     = isLeaf();
     final Layout.Field success    = S.success();
 
     Key.iMove(stuckKeys);                                                       // Save path key
@@ -1503,7 +1503,7 @@ stuckData: value=38, 0=32, 1=34, 2=36, 3=38
 
   static Btree test_findAndInsert()
    {final Btree b = test_create();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
 
     b.L.P.maxSteps = 500;
 
@@ -1618,7 +1618,7 @@ stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 
   static void test_isLeaf()
    {final Btree b = test_btree();
-    final Layout.Field isLeaf     = b.bit("isLeaf");
+    final Layout.Field isLeaf     = b.isLeaf();
     final Layout.Field index = b.index();
 
     b.clearProgram();
@@ -1641,7 +1641,7 @@ stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 
   static void test_splitLeafRoot()
    {final Btree b = test_create();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
 
     b.L.P.maxSteps = 500;
 
@@ -1723,7 +1723,7 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
    {final Btree b = test_create();
     final Stuck r = b.stuck();
     final Stuck l = b.stuck();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
     final Layout.Field R     = b.index();
     final Layout.Field I     = r.index();
     final Layout.Field L     = b.index();
@@ -1782,7 +1782,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
    {final Btree b = test_create();
     final Stuck r = b.stuck();
     final Stuck l = b.stuck();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
     final Layout.Field R     = b.index();
     final Layout.Field L     = b.index();
 
@@ -1841,7 +1841,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
    {final Btree b = test_create();
     final Stuck r = b.stuck();
     final Stuck l = b.stuck();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
     final Layout.Field R     = b.index();
     final Layout.Field I     = r.index();
     final Layout.Field L     = b.index();
@@ -1902,7 +1902,7 @@ stuckData: value=3, 0=2, 1=3, 2=0, 3=0
    {final Btree b = test_create();
     final Stuck r = b.stuck();
     final Stuck l = b.stuck();
-    final Layout.Field Found = b.bit("Found");
+    final Layout.Field Found = b.found();
     final Layout.Field R     = b.index();
     final Layout.Field L     = b.index();
 
@@ -1959,8 +1959,8 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 
   static void test_isRootLeafFull()
    {final Btree b = test_create();
-    final Layout.Field f = b.bit("leafFull");
-    final Layout.Field F = b.bit("branchFull");
+    final Layout.Field f = b.leafFull();
+    final Layout.Field F = b.branchFull();
 
     b.clearProgram(); b.stuckKeys.iWrite(10); b.stuckData.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
     b.clearProgram(); b.stuckKeys.iWrite(20); b.stuckData.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");

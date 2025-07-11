@@ -170,115 +170,154 @@ class Layout extends Test                                                       
 
 //D2 Read                                                                       // Read values from memory
 
+    void read(int index)                                                        // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
+     {value = getIntFromBits(memory[index]);
+     }
+
     void iRead(int index)                                                       // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value = f.getIntFromBits(memory[index]);}
+       {void action() {f.read(index);}
        };
      }
 
-    void iRead(Field...indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
+    void read(Field...Indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
+     {final int index = convolute(Indices);
+      value = getIntFromBits(memory[index]);
+     }
+
+    void iRead(Field...Indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action()
-         {final int index = convolute(indices);
-          f.value = f.getIntFromBits(memory[index]);
-         }
+       {void action() {f.read(Indices);}
        };
      }
 
-    void iReadNext(Field...indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
+    void readNext(Field...Indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
+     {final int index = convolute(Indices);
+      value = getIntFromBits(memory[index+1]);
+     }
+
+    void iReadNext(Field...Indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
      {final Field f = checkVar();
-      P.new Instruction()
-       {void action()
-         {final int index = convolute(indices);
-          f.value = f.getIntFromBits(memory[index+1]);
-         }
-       };
+      P.new Instruction() {void action() {readNext(Indices);}};
      }
 
 //D2 Write                                                                      // Write values into memory
 
-    void iWrite(int value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
-     {final Field  f = checkVar();
+    void write(int Value)
+     {final Field f = this;
+      if (logTwo(Value) > f.rep())
+       {P.stopProgram("Value too big to be written into array");
+        return;
+       }
       final BitSet b = new BitSet(f.rep());                                     // Only used locally - does not become part of memory
+      f.setBitsFromInt(b, Value);
+      f.value = f.getIntFromBits(b);                                        // So the value matches what would actually be written into memory
+     }
+
+    void iWrite(int Value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
+     {final Field  f = checkVar();
       P.new Instruction()
        {void action()
-         {f.setBitsFromInt(b, value);
-          f.value = f.getIntFromBits(b);                                        // So the value matches what would actually be written into memory
+         {f.write(Value);
          }
        };
      }
 
-    void iWrite(int value, int index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
+    void write(int Value, int Index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
+     {final Field f = this;
+      if (logTwo(value) > f.rep())
+       {P.stopProgram("Value too big to be written into array");
+        return;
+       }
+      final BitSet b = f.memory[Index];                                         // Bit set in memory holding value at this index
+      f.setBitsFromInt(b, Value);
+      f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
+     }
+
+    void iWrite(int Value, int Index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {if (logTwo(value) > f.rep())
-           {P.stopProgram("Value too big to be wrtitten into array");
-            return;
-           }
-          final BitSet b = f.memory[index];                                     // Bit set in memory holding value at this index
-          f.setBitsFromInt(b, value);
-          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         {f.write(Value, Index);
          }
        };
      }
 
-    void iWrite(Field...indices)                                                // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
+    void write(Field...Indices)                                                 // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
+     {final Field f = this;
+      if (logTwo(value) > f.rep())
+       {P.stopProgram("Value too big to be wrtitten into array");
+        return;
+       }
+      final int index = convolute(Indices);
+      final BitSet b  = f.memory[index];                                        // Bit set in memory holding value at this index
+      f.setBitsFromInt(b, value);
+      f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
+     }
+
+    void iWrite(Field...Indices)                                                // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {if (logTwo(value) > f.rep())
-           {P.stopProgram("Value too big to be wrtitten into array");
-            return;
-           }
-          final int index = convolute(indices);
-          final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
-          f.setBitsFromInt(b, value);
-          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         {write(Indices);
          }
        };
      }
 
-    void iConstant(int value, Field...indices)                                  // Create an instruction to set an array element to a constant
+    void constant(int Value, Field...Indices)                                   // Create an instruction to set an array element to a constant
+     {final Field f = this;
+      if (Indices.length == 0)                                                  // No indices
+       {f.value = Value;
+        return;
+       }
+      if (logTwo(Value) > f.rep())
+       {P.stopProgram("Value too big to be written into array");
+        return;
+       }
+      final int index = convolute(Indices);
+      final BitSet b  = f.memory[index];                                        // Bit set in memory holding value at this index
+      f.setBitsFromInt(b, Value);
+      f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
+     }
+
+    void iConstant(int Value, Field...Indices)                                  // Create an instruction to set an array element to a constant
      {final Field f = checkVar();
       P.new Instruction()
        {void action()
-         {if (indices.length == 0)                                              // No indices
-           {f.value = value;
-            return;
-           }
-          if (logTwo(value) > f.rep())
-           {P.stopProgram("Value too big to be written into array");
-            return;
-           }
-          final int index = convolute(indices);
-          final BitSet b  = f.memory[index];                                    // Bit set in memory holding value at this index
-          f.setBitsFromInt(b, value);
-          f.value = f.getIntFromBits(b);                                        // So the value matches what is actually in memory
+         {f.constant(Value, Indices);
          }
        };
      }
+
+    void one  (Field...indices) { constant(1, indices);}                        // Create an instruction to set a field to one
+    void zero (Field...indices) { constant(0, indices);}                        // Create an instruction to set a field to zero
 
     void iOne (Field...indices) {iConstant(1, indices);}                        // Create an instruction to set a field to one
     void iZero(Field...indices) {iConstant(0, indices);}                        // Create an instruction to set a field to zero
 
 //D2 Instructions                                                               // Instructions that can be executed against memory
 
-    void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write ino backing mmeory as well call iWrite() as well
+    void move (Field Source) {value = Source.value;}                            // Copy the source value to the target. To write into backing memory as well call iWrite() as well
+    void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write into backing memory as well call iWrite() as well
+
+    void dec() {value--;}                                                       // Decrement the value of this field
 
     void iDec()                                                                 // Decrement the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value--;}
+       {void action() {f.dec();}
        };
      }
+
+    void inc()                                                                 // Increment the value of this field
+     {value++;}
 
     void iInc()                                                                 // Increment the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.value++;}
+       {void action() {f.inc();}
        };
      }
 

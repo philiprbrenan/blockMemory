@@ -142,11 +142,11 @@ Stuck        array  %d
          {L.stopProgram("Cannot push to a full stuck");
           return;
          }
+        stuckKeys.write(stuckSize);
+        stuckData.write(stuckSize);
+        stuckSize.inc();
        }
      };
-    stuckKeys.iWrite(stuckSize);
-    stuckData.iWrite(stuckSize);
-    stuckSize.iInc();
    }
 
   void pop()                                                                    // Pop a key, data pair from the stack
@@ -156,11 +156,11 @@ Stuck        array  %d
          {L.stopProgram("Cannot pop an empty stuck");
           return;
          }
+        stuckSize.dec();
+        stuckKeys.read(stuckSize);
+        stuckData.read(stuckSize);
        }
      };
-    stuckSize.iDec();
-    stuckKeys.iRead(stuckSize);
-    stuckData.iRead(stuckSize);
    }
 
   void unshift()                                                                // Unshift a key, data pair into the stack after moving all the existing elements up one
@@ -177,9 +177,9 @@ Stuck        array  %d
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
+        stuckSize.inc();
        }
      };
-    stuckSize.iInc();
    }
 
   void shift()                                                                  // Shift a key, data pair from the stack after moving all the existing elements up one
@@ -197,9 +197,9 @@ Stuck        array  %d
          {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i].clone();
           stuckData.memory[i-1] = (BitSet)stuckData.memory[i].clone();
          }
+        stuckSize.dec();
        }
      };
-    stuckSize.iDec();
    }
 
   void firstElement()                                                           // Get the first key, data pair
@@ -265,11 +265,11 @@ Stuck        array  %d
          {L.stopProgram("Cannot set element more than one step beyond current end of stuck");
           return;
          }
-        if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
+        if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
+        stuckKeys.write(index);
+        stuckData.write(index);
        }
      };
-    stuckKeys.iWrite(index);
-    stuckData.iWrite(index);
    }
 
   void setKeyAt(Layout.Field index)                                             // Set the key at the specified index
@@ -279,10 +279,10 @@ Stuck        array  %d
          {L.stopProgram("Cannot set key more than one step beyond current end of stuck");
           return;
          }
-        if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
+        if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
+        stuckKeys.write(index);
        }
      };
-    stuckKeys.iWrite(index);
    }
 
   void setDataAt(Layout.Field index)                                            // Set the data element at the specified index
@@ -292,10 +292,10 @@ Stuck        array  %d
          {L.stopProgram("Cannot set data more than one step beyond current end of stuck");
           return;
          }
-        if (index.value == stuckSize.value) stuckSize.value++;                  // Extending the stuck
+        if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
+        stuckData.write(index);
        }
      };
-    stuckData.iWrite(index);
    }
 
   void setFirstElement()                                                        // Set the first key, data pair
@@ -307,7 +307,7 @@ Stuck        array  %d
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
-        if (stuckSize.value == 0) stuckSize.value++;
+        if (stuckSize.value == 0) stuckSize.inc();
        }
      };
    }
@@ -321,7 +321,7 @@ Stuck        array  %d
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value-1], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[stuckSize.value-1], stuckData.value);
-        if (stuckSize.value == 0) stuckSize.value++;
+        if (stuckSize.value == 0) stuckSize.inc();
        }
      };
    }
@@ -379,9 +379,9 @@ Stuck        array  %d
 
         stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
+        stuckSize.inc();
        }
      };
-    stuckSize.iInc();
    }
 
   void removeElementAt(Layout.Field Index)                                      // Get the value of the indexed key, data pair at the specified index moving the elements above down into this position
@@ -403,9 +403,9 @@ Stuck        array  %d
          {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
           stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
          }
+        stuckSize.dec();
        }
      };
-    stuckSize.iDec();
    }
 
   void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
@@ -419,7 +419,7 @@ Stuck        array  %d
             return;
            }
          }
-        Found.value = 0;
+        Found.write(0);
        }
      };
    }

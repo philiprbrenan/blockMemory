@@ -136,16 +136,18 @@ Stuck        array  %d
   void clear() {stuckSize.iZero();}                                             // Clear the stuck by making it appear empty
 
   void push()                                                                   // Push a new key, data pair on the stack
+   {if (stuckSize.value >= maxStuckSize)
+     {L.stopProgram("Cannot push to a full stuck");
+      return;
+     }
+    stuckKeys.write(stuckSize);
+    stuckData.write(stuckSize);
+    stuckSize.inc();
+   }
+
+  void iPush()                                                                   // Push a new key, data pair on the stack
    {L.P.new Instruction()
-     {void action()
-       {if (stuckSize.value >= maxStuckSize)
-         {L.stopProgram("Cannot push to a full stuck");
-          return;
-         }
-        stuckKeys.write(stuckSize);
-        stuckData.write(stuckSize);
-        stuckSize.inc();
-       }
+     {void action() {push();}
      };
    }
 
@@ -743,10 +745,10 @@ Stuck        array  %d
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.clearProgram(); k.iWrite(1); d.iWrite(2); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(2); d.iWrite(4); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(3); d.iWrite(6); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(4); d.iWrite(8); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(1); d.iWrite(2); s.iPush(); s.runProgram();
+    s.clearProgram(); k.iWrite(2); d.iWrite(4); s.iPush(); s.runProgram();
+    s.clearProgram(); k.iWrite(3); d.iWrite(6); s.iPush(); s.runProgram();
+    s.clearProgram(); k.iWrite(4); d.iWrite(8); s.iPush(); s.runProgram();
 
     ok(s, """
 stuckSize: value=4
@@ -756,7 +758,7 @@ stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    k.iWrite(5); d.iWrite(10); s.push();
+    k.iWrite(5); d.iWrite(10); s.iPush();
     s.runProgram();
     ok(s.L.P.rc, "Cannot push to a full stuck");
 
@@ -1139,9 +1141,9 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.clearProgram(); k.iWrite(2); d.iWrite(3); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(4); d.iWrite(5); s.push(); s.runProgram();
-    s.clearProgram(); k.iWrite(6); d.iWrite(7); s.push(); s.runProgram();
+    s.clearProgram(); k.iWrite(2); d.iWrite(3); s.iPush(); s.runProgram();
+    s.clearProgram(); k.iWrite(4); d.iWrite(5); s.iPush(); s.runProgram();
+    s.clearProgram(); k.iWrite(6); d.iWrite(7); s.iPush(); s.runProgram();
     s.clearProgram(); k.iWrite(8); d.iWrite(9); s.setPastLastElement(); s.runProgram();
 
     Layout.Field found = s.found();

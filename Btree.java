@@ -1217,15 +1217,12 @@ stucks         array  %d
                        {splitLeafAtTop(p);                                      // Split the child leaf known to be top
                        }
                      }
-                   }
-                 };
 
-                L.P.new Instruction()
-                 {void action()
-                   {stuckKeys.move(Key);                                        // Key, data pair to be inserted
+                    stuckKeys.move(Key);                                        // Key, data pair to be inserted
                     stuckData.move(Data);
                    }
                  };
+
                 findAndInsert(found);                                           // Must be insertable now necuase we have split everything in the path of the key
                 L.P.iGoto(end);                                                 // Successfully found the key
                }

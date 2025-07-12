@@ -191,7 +191,7 @@ stucks         array  %d
      };
    }
 
-  void copyStuckFromRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+  void iCopyStuckFromRoot(Stuck S)                                              // Copy a stuck out of the root of the btree
    {final Layout.Field i = index();
     L.P.new Instruction()
      {void action()
@@ -201,7 +201,7 @@ stucks         array  %d
      };
    }
 
-  void saveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+  void iSaveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
    {final Layout.Field i = index();
     L.P.new Instruction()
      {void action()
@@ -478,7 +478,7 @@ stucks         array  %d
     final Layout.Field cl = index(), cr = index();                              // Indexes of left and right children
     final Layout.Field pl = p.key(), pr = p.key(), plr = p.key();               // Parent key must be smaller than anything in right child yet greater than or equal to anything in the left child
 
-    copyStuckFromRoot(p);                                                       // Load leaf root stuck from btree
+    iCopyStuckFromRoot(p);                                                       // Load leaf root stuck from btree
 
     p.iIsFull(isFull);                                                           // Check whether the leaf root stuck is full
     L.P.new If(isFull)
@@ -502,7 +502,7 @@ stucks         array  %d
     p.clear();                                                                  // Clear the root so we can add the left and right children to it.
     p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                   // Add reference to left child
                             p.stuckData.iMove(cr); p.iSetPastLastElement();     // Add reference to right child
-    saveStuckIntoRoot(p); iSetRootAsBranch();                                   // Save the root stuck back into the btree and mark it as a branch
+    iSaveStuckIntoRoot(p); iSetRootAsBranch();                                  // Save the root stuck back into the btree and mark it as a branch
    }
 
   private void splitRootBranch()                                                // Split a full root branch
@@ -511,7 +511,7 @@ stucks         array  %d
     final Layout.Field           cl = index(), cr = index();                    // Indexes of left and right children
     final int              midPoint = (maxStuckSize-1) / 2;                     // Mid point in parent
 
-    copyStuckFromRoot(p);                                                       // Load branch root stuck from btree
+    iCopyStuckFromRoot(p);                                                       // Load branch root stuck from btree
 
     p.iIsFullButOne(isFullButOne);                                               // Check whether the branch root stuck is full
     L.P.new If(isFullButOne)
@@ -534,7 +534,7 @@ stucks         array  %d
     p.clear();                                                                  // Clear the root so we can add the left and right children to it.
     p.iPush();                                                                  // Add reference to left child
     p.stuckData.iMove(cr); p.iSetPastLastElement();                             // Add reference to right child as top element past the end of the stuck
-    saveStuckIntoRoot(p);                                                       // Save the root stuck back into the btree and mark it as a branch
+    iSaveStuckIntoRoot(p);                                                       // Save the root stuck back into the btree and mark it as a branch
    }
 
   private void splitLeafNotTop(Layout.Field parentIndex, Layout.Field stuckIndex) // Split a full leaf that is not the root and is not the last child of its parent branch which is not full
@@ -820,7 +820,7 @@ stucks         array  %d
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
     success.iZero();                                                            // Assume failure
 
-    copyStuckFromRoot(p);                                                       // Load root
+    iCopyStuckFromRoot(p);                                                       // Load root
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
@@ -840,7 +840,7 @@ stucks         array  %d
         p.merge(l, r, success);                                                 // Merge leaves into root
         L.P.new If(success)                                                     // Modify the root only if the merge succeeded
          {void Then()
-           {saveStuckIntoRoot(p);                                               // Save the modified root back into the tree
+           {iSaveStuckIntoRoot(p);                                               // Save the modified root back into the tree
             iSetRootAsLeaf();                                                    // Set the root to be a leaf
             free(li); free(ri);                                                 // Free left and right leaves as they are no longer needed
            }
@@ -932,7 +932,7 @@ stucks         array  %d
     final Layout.Field k   = p.key();                                           // Splitting key
     success.iZero();                                                            // Assume failure
 
-    copyStuckFromRoot(p);                                                       // Load root
+    iCopyStuckFromRoot(p);                                                       // Load root
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
@@ -953,7 +953,7 @@ stucks         array  %d
         p.mergeButOne(l, k, r, success);                                        // Merge left branch, splitting key, right branch into root
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
-           {saveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
+           {iSaveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
             free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
            }
          };
@@ -1473,7 +1473,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.iSaveStuckInto(T, t);  b.iSetLeaf(t);
     b.iSaveStuckInto(X, x);  b.iSetLeaf(x);
     b.iSaveStuckInto(Y, y);  b.iSetLeaf(y);
-    b.saveStuckIntoRoot(Z);  b.iSetRootAsBranch();
+    b.iSaveStuckIntoRoot(Z); b.iSetRootAsBranch();
     b.runProgram();
   //stop(b.dump());
     ok(b.dump(), """
@@ -1798,7 +1798,7 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.iSetPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
+    b.clearProgram(); b.iSaveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
@@ -1806,7 +1806,7 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
     b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.iPush(); b.runProgram();
 
     b.clearProgram();
-    b.saveStuckIntoRoot(r);                     b.iSetRootAsBranch();
+    b.iSaveStuckIntoRoot(r);                     b.iSetRootAsBranch();
     b.allocateLeaf(L); b.iSaveStuckInto(l, L);   b.iSetLeaf(L);
     b.runProgram();
     ok(b.dump(), """
@@ -1856,7 +1856,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.iSetPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
+    b.clearProgram(); b.iSaveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
@@ -1864,7 +1864,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.iPush(); b.runProgram();
 
     b.clearProgram();
-    b.saveStuckIntoRoot(r);                        b.iSetRootAsBranch();
+    b.iSaveStuckIntoRoot(r);                       b.iSetRootAsBranch();
     b.allocateBranch(L); b.iSaveStuckInto(l, L);   b.iSetLeaf(L);
     b.runProgram();
     //stop(b.dump());
@@ -1916,7 +1916,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.iSetPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
+    b.clearProgram(); b.iSaveStuckIntoRoot(r);                                                b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(3); l.iPush(); b.runProgram();
@@ -1924,7 +1924,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(5); l.iSetPastLastElement(); b.runProgram();
 
     b.clearProgram();
-    b.saveStuckIntoRoot(r);                     b.iSetRootAsBranch();
+    b.iSaveStuckIntoRoot(r);                     b.iSetRootAsBranch();
     b.allocateBranch(L); b.iSaveStuckInto(l, L); b.iSetBranch(L);
     b.runProgram();
     //stop(b.dump());
@@ -1976,7 +1976,7 @@ stuckData: value=3, 0=2, 1=3, 2=0, 3=0
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.iSetPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
+    b.clearProgram(); b.iSaveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush();                b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush();                b.runProgram();
@@ -1984,7 +1984,7 @@ stuckData: value=3, 0=2, 1=3, 2=0, 3=0
     b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.iSetPastLastElement();  b.runProgram();
 
     b.clearProgram();
-    b.saveStuckIntoRoot(r);                       b.iSetRootAsBranch();
+    b.iSaveStuckIntoRoot(r);                       b.iSetRootAsBranch();
     b.allocateBranch(L); b.iSaveStuckInto(l, L);   b.iSetBranch(L);
     b.runProgram();
     //stop(b.dump());

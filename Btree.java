@@ -1071,11 +1071,11 @@ stucks         array  %d
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
            {L.P.new Instruction()
-            {void action()
-              {S.search_eq(Found, stuckIndex);                                  // Search
-               L.P.GoZero(end, Found);                                          // Key not present
-              }
-           };
+             {void action()
+               {S.search_eq(Found, stuckIndex);                                  // Search
+                L.P.GoZero(end, Found);                                          // Key not present
+               }
+             };
             L.P.new Instruction()
              {void action()
                {S.elementAt(stuckIndex);                                        // Look up data
@@ -1085,7 +1085,7 @@ stucks         array  %d
              };
            }
           void Branch()                                                         // On a branch - step to next level down
-           {S.search_le(Found, stuckIndex);                                     // Search stuck for matching key
+           {S.iSearch_le(Found, stuckIndex);                                     // Search stuck for matching key
             s.iMove(S.stuckData);                                               // Index of next stuck down
             L.P.iGoto(start);                                                   // Key not present
            }
@@ -1124,7 +1124,7 @@ stucks         array  %d
         S.iIsFull(full);                                                        // Check whether the stuck is full
         L.P.new If (full)
          {void Else()                                                           // Leaf is not full so we can insert immediately
-           {S.search_le(Found, stuckIndex);
+           {S.iSearch_le(Found, stuckIndex);
             S.stuckKeys.iMove(Key);
             S.stuckData.iMove(Data);
             L.P.new If(Found)
@@ -1186,7 +1186,7 @@ stucks         array  %d
          {void code()
            {S.stuckKeys.iMove(Key);
 
-            S.search_le(found, stuckIndex);                                     // Step down
+            S.iSearch_le(found, stuckIndex);                                     // Step down
             p.iMove(s);                                                         // Parent
             s.iMove(S.stuckData);                                               // Child
             iCopyStuckFrom(S, s);                                               // Load child
@@ -1289,7 +1289,7 @@ stucks         array  %d
              }
 
             S.stuckKeys.iMove(Key);                                             // Following the path made by this key
-            S.search_le(found, stuckIndex);                                     // Step down
+            S.iSearch_le(found, stuckIndex);                                     // Step down
             s.iMove(S.stuckData);                                               // Child
             iCopyStuckFrom(S, s);                                               // Load child
 

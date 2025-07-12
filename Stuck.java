@@ -304,15 +304,19 @@ Stuck        array  %d
    }
 
   void setElementAt(Layout.Field index)                                         // Set the key, data pair at the specified index
+   {if (index.value > stuckSize.value)
+     {L.stopProgram("Cannot set element more than one step beyond current end of stuck");
+      return;
+     }
+    if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
+    stuckKeys.write(index);
+    stuckData.write(index);
+   }
+
+  void iSetElementAt(Layout.Field Index)                                         // Set the key, data pair at the specified index
    {L.P.new Instruction()
      {void action()
-       {if (index.value > stuckSize.value)
-         {L.stopProgram("Cannot set element more than one step beyond current end of stuck");
-          return;
-         }
-        if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
-        stuckKeys.write(index);
-        stuckData.write(index);
+       {setElementAt(Index);
        }
      };
    }
@@ -495,26 +499,30 @@ Stuck        array  %d
      };
    }
 
+  void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
+   {if (stuckSize.value >= maxStuckSize)
+     {L.stopProgram("Cannot search a full stuck because the first element past the last element is needed as the return value if no key matches");
+      return;
+     }
+
+    for (int i = 0; i < stuckSize.value; ++i)                               // Check each key not including the last
+     {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+      if (stuckKeys.value <= v)                                             // Found a matching key
+       {Found.value = 1; Index.value = i;
+        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
+        return;
+       }
+     }
+    Found.value = 0;
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
+   }
+
   void iSearch_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= maxStuckSize)
-         {L.stopProgram("Cannot search a full stuck because the first element past the last element is needed as the return value if no key matches");
-          return;
-         }
-
-        for (int i = 0; i < stuckSize.value; ++i)                               // Check each key not including the last
-         {final int v = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
-          if (stuckKeys.value <= v)                                             // Found a matching key
-           {Found.value = 1; Index.value = i;
-            stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
-            stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
-            return;
-           }
-         }
-        Found.value = 0;
-        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
-        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
+       {search_le(Found, Index);
        }
      };
    }
@@ -1055,7 +1063,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     index.iWrite(1);
     s.stuckKeys.iWrite(9);
     s.stuckData.iWrite(11);
-    s.setElementAt(index);
+    s.iSetElementAt(index);
     s.runProgram();
 
     ok(s, """
@@ -1069,7 +1077,7 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
     s.iPop();
     s.iPop();
     index.iWrite(3);
-    s.setElementAt(index);
+    s.iSetElementAt(index);
     s.runProgram();
     ok(s.L.P.rc, "Cannot set element more than one step beyond current end of stuck");
 
@@ -1077,7 +1085,7 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
     index.iWrite(2);
     s.stuckKeys.iWrite(8);
     s.stuckData.iWrite(12);
-    s.setElementAt(index);
+    s.iSetElementAt(index);
     s.runProgram();
 
     ok(s, """

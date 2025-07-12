@@ -487,33 +487,37 @@ Stuck        array  %d
 
 // Split                                                                        // Split a stuck in various ways
 
+  void splitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
+   {if (Copy > stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Left.maxStuckSize  < Copy)
+     {L.P.stopProgram("Left stuck too small");
+      return;
+     }
+    if (Right.maxStuckSize < stuckSize.value - Copy)
+     {L.P.stopProgram("Right stuck too small");
+      return;
+     }
+
+    for (int i = 0; i < Copy; ++i)                                              // Copy to left
+     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     }
+    Left.stuckSize.value = Copy;                                                // New size of left
+
+    for (int i = 0; i < stuckSize.value - Copy; ++i)                            // Copy to right
+     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     }
+    Right.stuckSize.value = stuckSize.value - Copy;                             // New size of right
+   }
+
   void iSplitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
-       {if (Copy > stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Left.maxStuckSize  < Copy)
-         {L.P.stopProgram("Left stuck too small");
-          return;
-         }
-        if (Right.maxStuckSize < stuckSize.value - Copy)
-         {L.P.stopProgram("Right stuck too small");
-          return;
-         }
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to left
-         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
-         }
-        Left.stuckSize.value = Copy;                                            // New size of left
-
-        for (int i = 0; i < stuckSize.value - Copy; ++i)                        // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
-         }
-        Right.stuckSize.value = stuckSize.value - Copy;                         // New size of right
+       {splitIntoTwo(Left, Right, Copy);
        }
      };
    }

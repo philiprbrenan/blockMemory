@@ -559,7 +559,7 @@ Stuck        array  %d
      };
    }
 
-  void splitLow(Stuck Left, int Copy)                                           // Copy the specified number of key, data pairs into the left stuck then move the remainder down
+  void iSplitLow(Stuck Left, int Copy)                                           // Copy the specified number of key, data pairs into the left stuck then move the remainder down
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -586,7 +586,7 @@ Stuck        array  %d
      };
    }
 
-  void splitLowButOne(Stuck Left, int Copy, Layout.Field One)                   // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
+  void iSplitLowButOne(Stuck Left, int Copy, Layout.Field One)                  // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -617,7 +617,7 @@ Stuck        array  %d
      };
    }
 
-  void splitHigh(Stuck Right, int Copy)                                         // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
+  void iSplitHigh(Stuck Right, int Copy)                                        // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -640,7 +640,7 @@ Stuck        array  %d
      };
    }
 
-  void splitHighButOne(Stuck Right, int Copy, Layout.Field One)                 // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
+  void iSplitHighButOne(Stuck Right, int Copy, Layout.Field One)                // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -1397,7 +1397,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck L = test_push(); L.L.P = R.L.P;
 
     R.clearProgram();
-    R.splitLow(L, 2);
+    R.iSplitLow(L, 2);
     R.runProgram();
 
     ok(L, """
@@ -1425,7 +1425,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck R = test_push(); R.L.P = L.L.P;
 
     L.clearProgram();
-    L.splitHigh(R, 2);
+    L.iSplitHigh(R, 2);
     L.runProgram();
 
     ok(L, """
@@ -1454,7 +1454,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck L = test_push(); L.L.P = R.L.P;
 
     R.clearProgram();
-    R.splitLowButOne(L, 1, key);
+    R.iSplitLowButOne(L, 1, key);
     R.runProgram();
 
     ok(L, """
@@ -1485,7 +1485,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck R = test_push(); R.L.P = L.L.P;
 
     L.clearProgram();
-    L.splitHighButOne(R, 1, key);
+    L.iSplitHighButOne(R, 1, key);
     L.runProgram();
 
     ok(L, """

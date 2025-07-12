@@ -1205,21 +1205,27 @@ stucks         array  %d
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - search for exact match
-               {S.iIsFull(full);
+               {L.P.new Instruction()
+                 {void action()
+                   {S.isFull(full);
 
-                L.P.new If (full)
-                 {void Then()                                                   // Child branch is full
-                   {L.P.new If (found)
-                     {void Then()
-                       {iSplitLeafNotTop(p, stuckIndex);                        // Split the child leaf known not to be top
+                    if (full.asBoolean())                                       // Split leaf
+                     {if (found.asBoolean())
+                       {splitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
                        }
-                      void Else()
-                       {iSplitLeafAtTop(p);                                     // Split the child leaf known to be top
+                      else
+                       {splitLeafAtTop(p);                                      // Split the child leaf known to be top
                        }
-                     };
+                     }
                    }
                  };
-                stuckKeys.iMove(Key); stuckData.iMove(Data);                    // Key, data pair to be inserted
+
+                L.P.new Instruction()
+                 {void action()
+                   {stuckKeys.move(Key);                                        // Key, data pair to be inserted
+                    stuckData.move(Data);
+                   }
+                 };
                 findAndInsert(found);                                           // Must be insertable now necuase we have split everything in the path of the key
                 L.P.iGoto(end);                                                 // Successfully found the key
                }

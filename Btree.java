@@ -1186,8 +1186,12 @@ stucks         array  %d
         isRootBranchFull(fullButOne);                                           // Root is a full branch so split it
         L.P.new If (fullButOne)
          {void Then()
-           {iSplitRootBranch();                                                 // Split the branch root to make room
-            L.P.iGoto(start);                                                   // Restart descent to make sure we are on the right path
+           {L.P.new Instruction()
+             {void action()
+               {splitRootBranch();                                                 // Split the branch root to make room
+                L.P.Goto(start);                                                   // Restart descent to make sure we are on the right path
+               }
+             };
            }
          };
 

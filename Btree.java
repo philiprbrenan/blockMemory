@@ -1196,12 +1196,15 @@ stucks         array  %d
 
         L.P.new Block()
          {void code()
-           {S.stuckKeys.iMove(Key);
-
-            S.iSearch_le(found, stuckIndex);                                    // Step down
-            p.iMove(s);                                                         // Parent
-            s.iMove(S.stuckData);                                               // Child
-            iCopyStuckFrom(S, s);                                               // Load child
+           {L.P.new Instruction()
+             {void action()
+               {S.stuckKeys.move(Key);
+                S.search_le(found, stuckIndex);                                 // Step down
+                p.move(s);                                                      // Parent
+                s.move(S.stuckData);                                            // Child
+                copyStuckFrom(S, s);                                            // Load child
+               }
+             };
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - search for exact match

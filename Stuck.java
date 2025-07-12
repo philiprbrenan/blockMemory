@@ -151,7 +151,7 @@ Stuck        array  %d
      };
    }
 
-  void pop()                                                                    // Pop a key, data pair from the stack
+  void iPop()                                                                    // Pop a key, data pair from the stack
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value == 0)
@@ -711,7 +711,7 @@ Stuck        array  %d
         stuckData.memory[leftSize+rightSize+1] =                                // Past last data element from source
          (BitSet)Right.stuckData.memory[rightSize].clone();
         stuckSize.value = leftSize + rightSize + 1;                             // New size of target
-        success.value = 1;
+        success.one();
        }
      };
    }
@@ -794,7 +794,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
    {final Stuck  s = test_push();
 
     s.clearProgram();
-    s.pop();
+    s.iPop();
     s.runProgram();
     ok(s, """
 stuckSize: value=3
@@ -802,21 +802,21 @@ stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     ok(s, """
 stuckSize: value=2
 stuckKeys: value=3, 0=1, 1=2, 2=3, 3=4
 stuckData: value=6, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     ok(s, """
 stuckSize: value=1
 stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4
 stuckData: value=4, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     ok(s, """
 stuckSize: value=0
 stuckKeys: value=1, 0=1, 1=2, 2=3, 3=4
@@ -825,7 +825,7 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.pop();
+    s.iPop();
     s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot pop an empty stuck");
@@ -839,7 +839,7 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
     Layout.Field k = s.stuckKeys;
     Layout.Field d = s.stuckData;
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     s.clearProgram(); k.iWrite(9); d.iWrite(11); s.unshift(); s.runProgram();
 
     ok(s, """
@@ -955,8 +955,8 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.pop();
-    s.pop();
+    s.iPop();
+    s.iPop();
     index.iWrite(3);
     s.setElementAt(index);
     s.runProgram();
@@ -994,8 +994,8 @@ stuckData: value=11, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.pop();
-    s.pop();
+    s.iPop();
+    s.iPop();
     index.iWrite(3);
     s.setKeyAt(index);
     s.runProgram();
@@ -1020,8 +1020,8 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.pop();
-    s.pop();
+    s.iPop();
+    s.iPop();
     index.iWrite(3);
     s.setDataAt(index);
     s.runProgram();
@@ -1031,7 +1031,7 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
   protected static void test_insertElementAt()
    {final Stuck s = test_push();
     Layout.Field index = s.index();
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
 
     ok(s, """
 stuckSize: value=3
@@ -1046,7 +1046,7 @@ stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3
 stuckData: value=9, 0=2, 1=9, 2=4, 3=6
 """);
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
@@ -1054,7 +1054,7 @@ stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2
 stuckData: value=12, 0=2, 1=12, 2=9, 3=4
 """);
 
-    s.clearProgram(); s.pop(); s.runProgram();
+    s.clearProgram(); s.iPop(); s.runProgram();
     s.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
@@ -1184,10 +1184,10 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     ok(success, "success: value=0");
 
     s.clearProgram();
-    s.pop();
-    s.pop();
-    t.pop();
-    t.pop();
+    s.iPop();
+    s.iPop();
+    t.iPop();
+    t.iPop();
     s.merge(t, success);
     s.runProgram();
     ok(success, "success: value=1");
@@ -1204,8 +1204,8 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
     ok(success, "success: value=0");
 
     m.clearProgram();
-    s.pop();
-    s.pop();
+    s.iPop();
+    s.iPop();
     m.merge(s, t, success);
     m.runProgram();
     ok(success, "success: value=1");
@@ -1236,8 +1236,8 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     ok(success, "success: value=0");
 
     s.clearProgram();
-    s.pop(); s.pop(); s.pop();
-    t.pop(); t.pop(); t.pop();
+    s.iPop(); s.iPop(); s.iPop();
+    t.iPop(); t.iPop(); t.iPop();
     s.mergeButOne(k, t, success);
     s.runProgram();
     ok(success, "success: value=1");
@@ -1254,7 +1254,7 @@ stuckData: value=4, 0=2, 1=4, 2=2, 3=4
     ok(success, "success: value=0");
 
     m.clearProgram();
-    s.pop(); s.pop();
+    s.iPop(); s.iPop();
     m.mergeButOne(s, k, t, success);
     m.runProgram();
     ok(success, "success: value=1");
@@ -1325,7 +1325,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     final Stuck R = test_push(); R.L.P = s.L.P;
 
     s.clearProgram();
-    s.pop();
+    s.iPop();
     s.splitIntoThree(L, R, 1);
     s.runProgram();
 
@@ -1479,7 +1479,7 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 """);
 
     s.clearProgram();
-    s.pop();
+    s.iPop();
     s.lastElement();
     s.runProgram();
     ok(s, """
@@ -1531,7 +1531,7 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 """);
 
     s.clearProgram();
-    s.pop();
+    s.iPop();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
     s.setLastElement();
@@ -1629,7 +1629,7 @@ stuckData: value=12, 0=11, 1=12, 2=2, 3=2
     ok(F, "fullButOne: value=0");
 
     s.clearProgram();
-    s.pop();
+    s.iPop();
     s.isEmpty     (e);
     s.isFull      (f);
     s.isFullButOne(F);
@@ -1639,7 +1639,7 @@ stuckData: value=12, 0=11, 1=12, 2=2, 3=2
     ok(F, "fullButOne: value=1");
 
     s.clearProgram();
-    s.pop(); s.pop(); s.pop();
+    s.iPop(); s.iPop(); s.iPop();
     s.isEmpty     (e);
     s.isFull      (f);
     s.isFullButOne(F);

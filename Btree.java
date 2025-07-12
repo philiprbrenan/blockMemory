@@ -843,16 +843,14 @@ stucks         array  %d
                {copyStuckFrom(l, li);                                           // Load left  leaf from btree
                 copyStuckFrom(r, ri);                                           // Load right leaf from btree
                 l.merge(r, success);                                            // Merge leaves into left child
-               }
-             };
 
-            L.P.new If(success)                                                 // Modify the parent only if the merge succeeded
-             {void Then()
-               {p.iRemoveElementAt(LeftLeaf);                                   // Remove the left child
-                p.stuckData.iMove(li); p.iSetDataAt(LeftLeaf);                  // Replace the right child with the left child
-                iSaveStuckInto(l, li);                                          // Save the modified left child back into the tree
-                iSaveStuckInto(p, Parent);                                      // Save the modified root back into the tree
-                iFree(ri);                                                      // Free right leaf as it is no longer in use
+                if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
+                 {p.removeElementAt(LeftLeaf);                                  // Remove the left child
+                  p.stuckData.move(li); p.setDataAt(LeftLeaf);                  // Replace the right child with the left child
+                  saveStuckInto(l, li);                                         // Save the modified left child back into the tree
+                  saveStuckInto(p, Parent);                                     // Save the modified root back into the tree
+                  free(ri);                                                     // Free right leaf as it is no longer in use
+                 }
                }
              };
            }
@@ -950,26 +948,31 @@ stucks         array  %d
            };
          };
 
-        p.stuckData.iRead    (LeftBranch); li.iMove(p.stuckData);               // Get the btree index of the left child branch
-        p.stuckData.iReadNext(LeftBranch); ri.iMove(p.stuckData);               // Get the btree index of the right child branch
-
-        new IsLeaf(li)                                                          // Check that the children are branches
-         {void Leaf()                                                           // Children are not branches
-           {L.P.iGoto(end);
+        L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {p.stuckData.read    (LeftBranch); li.move(p.stuckData);             // Get the btree index of the left child branch
+            p.stuckData.readNext(LeftBranch); ri.move(p.stuckData);             // Get the btree index of the right child branch
            }
          };
-        iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
-        iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
-        p.stuckKeys.iRead(LeftBranch);                                          // Key associated with left child branch
-        l.iMergeButOne(p.stuckKeys, r, success);                                // Merge branches into left child
 
-        L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
-         {void Then()
-           {p.iRemoveElementAt(LeftBranch);                                     // Remove the left child
-            p.stuckData.iMove(li); p.iSetDataAt(LeftBranch);                    // Replace the right child with the left child
-             iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
-             iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
-            iFree(ri);                                                          // Free right branch as it is no longer in use
+        new IsLeaf(li)                                                          // Check that the children are branches
+         {void Branch()
+           {L.P.new Instruction()                                               // Check that the parent has a child at the specified index
+             {void action()
+               {copyStuckFrom(l, li);                                           // Load left  branch from btree
+                copyStuckFrom(r, ri);                                           // Load right branch from btree
+                p.stuckKeys.read(LeftBranch);                                   // Key associated with left child branch
+                l.mergeButOne(p.stuckKeys, r, success);                         // Merge branches into left child
+
+                if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
+                 {p.removeElementAt(LeftBranch);                              // Remove the left child
+                  p.stuckData.move(li); p.setDataAt(LeftBranch);              // Replace the right child with the left child
+                  saveStuckInto(l, li);                                       // Save the modified left child back into the tree
+                  saveStuckInto(p, Parent);                                   // Save the modified root back into the tree
+                  free(ri);                                                   // Free right branch as it is no longer in use
+                 }
+               }
+             };
            }
          };
        }

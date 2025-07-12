@@ -1135,25 +1135,20 @@ stucks         array  %d
               Found.one();
               L.P.Goto(end);
              }
-           }
-         };
 
-        S.iIsFull(full);                                                        // Check whether the stuck is full
-        L.P.new If (full)
-         {void Else()                                                           // Leaf is not full so we can insert immediately
-           {S.iSearch_le(Found, stuckIndex);
-            S.stuckKeys.iMove(Key);
-            S.stuckData.iMove(Data);
-            L.P.new If(Found)
-             {void Then() {S.iInsertElementAt(stuckIndex);}
-              void Else() {S.iPush();}
-             };
-             iSaveStuckInto(S, index);
-            Found.iOne();
-            L.P.iGoto(end);
+            S.isFull(full);                                                     // Check whether the stuck is full
+            if (!full.asBoolean())
+             {S.search_le(Found, stuckIndex);
+              S.stuckKeys.move(Key);
+              S.stuckData.move(Data);
+              if (Found.asBoolean()) S.insertElementAt(stuckIndex);
+              else S.push();
+              saveStuckInto(S, index);
+              Found.one();
+             }
+            else Found.zero();                                                  // The key has not been inserted
            }
          };
-        Found.iZero();                                                          // The key has not been inserted
        }
      };
    }
@@ -1229,22 +1224,22 @@ stucks         array  %d
                 L.P.iGoto(end);                                                 // Successfully found the key
                }
               void Branch()                                                     // Child is a branch
-               {S.iIsFullButOne(fullButOne);
-                L.P.new If (fullButOne)
-                 {void Then()                                                   // Child branch is full
-                   {L.P.new If (found)
-                     {void Then()
-                       {iSplitBranchNotTop(p, stuckIndex);                      // Split the child branch known not to be top
+               {L.P.new Instruction()
+                 {void action()
+                   {S.isFullButOne(fullButOne);
+                    if (fullButOne.asBoolean())
+                     {if (found.asBoolean())
+                       {splitBranchNotTop(p, stuckIndex);                       // Split the child branch known not to be top
                        }
-                      void Else()
-                       {iSplitBranchAtTop(p);                                   // Split the child branch known to be top
+                      else
+                       {splitBranchAtTop(p);                                    // Split the child branch known to be top
                        }
-                     };
-                    s.iMove(p);                                                 // Restart at the parent so we enter the child stuck that contains the key
-                    iCopyStuckFrom(S, s);                                       // Reload stuck so we start again at the parent level
+                      s.move(p);                                                // Restart at the parent so we enter the child stuck that contains the key
+                      copyStuckFrom(S, s);                                      // Reload stuck so we start again at the parent level
+                     }
+                    L.P.Goto(start);                                            // Try again
                    }
                  };
-                L.P.iGoto(start);                                               // Try again
                }
              };
            };
@@ -1267,48 +1262,55 @@ stucks         array  %d
     final Layout.Field isLeaf     = isLeaf();
     final Layout.Field success    = S.success();
 
-    Key.iMove(stuckKeys);                                                       // Save path key
-
     L.P.new Block()                                                             // The block is left as soon as possible
      {void code()
-       {s.iZero();                                                              // Start at the root and step down through the tree along the path of the key merging on each side of the key as we go
+       {L.P.new Instruction()
+         {void action()
+           {Key.move(stuckKeys);                                                // Save path key
+            s.zero();                                                           // Start at the root and step down through the tree along the path of the key merging on each side of the key as we go
+           }
+         };
         new IsLeaf(s)                                                           // Root is a leaf or a branch
          {void Leaf()                                                           // Root is a leaf - nothing to merge
            {L.P.iGoto(end);
            }
          };
 
-        iMergeLeavesIntoRoot(success);                                           // Try merging leaves into root
-        L.P.iGoNotZero(end, success);                                           // A successful merge makes the root a leaf so we can return
+        iMergeLeavesIntoRoot(success);                                          // Try merging leaves into root
+        L.P.iGoNotZero(end,  success);                                          // A successful merge makes the root a leaf so we can return
 
-        iMergeBranchesIntoRoot(success);                                         // Try merging branches into root
+        iMergeBranchesIntoRoot(success);                                        // Try merging branches into root
 
         iCopyStuckFrom(S, s);                                                   // Load root
 
         L.P.new Block()
          {void code()
-           {iMergeLeavesAtTop  (s, success);                                     // Try merging leaves at top into parent
-            iMergeBranchesAtTop(s, success);                                     // Try merging branches at top into parent
+           {iMergeLeavesAtTop  (s, success);                                    // Try merging leaves at top into parent
+            iMergeBranchesAtTop(s, success);                                    // Try merging branches at top into parent
             for (int i = 0; i < maxStuckSize-1; i++)
              {final int I = i;
-              stuckIndex.iWrite(i);
               L.P.new Instruction()                                             // Check we are in the body of the stuck
                {void action()
-                 {within.value = I < S.stuckSize.value ? 1 : 0;
+                 {stuckIndex.write(I);
+                  within.value = I < S.stuckSize.value ? 1 : 0;
                  }
                };
               L.P.new If(within)                                                // Within body of stuck
                {void Then()
-                 {iMergeLeavesNotTop  (s, stuckIndex, success);                  // Try merging leaves not at top into parent
-                  iMergeBranchesNotTop(s, stuckIndex, success);                  // Try merging branches not at top into parent
+                 {iMergeLeavesNotTop  (s, stuckIndex, success);                 // Try merging leaves not at top into parent
+                  iMergeBranchesNotTop(s, stuckIndex, success);                 // Try merging branches not at top into parent
                  }
                };
              }
 
-            S.stuckKeys.iMove(Key);                                             // Following the path made by this key
-            S.iSearch_le(found, stuckIndex);                                     // Step down
-            s.iMove(S.stuckData);                                               // Child
-            iCopyStuckFrom(S, s);                                               // Load child
+            L.P.new Instruction()
+             {void action()
+               {S.stuckKeys.move(Key);                                          // Following the path made by this key
+                S.search_le(found, stuckIndex);                                 // Step down
+                s.move(S.stuckData);                                            // Child
+                copyStuckFrom(S, s);                                            // Load child
+               }
+             };
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - end of merging

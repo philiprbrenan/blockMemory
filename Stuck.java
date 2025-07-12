@@ -263,16 +263,20 @@ Stuck        array  %d
      };
    }
 
+  void pastLastElement()                                                        // Get the key, data pair beyond the last valid element
+   {if (stuckSize.value > maxStuckSize - 1)
+     {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
+      return;
+     }
+
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
+   }
+
   void iPastLastElement()                                                       // Get the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value > maxStuckSize - 1)
-         {L.stopProgram("Cannot get the element beyond the last element because the stuck is full");
-          return;
-         }
-
-        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value]);
-        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value]);
+       {pastLastElement();
        }
      };
    }

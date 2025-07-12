@@ -322,15 +322,19 @@ Stuck        array  %d
      };
    }
 
+  void setDataAt(Layout.Field index)                                            // Set the data element at the specified index
+   {if (index.value > stuckSize.value)
+     {L.stopProgram("Cannot set data more than one step beyond current end of stuck");
+      return;
+     }
+    if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
+    stuckData.write(index);
+   }
+
   void iSetDataAt(Layout.Field index)                                           // Set the data element at the specified index
    {L.P.new Instruction()
      {void action()
-       {if (index.value > stuckSize.value)
-         {L.stopProgram("Cannot set data more than one step beyond current end of stuck");
-          return;
-         }
-        if (index.value == stuckSize.value) stuckSize.inc();                    // Extending the stuck
-        stuckData.write(index);
+       {setDataAt(index);
        }
      };
    }

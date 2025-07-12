@@ -908,31 +908,38 @@ stucks         array  %d
    {final Stuck p = stuck(), l = stuck(),  r  = stuck();                        // Root and left, right children
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
     final Layout.Field k   = p.key();                                           // Splitting key
-    success.iZero();                                                            // Assume failure
 
     iCopyStuckFromRoot(p);                                                      // Load root
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
          {void action()
-           {if (p.stuckSize.value != 1) L.P.Goto(end);
+           {success.zero();                                                    // Assume failure
+            if (p.stuckSize.value != 1) L.P.Goto(end);
            };
          };
-        p.stuckKeys.iRead(0); k .iMove(p.stuckKeys);                            // Splitting key
-        p.stuckData.iRead(0); li.iMove(p.stuckData);                            // Index of left branch
-        p.stuckData.iRead(1); ri.iMove(p.stuckData);                            // Index of right branch
-        new IsLeaf(li)                                                          // Check that the children are leaves
-         {void Leaf()                                                           // Children are not leaves
-           {L.P.iGoto(end);
+
+        L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
+         {void action()
+           {p.stuckKeys.read(0); k .move(p.stuckKeys);                          // Splitting key
+            p.stuckData.read(0); li.move(p.stuckData);                          // Index of left branch
+            p.stuckData.read(1); ri.move(p.stuckData);                          // Index of right branch
            }
          };
-        iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
-        iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
-        p.iMergeButOne(l, k, r, success);                                       // Merge left branch, splitting key, right branch into root
-        L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
-         {void Then()
-           {iSaveStuckIntoRoot(p);                                              // Save the modified root back into the tree
-            iFree(li); iFree(ri);                                               // Free left and right leaves as they are no longer needed
+
+        new IsLeaf(li)                                                          // Check that the children are leaves
+         {void Branch()                                                         // Children are not leaves
+           {L.P.new Instruction()
+             {void action()
+               {copyStuckFrom(l, li);                                           // Load left  branch from btree
+                copyStuckFrom(r, ri);                                           // Load right branch from btree
+                p.mergeButOne(l, k, r, success);                                // Merge left branch, splitting key, right branch into root
+                if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
+                 {saveStuckIntoRoot(p);                                         // Save the modified root back into the tree
+                  free(li); free(ri);                                           // Free left and right leaves as they are no longer needed
+                 }
+               }
+             };
            }
          };
        }

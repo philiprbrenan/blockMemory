@@ -152,23 +152,22 @@ stucks         array  %d
   void copyStuckFrom(Stuck S, Layout.Field BtreeIndex)                          // Copy a stuck out of the btree
    {final Layout.Field stuckIndex = S.index();
 
-    L.P.new Instruction()
-     {void action()
-       {stuckSize  .read(BtreeIndex);
-        S.stuckSize.move(stuckSize);
-       }
-     };
+    stuckSize  .read(BtreeIndex);
+    S.stuckSize.move(stuckSize);
 
     for (int i = 0; i < S.maxStuckSize; i++)
-     {final int I = i;
-      L.P.new Instruction()
-       {void action()
-         {stuckIndex.write(I);
-          stuckKeys.read(BtreeIndex, stuckIndex); S.stuckKeys.move(stuckKeys); S.stuckKeys.write(stuckIndex);
-          stuckData.read(BtreeIndex, stuckIndex); S.stuckData.move(stuckData); S.stuckData.write(stuckIndex);
-         }
-       };
+     {stuckIndex.write(i);
+      stuckKeys.read(BtreeIndex, stuckIndex); S.stuckKeys.move(stuckKeys); S.stuckKeys.write(stuckIndex);
+      stuckData.read(BtreeIndex, stuckIndex); S.stuckData.move(stuckData); S.stuckData.write(stuckIndex);
      }
+   }
+
+  void iCopyStuckFrom(Stuck S, Layout.Field BtreeIndex)                          // Copy a stuck out of the btree
+   {L.P.new Instruction()
+     {void action()
+       {copyStuckFrom(S, BtreeIndex);
+       }
+     };
    }
 
   void saveStuckInto(Stuck S, Layout.Field BtreeIndex)                          // Save a stuck into the indicated position in the btree
@@ -178,25 +177,20 @@ stucks         array  %d
      {void action()
        {stuckSize.move(S.stuckSize);                                            // Get the size field from the btree
         stuckSize.write(BtreeIndex);                                            // Set the size field in the stuck
-       }
-     };
 
-    for (int i = 0; i < S.maxStuckSize; i++)
-     {final int I = i;
-      L.P.new Instruction()
-       {void action()
-         {stuckIndex.write(I);
+        for (int i = 0; i < S.maxStuckSize; i++)
+         {stuckIndex.write(i);
           S.stuckKeys.read(stuckIndex); stuckKeys.move(S.stuckKeys); stuckKeys.write(BtreeIndex, stuckIndex);
           S.stuckData.read(stuckIndex); stuckData.move(S.stuckData); stuckData.write(BtreeIndex, stuckIndex);
          }
-       };
-     }
+       }
+     };
    }
 
   void copyStuckFromRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
    {final Layout.Field i = index();
     i.iZero();
-    copyStuckFrom(S, i);
+    iCopyStuckFrom(S, i);
    }
 
   void saveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
@@ -300,7 +294,7 @@ stucks         array  %d
       stuckIsLeaf.iRead(at);
       stuckIsFree.iRead(at);
       freeNext   .iRead(at);
-      copyStuckFrom(stuck, at);
+      iCopyStuckFrom(stuck, at);
       L.runProgram();
       L.continueProgram(p);
 
@@ -534,10 +528,10 @@ stucks         array  %d
     final Layout.Field cl = index(), cr = index();                              // Btree indexes of child and left and right children of child
     final Layout.Field ck = p.key(), pl = p.key(), pr = p.key(), plr = p.key(); // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
-    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
     p.stuckKeys.iRead(stuckIndex); ck.iMove(p.stuckKeys);                       // Key of child
     p.stuckData.iRead(stuckIndex); cr.iMove(p.stuckData);                       // Reference to child
-    copyStuckFrom(c, p.stuckData);                                              // Load child
+    iCopyStuckFrom(c, p.stuckData);                                              // Load child
 
     isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
     L.P.new If(isLeaf)
@@ -604,10 +598,10 @@ stucks         array  %d
     final Layout.Field cl = index(), cr = index();                              // Btree indexes of child and left and right children of child
     final Layout.Field pl = p.key(), pr = p.key(), plr = p.key();               // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
-    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
     p.pastLastElement();                                                        // Key of child
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
-    copyStuckFrom(c, p.stuckData);                                              // Load child from btree
+    iCopyStuckFrom(c, p.stuckData);                                              // Load child from btree
 
     isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
     L.P.new If(isLeaf)
@@ -681,10 +675,10 @@ stucks         array  %d
     final Layout.Field ck           = p.key();                                  // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
     final Layout.Field key          = p.key();                                  // The central key
 
-    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
     p.stuckKeys.iRead(stuckIndex); ck.iMove(p.stuckKeys);                       // Key of child
     p.stuckData.iRead(stuckIndex); cr.iMove(p.stuckData);                       // Reference to child
-    copyStuckFrom(c, p.stuckData);                                              // Load child
+    iCopyStuckFrom(c, p.stuckData);                                              // Load child
 
     isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
     L.P.new If(isLeaf)
@@ -747,10 +741,10 @@ stucks         array  %d
     final Layout.Field cl           = index(), cr = index();                    // Btree indexes of child and left and right children of child
     final Layout.Field center       = p.key();                                  // The central key
 
-    copyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
     p.pastLastElement();                                                        // Key of child
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
-    copyStuckFrom(c, p.stuckData);                                              // Load child from btree
+    iCopyStuckFrom(c, p.stuckData);                                              // Load child from btree
 
     isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
     L.P.new If(isLeaf)
@@ -827,8 +821,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  leaf from btree
-        copyStuckFrom(r, ri);                                                   // Load right leaf from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  leaf from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right leaf from btree
         p.merge(l, r, success);                                                 // Merge leaves into root
         L.P.new If(success)                                                     // Modify the root only if the merge succeeded
          {void Then()
@@ -846,7 +840,7 @@ stucks         array  %d
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field li = index(), ri = index();                              // Btree indexes of left and right children of parent that we want to merge
     success.iZero();                                                            // Assume failure
-    copyStuckFrom(p, Parent);                                                   // Load parent
+    iCopyStuckFrom(p, Parent);                                                   // Load parent
 
     L.P.new Block()
      {void code()
@@ -864,8 +858,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  leaf from btree
-        copyStuckFrom(r, ri);                                                   // Load right leaf from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  leaf from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right leaf from btree
         l.merge(r, success);                                                    // Merge leaves into left child
 
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
@@ -887,7 +881,7 @@ stucks         array  %d
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
     success.iZero();                                                            // Assume failure
 
-    copyStuckFrom(p, Parent);                                                   // Load parent
+    iCopyStuckFrom(p, Parent);                                                   // Load parent
 
     L.P.new Block()
      {void code()
@@ -903,8 +897,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  leaf from btree
-        copyStuckFrom(r, ri);                                                   // Load right leaf from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  leaf from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right leaf from btree
         l.merge(r, success);                                                    // Merge leaves into left child
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
@@ -940,8 +934,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  branch from btree
-        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  branch from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right branch from btree
         p.mergeButOne(l, k, r, success);                                        // Merge left branch, splitting key, right branch into root
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
@@ -958,7 +952,7 @@ stucks         array  %d
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field li = index(), ri = index();                              // Btree indexes of left and right children of parent that we want to merge
     success.iZero();                                                            // Assume failure
-    copyStuckFrom(p, Parent);                                                   // Load parent
+    iCopyStuckFrom(p, Parent);                                                   // Load parent
 
     L.P.new Block()
      {void code()
@@ -978,8 +972,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  branch from btree
-        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  branch from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right branch from btree
         p.stuckKeys.iRead(LeftBranch);                                          // Key associated with left child branch
         l.mergeButOne(p.stuckKeys, r, success);                                 // Merge branches into left child
 
@@ -1001,7 +995,7 @@ stucks         array  %d
     final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
     success.iZero();                                                            // Assume failure
-    copyStuckFrom(p, Parent);                                                   // Load parent
+    iCopyStuckFrom(p, Parent);                                                   // Load parent
 
     L.P.new Block()
      {void code()
@@ -1023,8 +1017,8 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
          };
-        copyStuckFrom(l, li);                                                   // Load left  branch from btree
-        copyStuckFrom(r, ri);                                                   // Load right branch from btree
+        iCopyStuckFrom(l, li);                                                   // Load left  branch from btree
+        iCopyStuckFrom(r, ri);                                                   // Load right branch from btree
         p.iPop();                                                               // Key associated with left child branch
         l.mergeButOne(p.stuckKeys, r, success);                                 // Merge leaves into left child
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
@@ -1062,7 +1056,7 @@ stucks         array  %d
     s.iZero();                                                                  // Start at the root
     L.P.new Block()
      {void code()
-       {copyStuckFrom(S, s);                                                    // Set search key
+       {iCopyStuckFrom(S, s);                                                    // Set search key
         S.stuckKeys.iMove(Key);
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
@@ -1097,7 +1091,7 @@ stucks         array  %d
        {Key .iMove(stuckKeys);
         Data.iMove(stuckData);
         find(Key, Found, Data, index, stuckIndex);                              // Find the leaf that should contain the key and possibly the key.
-        copyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
+        iCopyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
         S.stuckKeys.iMove(Key);
         S.stuckData.iMove(Data);
         L.P.new If (Found)                                                      // Found the key in the leaf so update it with the new data
@@ -1168,7 +1162,7 @@ stucks         array  %d
          };
 
         s.iZero(); p.iZero();                                                   // Start at the root and step down through the tree to the key splitting as we go
-        copyStuckFrom(S, s);                                                    // Load root
+        iCopyStuckFrom(S, s);                                                    // Load root
 
         L.P.new Block()
          {void code()
@@ -1177,7 +1171,7 @@ stucks         array  %d
             S.search_le(found, stuckIndex);                                     // Step down
             p.iMove(s);                                                         // Parent
             s.iMove(S.stuckData);                                               // Child
-            copyStuckFrom(S, s);                                                // Load child
+            iCopyStuckFrom(S, s);                                                // Load child
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - search for exact match
@@ -1212,7 +1206,7 @@ stucks         array  %d
                        }
                      };
                     s.iMove(p);                                                 // Restart at the parent so we enter the child stuck that contains the key
-                    copyStuckFrom(S, s);                                        // Reload stuck so we start again at the parent level
+                    iCopyStuckFrom(S, s);                                        // Reload stuck so we start again at the parent level
                    }
                  };
                 L.P.iGoto(start);                                                // Try again
@@ -1254,7 +1248,7 @@ stucks         array  %d
 
         mergeBranchesIntoRoot(success);                                         // Try merging branches into root
 
-        copyStuckFrom(S, s);                                                    // Load root
+        iCopyStuckFrom(S, s);                                                    // Load root
 
         L.P.new Block()
          {void code()
@@ -1279,7 +1273,7 @@ stucks         array  %d
             S.stuckKeys.iMove(Key);                                             // Following the path made by this key
             S.search_le(found, stuckIndex);                                     // Step down
             s.iMove(S.stuckData);                                               // Child
-            copyStuckFrom(S, s);                                                // Load child
+            iCopyStuckFrom(S, s);                                                // Load child
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - end of merging
@@ -1308,7 +1302,7 @@ stucks         array  %d
      {void code()
        {Key.iMove(stuckKeys);
         find(Key, found, Data, index, stuckIndex);                              // Find the leaf that should contain the key and possibly the key.
-        copyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
+        iCopyStuckFrom(S, index);                                                // Copy the stuck that should contain the key
         L.P.new If (found)                                                      // Found the key in the leaf so remove it
          {void Then()
            {S.removeElementAt(stuckIndex);                                      // Remove the key
@@ -2127,7 +2121,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
      }
     index.value = 2;
     b.clearProgram();
-    b.copyStuckFrom(s, index);
+    b.iCopyStuckFrom(s, index);
     s.iPop(); s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
@@ -2208,7 +2202,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     //stop(b);
     index.value = 2;
     b.clearProgram();
-    b.copyStuckFrom(s, index);
+    b.iCopyStuckFrom(s, index);
     s.iPop(); s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
@@ -2252,7 +2246,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     //stop(b);
     index.value = 6;
     b.clearProgram();
-    b.copyStuckFrom(s, index);
+    b.iCopyStuckFrom(s, index);
     s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
@@ -2350,7 +2344,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     //stop(b);
     index.value = 6;
     b.clearProgram();
-    b.copyStuckFrom(s, index);
+    b.iCopyStuckFrom(s, index);
     s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();

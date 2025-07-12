@@ -1068,7 +1068,7 @@ stucks         array  %d
      {void code()
        {L.P.new Instruction()
          {void action()
-           {copyStuckFrom(S, s);                                                   // Set search key
+           {copyStuckFrom(S, s);                                                // Set search key
             S.stuckKeys.move(Key);
            }
          };
@@ -1077,8 +1077,8 @@ stucks         array  %d
          {void Leaf()                                                           // At a leaf - search for exact match
            {L.P.new Instruction()
              {void action()
-               {S.search_eq(Found, stuckIndex);                                  // Search
-                L.P.GoZero(end, Found);                                          // Key not present
+               {S.search_eq(Found, stuckIndex);                                 // Search
+                L.P.GoZero(end, Found);                                         // Key not present
                }
              };
             L.P.new Instruction()
@@ -1090,9 +1090,13 @@ stucks         array  %d
              };
            }
           void Branch()                                                         // On a branch - step to next level down
-           {S.iSearch_le(Found, stuckIndex);                                     // Search stuck for matching key
-            s.iMove(S.stuckData);                                               // Index of next stuck down
-            L.P.iGoto(start);                                                   // Key not present
+           {L.P.new Instruction()
+             {void action()
+               {S.search_le(Found, stuckIndex);                                 // Search stuck for matching key
+                s.move(S.stuckData);                                            // Index of next stuck down
+                L.P.Goto(start);                                                // Key not present
+               }
+             };
            }
          };
        };
@@ -1111,18 +1115,26 @@ stucks         array  %d
 
     L.P.new Block()
      {void code()
-       {Key .iMove(stuckKeys);
-        Data.iMove(stuckData);
+       {L.P.new Instruction()
+         {void action()
+           {Key .move(stuckKeys);
+            Data.move(stuckData);
+           }
+         };
+
         find(Key, Found, Data, index, stuckIndex);                              // Find the leaf that should contain the key and possibly the key.
-        iCopyStuckFrom(S, index);                                               // Copy the stuck that should contain the key
-        S.stuckKeys.iMove(Key);
-        S.stuckData.iMove(Data);
-        L.P.new If (Found)                                                      // Found the key in the leaf so update it with the new data
-         {void Then()
-           {S.setElementAt(stuckIndex);
-             iSaveStuckInto(S, index);
-            Found.iOne();
-            L.P.iGoto(end);
+
+        L.P.new Instruction()
+         {void action()
+           {copyStuckFrom(S, index);                                            // Copy the stuck that should contain the key
+            S.stuckKeys.move(Key);
+            S.stuckData.move(Data);
+            if (Found.asBoolean())                                              // Found the key in the leaf so update it with the new data
+             {S.setElementAt(stuckIndex);
+              saveStuckInto(S, index);
+              Found.one();
+              L.P.Goto(end);
+             }
            }
          };
 

@@ -1070,8 +1070,12 @@ stucks         array  %d
         S.stuckKeys.iMove(Key);
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
-           {S.iSearch_eq(Found, stuckIndex);                                    // Search
-            L.P.iGoZero(end, Found);                                            // Key not present
+           {L.P.new Instruction()
+            {void action()
+              {S.search_eq(Found, stuckIndex);                                  // Search
+               L.P.GoZero(end, Found);                                          // Key not present
+              }
+           };
             L.P.new Instruction()
              {void action()
                {S.elementAt(stuckIndex);                                        // Look up data

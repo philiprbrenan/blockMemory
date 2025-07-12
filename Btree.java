@@ -40,7 +40,7 @@ class Btree extends Test                                                        
     stuckKeys   = L.locateFieldByName("stuckKeys");                             // Keys field
     stuckData   = L.locateFieldByName("stuckData");                             // Data field
 
-    createFreeChain();                                                          // Create the free chain
+    iCreateFreeChain();                                                         // Create the free chain
    }
 
   Layout layout()                                                               // Layout describing Btree.
@@ -84,59 +84,70 @@ stucks         array  %d
 //D2 Allocation                                                                 // Allocate stucks from the free chain
 
   void createFreeChain()                                                        // Create the free chain
-   {final Layout.Field   index = index();
-    final Layout.Program p     = L.startNewProgram();
+   {final Layout.Field index = index();
     for (int i = 1; i < size; i++)
-     {final int I = i;
-      L.P.new Instruction()
-       {void action()
-         {freeStart.write(1);
-          index.write(I);
-          freeNext.write(I+1 == size ? 0 : I+1);
-          stuckIsFree.write(1);
-          freeNext   .write(index);
-          stuckIsFree.write(index);
-          setRootAsLeaf();
-         }
-       };
+     {freeStart.write(1);
+      index.write(i);
+      freeNext.write(i+1 == size ? 0 : i+1);
+      stuckIsFree.write(1);
+      freeNext   .write(index);
+      stuckIsFree.write(index);
+      setRootAsLeaf();
      }
+   }
+
+  void iCreateFreeChain()                                                        // Create the free chain
+   {final Layout.Program p = L.startNewProgram();
+    L.P.new Instruction()
+     {void action()
+       {createFreeChain();
+       }
+     };
     L.runProgram();
     L.continueProgram(p);
    }
 
   private void allocate(Layout.Field ref, boolean leaf)                         // Allocate a stuck and set a ref to the allocated node
    {final Layout.Field index = index();
-    L.P.new Instruction()
+    if (freeStart.value == 0)                                               // Check memory
+     {stopProgram("Out of memory");
+      return;
+     }
+    index.move(freeStart);                                                  // Head of free chain gives allocated stuck
+    ref  .move(freeStart);                     ;                            // Head of free chain gives allocated stuck
+    stuckIsFree.zero(index);                                                // Show as in use
+    freeNext.read(index);                                                   // Locate next stuck on free chain to become new first stuck on free chain
+    freeStart.move(freeNext);                                               // Next stuck on free chain becomes head of free chain
+    freeNext.zero(index);                                                   // Clear the next field from the current stuck
+    if (leaf) setLeaf(ref); else setBranch(ref);
+   }
+
+  private void iAllocate(Layout.Field ref, boolean leaf)                         // Allocate a stuck and set a ref to the allocated node
+   {L.P.new Instruction()
      {void action()
-       {if (freeStart.value == 0)                                               // Check memory
-         {stopProgram("Out of memory");
-          return;
-         }
-        index.move(freeStart);                                                  // Head of free chain gives allocated stuck
-        ref  .move(freeStart);                     ;                            // Head of free chain gives allocated stuck
-        stuckIsFree.zero(index);                                                // Show as in use
-        freeNext.read(index);                                                   // Locate next stuck on free chain to become new first stuck on free chain
-        freeStart.move(freeNext);                                               // Next stuck on free chain becomes head of free chain
-        freeNext.zero(index);                                                   // Clear the next field from the current stuck
-        if (leaf) setLeaf(ref); else setBranch(ref);
+       {allocate(ref, leaf);
        }
      };
    }
 
-  private void allocateLeaf  (Layout.Field ref) {allocate(ref, true);}          // Allocate a stuck, set a ref to the allocated node and mark it a leaf
-  private void allocateBranch(Layout.Field ref) {allocate(ref, false);}         // Allocate a stuck, set a ref to the allocated node and mark it a branch
+  private void allocateLeaf  (Layout.Field ref) {iAllocate(ref, true);}         // Allocate a stuck, set a ref to the allocated node and mark it a leaf
+  private void allocateBranch(Layout.Field ref) {iAllocate(ref, false);}        // Allocate a stuck, set a ref to the allocated node and mark it a branch
 
   private void free(Layout.Field ref)                                           // Free the indicated stuck to make it available for reuse
+   {if (ref.value == 0)                                                         // The root stuck cannot be freed
+     {stopProgram("Cannot free the root stuck");
+      return;
+     }
+    freeNext   .move(freeStart);
+    freeNext   .write(ref);                                                     // Append the free chain to this stuck
+    freeStart  .move (ref);                                                     // This stuck becomes the first stuick on the free chain
+    stuckIsFree.one  (ref);                                                     // Show as free
+   }
+
+  private void iFree(Layout.Field ref)                                          // Free the indicated stuck to make it available for reuse
    {L.P.new Instruction()
      {void action()
-       {if (ref.value == 0)                                                     // The root stuck cannot be freed
-         {stopProgram("Cannot free the root stuck");
-          return;
-         }
-        freeNext   .move(freeStart);
-        freeNext   .write(ref);                                                 // Append the free chain to this stuck
-        freeStart  .move (ref);                                                 // This stuck becomes the first stuick on the free chain
-        stuckIsFree.one  (ref);                                                 // Show as free
+       {free(ref);
        }
      };
    }
@@ -850,7 +861,7 @@ stucks         array  %d
          {void Then()
            {iSaveStuckIntoRoot(p);                                               // Save the modified root back into the tree
             iSetRootAsLeaf();                                                    // Set the root to be a leaf
-            free(li); free(ri);                                                 // Free left and right leaves as they are no longer needed
+            iFree(li); iFree(ri);                                                 // Free left and right leaves as they are no longer needed
            }
          };
        }
@@ -890,7 +901,7 @@ stucks         array  %d
             p.stuckData.iMove(li); p.setDataAt(LeftLeaf);                       // Replace the right child with the left child
              iSaveStuckInto(l, li);                                               // Save the modified left child back into the tree
              iSaveStuckInto(p, Parent);                                           // Save the modified root back into the tree
-            free(ri);                                                           // Free right leaf as it is no longer in use
+            iFree(ri);                                                           // Free right leaf as it is no longer in use
            }
          };
        }
@@ -927,7 +938,7 @@ stucks         array  %d
            {p.stuckSize.iDec();                                                     // The left child is now topmost - we know this is ok because the parent has at elast one entry
              iSaveStuckInto(l, li);                                                   // Save the modified left child back into the tree
              iSaveStuckInto(p, Parent);                                               // Save the modified root back into the tree
-            free(ri);                                                               // Free right leaf as it is no longer in use
+            iFree(ri);                                                               // Free right leaf as it is no longer in use
            }
          };
        }
@@ -962,7 +973,7 @@ stucks         array  %d
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
            {iSaveStuckIntoRoot(p);                                                   // Save the modified root back into the tree
-            free(li); free(ri);                                                     // Free left and right leaves as they are no longer needed
+            iFree(li); iFree(ri);                                                     // Free left and right leaves as they are no longer needed
            }
          };
        }
@@ -1005,7 +1016,7 @@ stucks         array  %d
             p.stuckData.iMove(li); p.setDataAt(LeftBranch);                     // Replace the right child with the left child
              iSaveStuckInto(l, li);                                               // Save the modified left child back into the tree
              iSaveStuckInto(p, Parent);                                           // Save the modified root back into the tree
-            free(ri);                                                           // Free right branch as it is no longer in use
+            iFree(ri);                                                           // Free right branch as it is no longer in use
            }
          };
        }
@@ -1049,7 +1060,7 @@ stucks         array  %d
             p.setPastLastData();                                                // Make newly combined left branch top most
              iSaveStuckInto(l, li);                                               // Save the modified left child back into the tree
              iSaveStuckInto(p, Parent);                                           // Save the modified root back into the tree
-            free(ri);                                                           // Free right branch as it is no longer in use
+            iFree(ri);                                                           // Free right branch as it is no longer in use
            }
          };
        }
@@ -1382,8 +1393,8 @@ stuckKeys: value=0, 0=0, 1=0, 2=0, 3=0
 stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 """);
 
-    b.allocate(x, false);
-    b.allocate(y, false);
+    b.iAllocate(x, false);
+    b.iAllocate(y, false);
     b.runProgram();
 
     ok(x, "index: value=1");
@@ -1409,8 +1420,8 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
 """);
 
     b.clearProgram();
-    b.free(x);
-    b.free(y);
+    b.iFree(x);
+    b.iFree(y);
     b.runProgram();
     ok(b.freeStart, "freeStart: value=2");
     ok(b.freeNext,  "freeNext: value=1, 0=0, 1=3, 2=1, 3=4, 4=5, 5=6, 6=7, 7=8, 8=9, 9=10, 10=11, 11=12, 12=13, 13=14, 14=15, 15=16, 16=17, 17=18, 18=19, 19=20, 20=21, 21=22, 22=23, 23=24, 24=25, 25=26, 26=27, 27=28, 28=29, 29=30, 30=31, 31=0");
@@ -1435,10 +1446,10 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     final Stuck X = b.stuck();
     final Stuck Y = b.stuck();
     final Stuck Z = b.stuck();
-    b.allocate(s, true);
-    b.allocate(t, true);
-    b.allocate(x, true);
-    b.allocate(y, true);
+    b.iAllocate(s, true);
+    b.iAllocate(t, true);
+    b.iAllocate(x, true);
+    b.iAllocate(y, true);
     b.runProgram();
 
     b.clearProgram();

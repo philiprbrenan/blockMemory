@@ -914,7 +914,7 @@ stucks         array  %d
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
          {void action()
-           {success.zero();                                                    // Assume failure
+           {success.zero();                                                     // Assume failure
             if (p.stuckSize.value != 1) L.P.Goto(end);
            };
          };
@@ -980,11 +980,11 @@ stucks         array  %d
                 l.mergeButOne(p.stuckKeys, r, success);                         // Merge branches into left child
 
                 if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
-                 {p.removeElementAt(LeftBranch);                              // Remove the left child
-                  p.stuckData.move(li); p.setDataAt(LeftBranch);              // Replace the right child with the left child
-                  saveStuckInto(l, li);                                       // Save the modified left child back into the tree
-                  saveStuckInto(p, Parent);                                   // Save the modified root back into the tree
-                  free(ri);                                                   // Free right branch as it is no longer in use
+                 {p.removeElementAt(LeftBranch);                                // Remove the left child
+                  p.stuckData.move(li); p.setDataAt(LeftBranch);                // Replace the right child with the left child
+                  saveStuckInto(l, li);                                         // Save the modified left child back into the tree
+                  saveStuckInto(p, Parent);                                     // Save the modified root back into the tree
+                  free(ri);                                                     // Free right branch as it is no longer in use
                  }
                }
              };
@@ -1198,7 +1198,7 @@ stucks         array  %d
          {void code()
            {S.stuckKeys.iMove(Key);
 
-            S.iSearch_le(found, stuckIndex);                                     // Step down
+            S.iSearch_le(found, stuckIndex);                                    // Step down
             p.iMove(s);                                                         // Parent
             s.iMove(S.stuckData);                                               // Child
             iCopyStuckFrom(S, s);                                               // Load child
@@ -1342,8 +1342,8 @@ stucks         array  %d
         iCopyStuckFrom(S, index);                                               // Copy the stuck that should contain the key
         L.P.new If (found)                                                      // Found the key in the leaf so remove it
          {void Then()
-           {S.iRemoveElementAt(stuckIndex);                                      // Remove the key
-            iSaveStuckInto(S, index);                                          // Save modified stuck back into btree
+           {S.iRemoveElementAt(stuckIndex);                                     // Remove the key
+            iSaveStuckInto(S, index);                                           // Save modified stuck back into btree
             stuckKeys.iMove(Key);                                               // Reload key
             merge();                                                            // Merge along key path
            }

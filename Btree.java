@@ -502,7 +502,7 @@ stucks         array  %d
 
     copyStuckFromRoot(p);                                                   // Load leaf root stuck from btree
     p.isFull(isFull);                                                       // Check whether the leaf root stuck is full
-    if (isFull.value == 0)
+    if (!isFull.asBoolean())
      {L.P.stopProgram("A root leaf must be full before it can be split");
      }
     p.splitIntoTwo(l, r, maxStuckSize / 2);                                 // Split the leaf root in two down the middle
@@ -536,7 +536,7 @@ stucks         array  %d
     copyStuckFromRoot(p);                                                       // Load branch root stuck from btree
 
     p.isFullButOne(isFullButOne);                                               // Check whether the branch root stuck is full
-    if (isFullButOne.value == 0)
+    if (!isFullButOne.asBoolean())
      {L.P.stopProgram("A root branch must be full before it can be split");
      }
 
@@ -576,7 +576,7 @@ stucks         array  %d
         copyStuckFrom(c, p.stuckData);                                          // Load child
         isLeaf(parentIndex, isLeaf);                                            // The parent stuck must be a branch
 
-        if (isLeaf.value > 0)
+        if (isLeaf.asBoolean())
          {L.P.stopProgram("Parent must be a branch");
          };
         p.isFullButOne(isFullButOne);                                           // The parent stuck may not be full

@@ -691,66 +691,78 @@ Stuck        array  %d
 
 //D1 Merge                                                                      // Merge stucks in various weays
 
+  void merge(Stuck source, Layout.Field success)                                // Concatenate the indicated stuck on to the end of the current one
+   {final int sourceSize = source.stuckSize.value;
+    final int targetSize =        stuckSize.value;
+    if (sourceSize + targetSize > maxStuckSize)
+     {success.value = 0;
+      return;
+     }
+    for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
+     {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
+      stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
+     }
+    stuckSize.value += sourceSize;                                          // New size of target
+    success.value = 1;
+   }
+
   void iMerge(Stuck source, Layout.Field success)                                // Concatenate the indicated stuck on to the end of the current one
    {L.P.new Instruction()
      {void action()
-       {final int sourceSize = source.stuckSize.value;
-        final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize > maxStuckSize)
-         {success.value = 0;
-          return;
-         }
-        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
-         {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
-          stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
-         }
-        stuckSize.value += sourceSize;                                          // New size of target
-        success.value = 1;
+       {merge(source, success);
        }
      };
    }
 
-  void iMerge(Stuck Left, Stuck Right, Layout.Field success)                    // Replace the current stuck with the concatenation of the left and right stucks
+  void merge(Stuck Left, Stuck Right, Layout.Field success)                     // Replace the current stuck with the concatenation of the left and right stucks
+   {final int leftSize  = Left .stuckSize.value;
+    final int rightSize = Right.stuckSize.value;
+    if (leftSize + rightSize > maxStuckSize)
+     {success.value = 0;
+      return;
+     }
+    for (int i = 0; i < leftSize; ++i)                                          // Copy in left
+     {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
+      stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
+     }
+    for (int i = 0; i < rightSize; ++i)                                         // Copy in right
+     {stuckKeys.memory[leftSize+i] = (BitSet)Right.stuckKeys.memory[i].clone();
+      stuckData.memory[leftSize+i] = (BitSet)Right.stuckData.memory[i].clone();
+     }
+    stuckSize.value = leftSize + rightSize;                                     // New size of target
+    success.value = 1;
+   }
+
+  void iMerge(Stuck Left, Stuck Right, Layout.Field Success)                    // Replace the current stuck with the concatenation of the left and right stucks
    {L.P.new Instruction()
      {void action()
-       {final int leftSize  = Left .stuckSize.value;
-        final int rightSize = Right.stuckSize.value;
-        if (leftSize + rightSize > maxStuckSize)
-         {success.value = 0;
-          return;
-         }
-        for (int i = 0; i < leftSize; ++i)                                      // Copy in left
-         {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
-          stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
-         }
-        for (int i = 0; i < rightSize; ++i)                                     // Copy in right
-         {stuckKeys.memory[leftSize+i] = (BitSet)Right.stuckKeys.memory[i].clone();
-          stuckData.memory[leftSize+i] = (BitSet)Right.stuckData.memory[i].clone();
-         }
-        stuckSize.value = leftSize + rightSize;                                 // New size of target
-        success.value = 1;
+       {merge(Left, Right, Success);
        }
      };
    }
 
-  void iMergeButOne(Layout.Field Key, Stuck source, Layout.Field success)        // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
+  void mergeButOne(Layout.Field Key, Stuck source, Layout.Field success)        // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
+   {final int sourceSize = source.stuckSize.value;
+    final int targetSize =        stuckSize.value;
+    if (sourceSize + targetSize + 1 >= maxStuckSize)                            // Check size
+     {success.value = 0;
+      return;
+     }
+    stuckKeys.setBitsFromInt(stuckKeys.memory[targetSize], Key.value);          // Add key over past last data element
+    for (int i = 0; i < sourceSize; ++i)                                        // Concatenate each key, data pair from source
+     {stuckKeys.memory[targetSize+i+1] = (BitSet)source.stuckKeys.memory[i].clone();
+      stuckData.memory[targetSize+i+1] = (BitSet)source.stuckData.memory[i].clone();
+     }
+    stuckData.memory[targetSize+sourceSize+1] =                                 // Past last data element from source
+     (BitSet)source.stuckData.memory[sourceSize].clone();
+    stuckSize.value += sourceSize + 1;                                          // New size of target
+    success.value = 1;
+   }
+
+  void iMergeButOne(Layout.Field Key, Stuck Source, Layout.Field Success)       // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
    {L.P.new Instruction()
      {void action()
-       {final int sourceSize = source.stuckSize.value;
-        final int targetSize =        stuckSize.value;
-        if (sourceSize + targetSize + 1 >= maxStuckSize)                         // Check size
-         {success.value = 0;
-          return;
-         }
-        stuckKeys.setBitsFromInt(stuckKeys.memory[targetSize], Key.value);      // Add key over past last data element
-        for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair from source
-         {stuckKeys.memory[targetSize+i+1] = (BitSet)source.stuckKeys.memory[i].clone();
-          stuckData.memory[targetSize+i+1] = (BitSet)source.stuckData.memory[i].clone();
-         }
-        stuckData.memory[targetSize+sourceSize+1] =                             // Past last data element from source
-         (BitSet)source.stuckData.memory[sourceSize].clone();
-        stuckSize.value += sourceSize + 1;                                      // New size of target
-        success.value = 1;
+       {mergeButOne(Key, Source, Success);                                      // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
        }
      };
    }

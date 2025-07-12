@@ -1022,18 +1022,20 @@ stucks         array  %d
          };
 
         new IsLeaf(li)                                                          // Check that the children are branches
-         {void Branch()                                                           // Children are branches
-           {iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
-            iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
-            p.iPop();                                                               // Key associated with left child branch
-            l.iMergeButOne(p.stuckKeys, r, success);                                 // Merge leaves into left child
-            L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
-             {void Then()
-               {p.stuckData.iMove(li);                                              // Index of left branch that now contains the combined branches
-                p.setPastLastData();                                                // Make newly combined left branch top most
-                 iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
-                 iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
-                iFree(ri);                                                          // Free right branch as it is no longer in use
+         {void Branch()                                                         // Children are branches
+           {L.P.new Instruction()                                               // Check that the parent has a child at the specified index
+             {void action()
+               {copyStuckFrom(l, li);                                           // Load left  branch from btree
+                copyStuckFrom(r, ri);                                           // Load right branch from btree
+                p.pop();                                                        // Key associated with left child branch
+                l.mergeButOne(p.stuckKeys, r, success);                         // Merge leaves into left child
+                if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
+                 {p.stuckData.move(li);                                         // Index of left branch that now contains the combined branches
+                  p.setPastLastData();                                          // Make newly combined left branch top most
+                  saveStuckInto(l, li);                                         // Save the modified left child back into the tree
+                  saveStuckInto(p, Parent);                                     // Save the modified root back into the tree
+                  free(ri);                                                     // Free right branch as it is no longer in use
+                 }
                }
              };
            }

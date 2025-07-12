@@ -863,13 +863,16 @@ stucks         array  %d
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
-    success.iZero();                                                            // Assume failure
-
-    iCopyStuckFrom(p, Parent);                                                  // Load parent
 
     L.P.new Block()
      {void code()
-       {L.P.GoZero(end, p.stuckSize);                                           // Stuck must have at least one entry
+       {L.P.new Instruction()
+         {void action()
+           {success.zero();                                                            // Assume failure
+            copyStuckFrom(p, Parent);                                                  // Load parent
+            L.P.GoZero(end, p.stuckSize);                                           // Stuck must have at least one entry
+           }
+         };
 
         ls.iMove(p.stuckSize); ls.iDec();                                       // Index of left leaf known to be valid as the parent contains at least one entry resulting in two children
         rs.iMove(p.stuckSize);                                                  // Index of right leaf

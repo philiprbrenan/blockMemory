@@ -191,22 +191,30 @@ stucks         array  %d
      };
    }
 
-  void iCopyStuckFromRoot(Stuck S)                                              // Copy a stuck out of the root of the btree
+  void copyStuckFromRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
    {final Layout.Field i = index();
-    L.P.new Instruction()
+    i.zero();
+    copyStuckFrom(S, i);
+   }
+
+  void iCopyStuckFromRoot(Stuck S)                                              // Copy a stuck out of the root of the btree
+   {L.P.new Instruction()
      {void action()
-       {i.zero();
-        copyStuckFrom(S, i);
+       {copyStuckFromRoot(S);
        }
      };
    }
 
-  void iSaveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+  void saveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
    {final Layout.Field i = index();
-    L.P.new Instruction()
+    i.zero();
+    saveStuckInto(S, i);
+   }
+
+  void iSaveStuckIntoRoot(Stuck S)                                               // Copy a stuck out of the root of the btree
+   {L.P.new Instruction()
      {void action()
-       {i.zero();
-        saveStuckInto(S, i);
+       {saveStuckIntoRoot(S);
        }
     };
    }

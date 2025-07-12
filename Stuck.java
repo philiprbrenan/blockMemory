@@ -322,7 +322,7 @@ Stuck        array  %d
      };
    }
 
-  void setDataAt(Layout.Field index)                                            // Set the data element at the specified index
+  void iSetDataAt(Layout.Field index)                                           // Set the data element at the specified index
    {L.P.new Instruction()
      {void action()
        {if (index.value > stuckSize.value)
@@ -430,28 +430,34 @@ Stuck        array  %d
    }
 
   void removeElementAt(Layout.Field Index)                                      // Get the value of the indexed key, data pair at the specified index moving the elements above down into this position
+   {if (!stuckSize.asBoolean())
+     {L.stopProgram("Cannot remove element from empty stuck");
+      return;
+     }
+    if (Index.value >= stuckSize.value)
+     {L.stopProgram("Cannot remove element beyond end of actual stuck");
+      return;
+     }
+
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Index.value]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[Index.value]);
+
+    for (int i = Index.value; i < maxStuckSize-1; ++i)
+     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
+      stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
+     }
+    stuckSize.dec();
+   }
+
+  void iRemoveElementAt(Layout.Field Index)                                     // Get the value of the indexed key, data pair at the specified index moving the elements above down into this position
    {L.P.new Instruction()
      {void action()
-       {if (!stuckSize.asBoolean())
-         {L.stopProgram("Cannot remove element from empty stuck");
-          return;
-         }
-        if (Index.value >= stuckSize.value)
-         {L.stopProgram("Cannot remove element beyond end of actual stuck");
-          return;
-         }
-
-        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[Index.value]);
-        stuckData.value = stuckData.getIntFromBits(stuckData.memory[Index.value]);
-
-        for (int i = Index.value; i < maxStuckSize-1; ++i)
-         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
-          stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
-         }
-        stuckSize.dec();
+       {removeElementAt(Index);
        }
      };
    }
+
+//D2 Search                                                                     // Search for a matching key in the stuck
 
   void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
    {L.P.new Instruction()
@@ -1094,7 +1100,7 @@ stuckData: value=11, 0=2, 1=4, 2=6, 3=8
     index.iWrite(1);
     s.stuckKeys.iWrite(9);
     s.stuckData.iWrite(11);
-    s.setDataAt(index);
+    s.iSetDataAt(index);
     s.runProgram();
 
     ok(s, """
@@ -1108,7 +1114,7 @@ stuckData: value=11, 0=2, 1=11, 2=6, 3=8
     s.iPop();
     s.iPop();
     index.iWrite(3);
-    s.setDataAt(index);
+    s.iSetDataAt(index);
     s.runProgram();
     ok(s.L.P.rc, "Cannot set data more than one step beyond current end of stuck");
    }
@@ -1164,21 +1170,21 @@ stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.iRemoveElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=3
 stuckKeys: value=2, 0=1, 1=3, 2=4, 3=4
 stuckData: value=4, 0=2, 1=6, 2=8, 3=8
 """);
 
-    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.iRemoveElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=2
 stuckKeys: value=3, 0=1, 1=4, 2=4, 3=4
 stuckData: value=6, 0=2, 1=8, 2=8, 3=8
 """);
 
-    s.clearProgram(); index.iWrite(1); s.removeElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.iRemoveElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=1
 stuckKeys: value=4, 0=1, 1=4, 2=4, 3=4
@@ -1187,11 +1193,11 @@ stuckData: value=8, 0=2, 1=8, 2=8, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    index.iWrite(1); s.removeElementAt(index);
+    index.iWrite(1); s.iRemoveElementAt(index);
     s.runProgram();
     ok(s.L.P.rc, "Cannot remove element beyond end of actual stuck");
 
-    s.clearProgram(); index.iWrite(0); s.removeElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(0); s.iRemoveElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=0
 stuckKeys: value=1, 0=4, 1=4, 2=4, 3=4
@@ -1200,7 +1206,7 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    index.iWrite(0); s.removeElementAt(index);
+    index.iWrite(0); s.iRemoveElementAt(index);
     s.runProgram();
     ok(s.L.P.rc, "Cannot remove element from empty stuck");
    }

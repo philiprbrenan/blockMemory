@@ -93,7 +93,7 @@ Stuck        array  %d
 //D1 Attributes                                                                 // Answers to questions about the stuck
 
   void isEmpty(Layout.Field empty)                                              // Whether the stuck is empty
-   {empty.value = stuckSize.value == 0 ? 1 : 0;
+   {empty.value = !stuckSize.asBoolean() ? 1 : 0;
    }
 
   void iIsEmpty(Layout.Field empty)                                             // Whether the stuck is empty
@@ -174,7 +174,7 @@ Stuck        array  %d
   void iPop()                                                                   // Pop a key, data pair from the stack
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
+       {if (!stuckSize.asBoolean())
          {L.stopProgram("Cannot pop an empty stuck");
           return;
          }
@@ -207,7 +207,7 @@ Stuck        array  %d
   void shift()                                                                  // Shift a key, data pair from the stack after moving all the existing elements up one
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
+       {if (!stuckSize.asBoolean())
          {L.stopProgram("Cannot shift an empty stuck");
           return;
          }
@@ -225,7 +225,7 @@ Stuck        array  %d
    }
 
   void firstElement()                                                           // Get the first key, data pair
-   {if (stuckSize.value == 0)
+   {if (!stuckSize.asBoolean())
      {L.stopProgram("Cannot get the first element because the stuck is empty");
       return;
      }
@@ -246,7 +246,7 @@ Stuck        array  %d
    }
 
   void lastElement()                                                            // Get the last key, data pair
-   {if (stuckSize.value == 0)
+   {if (!stuckSize.asBoolean())
      {L.stopProgram("Cannot get the last element because the stuck is empty");
       return;
      }
@@ -334,7 +334,7 @@ Stuck        array  %d
   void setFirstElement()                                                        // Set the first key, data pair
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
+       {if (!stuckSize.asBoolean())
          {L.stopProgram("Cannot set the first element because the stuck is empty");
           return;
          }
@@ -348,7 +348,7 @@ Stuck        array  %d
   void setLastElement()                                                         // Set the last key, data pair
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
+       {if (!stuckSize.asBoolean())
          {L.stopProgram("Cannot set the last element because the stuck is empty");
           return;
          }
@@ -424,7 +424,7 @@ Stuck        array  %d
   void removeElementAt(Layout.Field Index)                                      // Get the value of the indexed key, data pair at the specified index moving the elements above down into this position
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
+       {if (!stuckSize.asBoolean())
          {L.stopProgram("Cannot remove element from empty stuck");
           return;
          }
@@ -559,108 +559,124 @@ Stuck        array  %d
      };
    }
 
+  void splitLow(Stuck Left, int Copy)                                           // Copy the specified number of key, data pairs into the left stuck then move the remainder down
+   {if (Copy >= stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Left.maxStuckSize  <  Copy)
+     {L.P.stopProgram("Left stuck too small");
+      return;
+     }
+
+    for (int i = 0; i < Copy; ++i)                                          // Copy to left
+     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     }
+    Left.stuckSize.value = Copy;                                            // New size of left
+
+    for (int i = 0; i < Copy; ++i)                                          // Move down right
+     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+      stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     }
+    stuckSize.value = Copy;                                                 // New size of right
+   }
+
   void iSplitLow(Stuck Left, int Copy)                                           // Copy the specified number of key, data pairs into the left stuck then move the remainder down
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Left.maxStuckSize  <  Copy)
-         {L.P.stopProgram("Left stuck too small");
-          return;
-         }
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to left
-         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
-         }
-        Left.stuckSize.value = Copy;                                            // New size of left
-
-        for (int i = 0; i < Copy; ++i)                                          // Move down right
-         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
-         }
-        stuckSize.value = Copy;                                                 // New size of right
+       {splitLow(Left, Copy);
        }
      };
+   }
+
+  void splitLowButOne(Stuck Left, int Copy, Layout.Field One)                   // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
+   {if (Copy >= stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Left.maxStuckSize  <  Copy)
+     {L.P.stopProgram("Left stuck too small");
+      return;
+     }
+
+    for (int i = 0; i < Copy; ++i)                                              // Copy to left
+     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     }
+    Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
+    Left.stuckSize.value = Copy;                                                // New size of left
+
+    One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
+
+    for (int i = 0; i < Copy; ++i)                                              // Move down right
+     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+      stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+     }
+    stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+    stuckSize.value = Copy;                                                     // New size of right
    }
 
   void iSplitLowButOne(Stuck Left, int Copy, Layout.Field One)                  // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Left.maxStuckSize  <  Copy)
-         {L.P.stopProgram("Left stuck too small");
-          return;
-         }
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to left
-         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
-         }
-        Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
-        Left.stuckSize.value = Copy;                                            // New size of left
-
-        One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Central key
-
-        for (int i = 0; i < Copy; ++i)                                          // Move down right
-         {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-          stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
-         }
-        stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
-        stuckSize.value = Copy;                                                 // New size of right
+       {splitLowButOne(Left, Copy, One);                                         // Copy the specified number of key, data pairs into the left stuck then place the key in "one", key then move the remainder down
        }
      };
+   }
+
+  void splitHigh(Stuck Right, int Copy)                                        // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
+   {if (Copy >= stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Right.maxStuckSize <  Copy)
+     {L.P.stopProgram("Right stuck too small");
+      return;
+     }
+
+    stuckSize.value = Copy;                                                     // New size of left
+
+    for (int i = 0; i < Copy; ++i)                                              // Copy to right
+     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
+      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     }
+    Right.stuckSize.value = Copy;                                               // New size of right
    }
 
   void iSplitHigh(Stuck Right, int Copy)                                        // Leave the specified number of key, data pairs in the left stuck, then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Right.maxStuckSize <  Copy)
-         {L.P.stopProgram("Right stuck too small");
-          return;
-         }
-
-        stuckSize.value = Copy;                                                 // New size of left
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
-         }
-        Right.stuckSize.value = Copy;                                           // New size of right
+       {splitHigh(Right, Copy);
        }
      };
+   }
+
+  void splitHighButOne(Stuck Right, int Copy, Layout.Field One)                 // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
+   {if (Copy >= stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Right.maxStuckSize < Copy)
+     {L.P.stopProgram("Right stuck too small");
+      return;
+     }
+
+    stuckSize.value = Copy;                                                     // New size of left
+    One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
+
+    for (int i = 0; i < Copy; ++i)                                              // Copy to right
+     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+     }
+    Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+    Right.stuckSize.value = Copy;                                               // New size of right
    }
 
   void iSplitHighButOne(Stuck Right, int Copy, Layout.Field One)                // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Right.maxStuckSize < Copy)
-         {L.P.stopProgram("Right stuck too small");
-          return;
-         }
-
-        stuckSize.value = Copy;                                                 // New size of left
-        One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);           // Central key
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
-         }
-        Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
-        Right.stuckSize.value = Copy;                                           // New size of right
+       {splitHighButOne(Right, Copy, One);                                      // Leave the specified number of key, data pairs in the left stuck, move the central keey to "one", then copy the specified number of following key, data pairs onto into the right stuck
        }
      };
    }
@@ -1169,7 +1185,7 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     Layout.Field index = s.index();
 
     s.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.runProgram();
-    ok(found.value, 1);
+    ok(found.asBoolean(), true);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 4);
@@ -1193,13 +1209,13 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     Layout.Field index = s.index();
 
     s.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.runProgram();
-    ok(found.value, 1);
+    ok(found.asBoolean(), true);
     ok(index.value, 0);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 3);
 
     s.clearProgram(); s.stuckKeys.iWrite(3); s.search_le(found, index); s.runProgram();
-    ok(found.value, 1);
+    ok(found.asBoolean(), true);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 4);
     ok(s.stuckData.value, 5);

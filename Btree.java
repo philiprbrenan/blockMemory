@@ -561,7 +561,8 @@ stucks         array  %d
      };
    }
 
-  private void splitLeafNotTop(Layout.Field parentIndex, Layout.Field stuckIndex) // Split a full leaf that is not the root and is not the last child of its parent branch which is not full
+  private void iSplitLeafNotTop                                                 // Split a full leaf that is not the root and is not the last child of its parent branch which is not full
+   (Layout.Field parentIndex, Layout.Field stuckIndex)
    {final Stuck p = stuck(), c = stuck(), l = stuck();                          // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
     final Layout.Field isFull = isFull(), isFullButOne = isFullButOne();
     final Layout.Field isLeaf = isLeaf();
@@ -1200,7 +1201,7 @@ stucks         array  %d
                  {void Then()                                                   // Child branch is full
                    {L.P.new If (found)
                      {void Then()
-                       {splitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
+                       {iSplitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
                        }
                       void Else()
                        {splitLeafAtTop(p);                                      // Split the child leaf known to be top
@@ -1829,7 +1830,7 @@ stuckData: value=4, 0=1, 1=2, 2=3, 3=4
     b.clearProgram();
     R.iZero();
     I.iZero();
-    b.splitLeafNotTop(R, I);
+    b.iSplitLeafNotTop(R, I);
     b.runProgram();
     ok(b.dump(), """
 Btree

@@ -402,21 +402,25 @@ Stuck        array  %d
    }
 
   void insertElementAt(Layout.Field Index)                                      // Insert a key, data pair at the specified index moving the elements above this position up one place to make room
+   {if (stuckSize.value >= maxStuckSize)
+     {L.stopProgram("Cannot insert into a full stuck");
+      return;
+     }
+
+    for (int i = maxStuckSize; i > Index.value+1; --i)
+     {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
+      stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
+     }
+
+    stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
+    stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
+    stuckSize.inc();
+   }
+
+  void iInsertElementAt(Layout.Field Index)                                     // Insert a key, data pair at the specified index moving the elements above this position up one place to make room
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= maxStuckSize)
-         {L.stopProgram("Cannot insert into a full stuck");
-          return;
-         }
-
-        for (int i = maxStuckSize; i > Index.value+1; --i)
-         {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
-          stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
-         }
-
-        stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
-        stuckData.setBitsFromInt(stuckData.memory[Index.value], stuckData.value);
-        stuckSize.inc();
+       {insertElementAt(Index);
        }
      };
    }
@@ -1098,7 +1102,7 @@ stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
 stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
-    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.insertElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(9);  s.stuckData.iWrite(9); s.iInsertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=9, 0=1, 1=9, 2=2, 3=3
@@ -1106,7 +1110,7 @@ stuckData: value=9, 0=2, 1=9, 2=4, 3=6
 """);
 
     s.clearProgram(); s.iPop(); s.runProgram();
-    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.insertElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.stuckKeys.iWrite(10);  s.stuckData.iWrite(12); s.iInsertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=10, 0=1, 1=10, 2=9, 3=2
@@ -1114,7 +1118,7 @@ stuckData: value=12, 0=2, 1=12, 2=9, 3=4
 """);
 
     s.clearProgram(); s.iPop(); s.runProgram();
-    s.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.insertElementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(0); s.stuckKeys.iWrite(11);  s.stuckData.iWrite(13); s.iInsertElementAt(index); s.runProgram();
     ok(s, """
 stuckSize: value=4
 stuckKeys: value=11, 0=11, 1=1, 2=10, 3=9
@@ -1123,7 +1127,7 @@ stuckData: value=13, 0=13, 1=2, 2=12, 3=9
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    index.iWrite(0); s.stuckKeys.iWrite(12);  s.stuckData.iWrite(14); s.insertElementAt(index);
+    index.iWrite(0); s.stuckKeys.iWrite(12);  s.stuckData.iWrite(14); s.iInsertElementAt(index);
     s.runProgram();
     ok(s.L.P.rc, "Cannot insert into a full stuck");
    }

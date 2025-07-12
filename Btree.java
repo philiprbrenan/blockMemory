@@ -624,7 +624,7 @@ stucks         array  %d
     final Layout.Field pl = p.key(), pr = p.key(), plr = p.key();               // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
     iCopyStuckFrom(p, parentIndex);                                             // Load parent stuck from btree
-    p.pastLastElement();                                                        // Key of child
+    p.iPastLastElement();                                                        // Key of child
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
     iCopyStuckFrom(c, p.stuckData);                                             // Load child from btree
 
@@ -746,7 +746,7 @@ stucks         array  %d
     final Layout.Field center       = p.key();                                  // The central key
 
     iCopyStuckFrom(p, parentIndex);                                             // Load parent stuck from btree
-    p.pastLastElement();                                                        // Key of child
+    p.iPastLastElement();                                                       // Key of child
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
     iCopyStuckFrom(c, p.stuckData);                                             // Load child from btree
 

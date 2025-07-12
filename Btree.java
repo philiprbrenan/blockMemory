@@ -1066,8 +1066,13 @@ stucks         array  %d
     s.iZero();                                                                  // Start at the root
     L.P.new Block()
      {void code()
-       {iCopyStuckFrom(S, s);                                                   // Set search key
-        S.stuckKeys.iMove(Key);
+       {L.P.new Instruction()
+         {void action()
+           {copyStuckFrom(S, s);                                                   // Set search key
+            S.stuckKeys.move(Key);
+           }
+         };
+
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
            {L.P.new Instruction()

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// Btree using block memory
+// Btree using block memory, Written July 1-12, 2025
 // Philip R Brenan at appaapps dot com, Appa Apps Ltd Inc., 2025
 //------------------------------------------------------------------------------
 package com.AppaApps.Silicon;                                                   // Btree in a block on the surface of a silicon chip.
@@ -1070,11 +1070,15 @@ stucks         array  %d
         S.stuckKeys.iMove(Key);
         new IsLeaf(s)
          {void Leaf()                                                           // At a leaf - search for exact match
-           {S.search_eq(Found, stuckIndex);                                     // Search
+           {S.iSearch_eq(Found, stuckIndex);                                    // Search
             L.P.iGoZero(end, Found);                                            // Key not present
-            S.elementAt(stuckIndex);                                            // Look up data
-            Data.iMove(S.stuckData);                                            // Save data
-            L.P.Goto  (end);                                                    // Successfully found the key
+            L.P.new Instruction()
+             {void action()
+               {S.elementAt(stuckIndex);                                        // Look up data
+                Data.move(S.stuckData);                                         // Save data
+                L.P.Goto (end);                                                 // Successfully found the key
+               }
+             };
            }
           void Branch()                                                         // On a branch - step to next level down
            {S.search_le(Found, stuckIndex);                                     // Search stuck for matching key
@@ -1201,7 +1205,7 @@ stucks         array  %d
                  };
                 stuckKeys.iMove(Key); stuckData.iMove(Data);                    // Key, data pair to be inserted
                 findAndInsert(found);                                           // Must be insertable now necuase we have split everything in the path of the key
-                L.P.Goto(end);                                                  // Successfully found the key
+                L.P.iGoto(end);                                                 // Successfully found the key
                }
               void Branch()                                                     // Child is a branch
                {S.iIsFullButOne(fullButOne);
@@ -1316,7 +1320,7 @@ stucks         array  %d
         L.P.new If (found)                                                      // Found the key in the leaf so remove it
          {void Then()
            {S.iRemoveElementAt(stuckIndex);                                      // Remove the key
-             iSaveStuckInto(S, index);                                          // Save modified stuck back into btree
+            iSaveStuckInto(S, index);                                          // Save modified stuck back into btree
             stuckKeys.iMove(Key);                                               // Reload key
             merge();                                                            // Merge along key path
            }

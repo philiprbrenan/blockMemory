@@ -34,7 +34,6 @@ class Layout extends Test                                                       
     final Integer parent;                                                       // Parent
     final Stack<Field>dimensions = new Stack<>();                               // Dimensions of field
     final Stack<Field>children   = new Stack<>();                               // Children of an item
-//  final boolean spacer, array, bit, struct, var, union;                       // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
     final boolean spacer, array, bit, var;                                      // Classification - a spacer is a bit or a var as they actually take up space - or a character in "The Caves of Steel"
     BitSet[]memory;                                                             // Memory for this field
     int     value;                                                              // The last value read from the memory of this field
@@ -50,24 +49,19 @@ class Layout extends Test                                                       
       this.parent = parent;
       array       = cmd.equals("array");
       bit         = cmd.equals("bit");
-      //struct      = cmd.equals("struct");
-      //union       = cmd.equals("union");
       var         = cmd.equals("var");
       spacer      = bit || var;
       fields.push(this);
       names.put(name, this);                                                    // Already checked that the name is non unique when we had access to the location of this field in the source
      }
 
-    boolean hasParent()                                                         // Whether a field has a parent.  Variables that do not are top most variables
-     {return getParent() != null;
-     }
+    boolean hasParent() {return getParent() != null;}                           // Whether a field has a parent.  Variables that do not are top most variables
+    boolean asBoolean() {return value > 0;}                                     // Field value as a boolean
 
     Field getParent()                                                           // Parent of a field
      {if (parent == null) return null;
       return fields.elementAt(parent);
      }
-
-    boolean asBoolean() {return value > 0;}                                     // Convert the value of the field to boolean
 
     String dump()                                                               // Dump the details of a field
      {final StringBuilder s = new StringBuilder();
@@ -97,9 +91,6 @@ class Layout extends Test                                                       
     Integer rep()                                                               // The width of the element in bits or the array dimension
      {if (bit) return 1;
       return rep;
-      //if (var || array) return rep;
-      //stop("Only array, bit or var can have a rep count, not:", cmd, "with name:", name);
-      //return null;
      }
 
     int dims() {return dimensions.size();}                                      // The number if containing arrays - if there are none the field has no backing memory only its cirrent value

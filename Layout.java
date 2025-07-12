@@ -67,6 +67,8 @@ class Layout extends Test                                                       
       return fields.elementAt(parent);
      }
 
+    boolean asBoolean() {return value > 0;}                                     // Convert the value of the field to boolean
+
     String dump()                                                               // Dump the details of a field
      {final StringBuilder s = new StringBuilder();
       s.append("Field(line="+line);
@@ -181,7 +183,7 @@ class Layout extends Test                                                       
        };
      }
 
-    void read(Field...Indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
+    void read(Field...Indices)                                                  // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
      {final int index = convolute(Indices);
       value = getIntFromBits(memory[index]);
      }
@@ -193,7 +195,7 @@ class Layout extends Test                                                       
        };
      }
 
-    void readNext(Field...Indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
+    void readNext(Field...Indices)                                              // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
      {final int index = convolute(Indices);
       value = getIntFromBits(memory[index+1]);
      }
@@ -213,7 +215,7 @@ class Layout extends Test                                                       
        }
       final BitSet b = new BitSet(f.rep());                                     // Only used locally - does not become part of memory
       f.setBitsFromInt(b, Value);
-      f.value = f.getIntFromBits(b);                                        // So the value matches what would actually be written into memory
+      f.value = f.getIntFromBits(b);                                            // So the value matches what would actually be written into memory
      }
 
     void iWrite(int Value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
@@ -225,7 +227,7 @@ class Layout extends Test                                                       
        };
      }
 
-    void write(int Value, int Index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
+    void write(int Value, int Index)                                            // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
      {final Field f = this;
       if (logTwo(value) > f.rep())
        {P.stopProgram("Value too big to be written into array");
@@ -382,10 +384,10 @@ class Layout extends Test                                                       
      {pc = label.offset;
      }
     void GoNotZero(Label label, Field condition)                                // Go to a specified label if the value of a field is not zero
-     {if (condition.value > 0) pc = label.offset;
+     {if (condition.asBoolean()) pc = label.offset;
      }
     void GoZero   (Label label, Field condition)                                // Go to a specified label if the value of a field is zero
-     {if (condition.value == 0) pc = label.offset;
+     {if (!condition.asBoolean()) pc = label.offset;
      }
 
     void iGoto(Label label)                                                     // Goto a label unconditionally
@@ -416,7 +418,7 @@ class Layout extends Test                                                       
      {final Label Else = new Label(), End = new Label();                        // Components of an if statement
 
       If (Field Condition)                                                      // If a condition
-       {iGoZero(Else, Condition);                                                // Branch on the current value of condition
+       {iGoZero(Else, Condition);                                               // Branch on the current value of condition
         Then();
         iGoto(End);
         Else.set();

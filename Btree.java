@@ -685,10 +685,9 @@ stucks         array  %d
         p.stuckKeys.zero();
         p.stuckData.move(cr);
         p.setPastLastElement();                                                 // Add reference to not split top child on the right
+        saveStuckInto(p, parentIndex);                                          // Save the parent stuck back into the btree
        }
      };
-
-    iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
    }
 
   private void splitBranchNotTop                                                // Split a full branch that is not the root and is not the last child of its parent branch which is not full

@@ -522,7 +522,7 @@ Stuck        array  %d
      };
    }
 
-  void splitIntoThree(Stuck Left, Stuck Right, int Copy)                        // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
+  void iSplitIntoThree(Stuck Left, Stuck Right, int Copy)                        // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
    {L.P.new Instruction()
      {void action()
        {if (Copy >= stuckSize.value)
@@ -1365,7 +1365,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.iPop();
-    s.splitIntoThree(L, R, 1);
+    s.iSplitIntoThree(L, R, 1);
     s.runProgram();
 
     ok(L, """

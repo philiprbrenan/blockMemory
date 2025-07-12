@@ -495,7 +495,7 @@ Stuck        array  %d
      };
    }
 
-  void search_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
+  void iSearch_le(Layout.Field Found, Layout.Field Index)                        // Search for the first key in the stuck less than or equal to the search key. The last key is not included in the search.  If a match is not found the last data element is returned itherwise the data element of the matching key
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value >= maxStuckSize)
@@ -1260,19 +1260,19 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     Layout.Field found = s.found();
     Layout.Field index = s.index();
 
-    s.clearProgram(); s.stuckKeys.iWrite(2); s.search_le(found, index); s.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(2); s.iSearch_le(found, index); s.runProgram();
     ok(found.asBoolean(), true);
     ok(index.value, 0);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 3);
 
-    s.clearProgram(); s.stuckKeys.iWrite(3); s.search_le(found, index); s.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(3); s.iSearch_le(found, index); s.runProgram();
     ok(found.asBoolean(), true);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 4);
     ok(s.stuckData.value, 5);
 
-    s.clearProgram(); s.stuckKeys.iWrite(10); s.search_le(found, index); s.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(10); s.iSearch_le(found, index); s.runProgram();
     ok(found.value, 0);
    }
 

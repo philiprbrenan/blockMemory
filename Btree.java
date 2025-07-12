@@ -546,7 +546,7 @@ stucks         array  %d
        }
      };
 
-    p.splitIntoThree(l, r, midPoint);                                           // Split the branch root in two down the middle
+    p.iSplitIntoThree(l, r, midPoint);                                           // Split the branch root in two down the middle
     iAllocateBranch(cl);  iSaveStuckInto(l, cl);                                 // Allocate and save left branch
     iAllocateBranch(cr);  iSaveStuckInto(r, cr);                                 // Allocate and save right branch
                                                                                 // Update root with new children

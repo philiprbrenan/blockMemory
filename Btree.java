@@ -300,7 +300,7 @@ stucks         array  %d
      };
    }
 
-  void isRootBranchFull(Layout.Field isFullButOne)                              // Is the root assumed to be a root full?
+  void iIsRootBranchFull(Layout.Field isFullButOne)                              // Is the root assumed to be a root full?
    {L.P.new Instruction()
      {void action()
        {final Layout.Field i = index();
@@ -1183,7 +1183,7 @@ stucks         array  %d
             L.P.iGoto(end);                                                     // Direct insertion succeeded
            }
          };
-        isRootBranchFull(fullButOne);                                           // Root is a full branch so split it
+        iIsRootBranchFull(fullButOne);                                          // Root is a full branch so split it
         L.P.new If (fullButOne)
          {void Then()
            {L.P.new Instruction()
@@ -2068,10 +2068,10 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     final Layout.Field f = b.leafFull();
     final Layout.Field F = b.branchFull();
 
-    b.clearProgram(); b.stuckKeys.iWrite(10); b.stuckData.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
-    b.clearProgram(); b.stuckKeys.iWrite(20); b.stuckData.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
-    b.clearProgram(); b.stuckKeys.iWrite(30); b.stuckData.iWrite(31); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=1");
-    b.clearProgram(); b.stuckKeys.iWrite(40); b.stuckData.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.isRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=1"); ok(F, "branchFull: value=1");
+    b.clearProgram(); b.stuckKeys.iWrite(10); b.stuckData.iWrite(11); b.findAndInsert(f); b.isRootLeafFull(f); b.iIsRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
+    b.clearProgram(); b.stuckKeys.iWrite(20); b.stuckData.iWrite(21); b.findAndInsert(f); b.isRootLeafFull(f); b.iIsRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=0");
+    b.clearProgram(); b.stuckKeys.iWrite(30); b.stuckData.iWrite(31); b.findAndInsert(f); b.isRootLeafFull(f); b.iIsRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=0"); ok(F, "branchFull: value=1");
+    b.clearProgram(); b.stuckKeys.iWrite(40); b.stuckData.iWrite(41); b.findAndInsert(f); b.isRootLeafFull(f); b.iIsRootBranchFull(F); b.runProgram(); ok(f, "leafFull: value=1"); ok(F, "branchFull: value=1");
    }
 
   static void test_put()

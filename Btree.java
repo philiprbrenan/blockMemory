@@ -1019,7 +1019,7 @@ stucks         array  %d
          };
         copyStuckFrom(l, li);                                                   // Load left  branch from btree
         copyStuckFrom(r, ri);                                                   // Load right branch from btree
-        p.pop();                                                                // Key associated with left child branch
+        p.iPop();                                                               // Key associated with left child branch
         l.mergeButOne(p.stuckKeys, r, success);                                 // Merge leaves into left child
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
@@ -2122,7 +2122,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     index.value = 2;
     b.clearProgram();
     b.copyStuckFrom(s, index);
-    s.pop(); s.pop();
+    s.iPop(); s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
     //stop(b);
@@ -2203,7 +2203,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     index.value = 2;
     b.clearProgram();
     b.copyStuckFrom(s, index);
-    s.pop(); s.pop();
+    s.iPop(); s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
     //stop(b);
@@ -2247,7 +2247,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     index.value = 6;
     b.clearProgram();
     b.copyStuckFrom(s, index);
-    s.pop();
+    s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
     //stop(b);
@@ -2345,7 +2345,7 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
     index.value = 6;
     b.clearProgram();
     b.copyStuckFrom(s, index);
-    s.pop();
+    s.iPop();
     b.saveStuckInto(s, index);
     b.runProgram();
     //stop(b);

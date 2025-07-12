@@ -1191,8 +1191,12 @@ stucks         array  %d
            }
          };
 
-        s.iZero(); p.iZero();                                                   // Start at the root and step down through the tree to the key splitting as we go
-        iCopyStuckFrom(S, s);                                                   // Load root
+        L.P.new Instruction()
+         {void action()
+           {s.zero(); p.zero();                                                 // Start at the root and step down through the tree to the key splitting as we go
+            copyStuckFrom(S, s);                                                // Load root
+           }
+         };
 
         L.P.new Block()
          {void code()

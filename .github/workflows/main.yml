@@ -1,4 +1,4 @@
-# Test 2025-07-12 at 22:38:42
+# Test 2025-07-12 at 22:42:57
 
 name: Test
 run-name: blockMemory
@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        task: [Stuck]
+        task: [Btree]
 
     steps:
     - uses: actions/checkout@v4
@@ -45,8 +45,8 @@ jobs:
       run: |
         javac -g -d Classes -cp Classes com/AppaApps/Silicon/*.java
 
-    - name: Test Stuck
-      if: matrix.task == 'Stuck'
+    - name: Test Btree
+      if: matrix.task == 'Btree'
       run: |
-        java -cp Classes com/AppaApps/Silicon/Stuck
+        java -cp Classes com/AppaApps/Silicon/Btree
 

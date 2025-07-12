@@ -145,13 +145,15 @@ Stuck        array  %d
 
 //D1 Actions                                                                    // Actions on the stuck
 
-  void iClear()
+  void clear() {stuckSize.zero();}                                              // Clear the stuck by making it appear empty
+
+  void iClear()                                                                 // Clear the stuck by making it appear empty
    {L.P.new Instruction()
      {void action()
-       {stuckSize.zero();
+       {clear();
        }
      };
-   }                                             // Clear the stuck by making it appear empty
+   }
 
   void push()                                                                   // Push a new key, data pair on the stack
    {if (stuckSize.value >= maxStuckSize)

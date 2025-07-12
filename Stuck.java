@@ -92,26 +92,38 @@ Stuck        array  %d
 
 //D1 Attributes                                                                 // Answers to questions about the stuck
 
-  void iIsEmpty(Layout.Field empty)                                              // Whether the stuck is empty
+  void isEmpty(Layout.Field empty)                                              // Whether the stuck is empty
+   {empty.value = stuckSize.value == 0 ? 1 : 0;
+   }
+
+  void iIsEmpty(Layout.Field empty)                                             // Whether the stuck is empty
    {L.P.new Instruction()
      {void action()
-       {empty.value = stuckSize.value == 0 ? 1 : 0;
+       {isEmpty(empty);
        }
      };
    }
 
-  void iIsFull(Layout.Field full)                                                // Whether the stuck is full
+  void isFull(Layout.Field full)                                                // Whether the stuck is full
+   {full.value = stuckSize.value >= maxStuckSize ? 1 : 0;
+   }
+
+  void iIsFull(Layout.Field full)                                               // Whether the stuck is full
    {L.P.new Instruction()
      {void action()
-       {full.value = stuckSize.value >= maxStuckSize ? 1 : 0;
+       {isFull(full);
        }
      };
    }
 
-  void iIsFullButOne(Layout.Field full)                                          // Whether the stuck is full except for one
+  void isFullButOne(Layout.Field fullButOne)                                    // Whether the stuck is full except for one
+   {fullButOne.value = stuckSize.value >= maxStuckSize - 1 ? 1 : 0;
+   }
+
+  void iIsFullButOne(Layout.Field fullButOne)                                   // Whether the stuck is full except for one
    {L.P.new Instruction()
      {void action()
-       {full.value = stuckSize.value >= maxStuckSize - 1 ? 1 : 0;
+       {isFullButOne(fullButOne);
        }
      };
    }
@@ -145,13 +157,13 @@ Stuck        array  %d
     stuckSize.inc();
    }
 
-  void iPush()                                                                   // Push a new key, data pair on the stack
+  void iPush()                                                                  // Push a new key, data pair on the stack
    {L.P.new Instruction()
      {void action() {push();}
      };
    }
 
-  void iPop()                                                                    // Pop a key, data pair from the stack
+  void iPop()                                                                   // Pop a key, data pair from the stack
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value == 0)

@@ -285,16 +285,20 @@ Stuck        array  %d
      };
    }
 
-  void elementAt(Layout.Field index)                                            // Get the key, data pair at the specified index
+  void elementAt(Layout.Field index)                                           // Get the key, data pair at the specified index
+   {if (index.value >= stuckSize.value)
+     {L.stopProgram("Cannot get element beyond end of stuck");
+      return;
+     }
+
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[index.value]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[index.value]);
+   }
+
+  void iElementAt(Layout.Field Index)                                           // Get the key, data pair at the specified index
    {L.P.new Instruction()
      {void action()
-       {if (index.value >= stuckSize.value)
-         {L.stopProgram("Cannot get element beyond end of stuck");
-          return;
-         }
-
-        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[index.value]);
-        stuckData.value = stuckData.getIntFromBits(stuckData.memory[index.value]);
+       {elementAt(Index);
        }
      };
    }
@@ -472,17 +476,21 @@ Stuck        array  %d
 //D2 Search                                                                     // Search for a matching key in the stuck
 
   void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
+   {for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
+     {final int k = stuckKeys.getIntFromBits(stuckKeys.memory[i]);          // Key being checked
+      if (stuckKeys.value == k)                                             // Search key versus current key
+       {Found.value = 1; Index.value = i;
+        stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
+        return;
+       }
+     }
+    Found.write(0);
+   }
+
+  void iSearch_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
    {L.P.new Instruction()
      {void action()
-       {for (int i = 0; i < stuckSize.value; ++i)                               // Check each key
-         {final int k = stuckKeys.getIntFromBits(stuckKeys.memory[i]);          // Key being checked
-          if (stuckKeys.value == k)                                             // Search key versus current key
-           {Found.value = 1; Index.value = i;
-            stuckData.value = stuckData.getIntFromBits(stuckData.memory[i]);
-            return;
-           }
-         }
-        Found.write(0);
+       {search_eq(Found, Index);
        }
      };
    }
@@ -1006,7 +1014,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
    {final Stuck s = test_push();
     Layout.Field index = s.index();
 
-    s.clearProgram(); index.iWrite(2); s.elementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(2); s.iElementAt(index); s.runProgram();
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
@@ -1016,7 +1024,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
   3       2    stuckData         6  var        4   Stuck                        4
 """);
 
-    s.clearProgram(); index.iWrite(1); s.elementAt(index); s.runProgram();
+    s.clearProgram(); index.iWrite(1); s.iElementAt(index); s.runProgram();
     //stop(s.L);
     ok(s.L, """
   #  Indent  Name         Value___  Command  Rep  Parent  Children              Dimension
@@ -1028,7 +1036,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    index.iWrite(5); s.elementAt(index);
+    index.iWrite(5); s.iElementAt(index);
     s.runProgram();
     //stop(s.L.P.rc);
     ok(s.L.P.rc, "Cannot get element beyond end of stuck");
@@ -1228,13 +1236,13 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     Layout.Field found = s.found();
     Layout.Field index = s.index();
 
-    s.clearProgram(); s.stuckKeys.iWrite(2); s.search_eq(found, index); s.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(2); s.iSearch_eq(found, index); s.runProgram();
     ok(found.asBoolean(), true);
     ok(index.value, 1);
     ok(s.stuckKeys.value, 2);
     ok(s.stuckData.value, 4);
 
-    s.clearProgram(); s.stuckKeys.iWrite(5); s.search_eq(found, index); s.runProgram();
+    s.clearProgram(); s.stuckKeys.iWrite(5); s.iSearch_eq(found, index); s.runProgram();
     ok(found.value, 0);
    }
 

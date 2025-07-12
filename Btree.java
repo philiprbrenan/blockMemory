@@ -589,31 +589,24 @@ stucks         array  %d
         if (!isLeaf.asBoolean())
          {L.P.stopProgram("Child must be a leaf");
          }
+
         c.isFull(isFull);                                                       // The child leaf stuck must be full
+        if (!isFull.asBoolean())
+         {L.P.stopProgram("Child leaf must be full");
+         }
+
+        c.splitLow(l, maxStuckSize / 2);                                        // Split the leaf in two down the middle copying out the lower half
+        allocateLeaf(cl); saveStuckInto(l, cl);                                 // Allocate and save left leaf
+                          saveStuckInto(c, cr);                                 // Allocate and save left leaf
+
+        l.lastElement();  pl.move(l.stuckKeys);                                 // Last element of left child
+        c.firstElement(); pr.move(c.stuckKeys);                                 // First element of right child
+        plr.value = (pl.value + pr.value) / 2;                                  // Mid point key
+        p.stuckKeys.move(plr); p.stuckData.move(cl);
+        p.insertElementAt(stuckIndex);                                          // Add reference to left child
+        saveStuckInto(p, parentIndex);                                          // Save the parent stuck back into the btree
        }
      };
-
-    L.P.new If(isFull)
-     {void Else()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Child leaf must be full");
-           }
-         };
-       }
-     };
-
-    c.iSplitLow(l, maxStuckSize / 2);                                           // Split the leaf in two down the middle copying out the lower half
-    iAllocateLeaf(cl);  iSaveStuckInto(l, cl);                                  // Allocate and save left leaf
-                        iSaveStuckInto(c, cr);                                  // Allocate and save left leaf
-                                                                                // Update root with new children
-    l.iLastElement();   pl.iMove(l.stuckKeys);                                  // Last element of left child
-    c.iFirstElement();  pr.iMove(c.stuckKeys);                                  // First element of right child
-    plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
-
-    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl);
-    p.insertElementAt(stuckIndex);                                              // Add reference to left child
-     iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
    }
 
   private void splitLeafAtTop(Layout.Field parentIndex)                         // Split a full leaf that is not the root and is the last child of its parent branch which is not full
@@ -756,7 +749,7 @@ stucks         array  %d
                          iSaveStuckInto(c, cr);                                 // Allocate and save left leaf
                                                                                 // Update root with new children
     p.stuckKeys.iMove(key); p.stuckData.iMove(cl);
-    p.insertElementAt(stuckIndex);                                              // Add reference to left child
+    p.iInsertElementAt(stuckIndex);                                              // Add reference to left child
      iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
    }
 
@@ -1136,7 +1129,7 @@ stucks         array  %d
             S.stuckKeys.iMove(Key);
             S.stuckData.iMove(Data);
             L.P.new If(Found)
-             {void Then() {S.insertElementAt(stuckIndex);}
+             {void Then() {S.iInsertElementAt(stuckIndex);}
               void Else() {S.iPush();}
              };
              iSaveStuckInto(S, index);

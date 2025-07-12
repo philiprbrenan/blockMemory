@@ -92,7 +92,7 @@ Stuck        array  %d
 
 //D1 Attributes                                                                 // Answers to questions about the stuck
 
-  void isEmpty(Layout.Field empty)                                              // Whether the stuck is empty
+  void iIsEmpty(Layout.Field empty)                                              // Whether the stuck is empty
    {L.P.new Instruction()
      {void action()
        {empty.value = stuckSize.value == 0 ? 1 : 0;
@@ -100,7 +100,7 @@ Stuck        array  %d
      };
    }
 
-  void isFull(Layout.Field full)                                                // Whether the stuck is full
+  void iIsFull(Layout.Field full)                                                // Whether the stuck is full
    {L.P.new Instruction()
      {void action()
        {full.value = stuckSize.value >= maxStuckSize ? 1 : 0;
@@ -108,7 +108,7 @@ Stuck        array  %d
      };
    }
 
-  void isFullButOne(Layout.Field full)                                          // Whether the stuck is full except for one
+  void iIsFullButOne(Layout.Field full)                                          // Whether the stuck is full except for one
    {L.P.new Instruction()
      {void action()
        {full.value = stuckSize.value >= maxStuckSize - 1 ? 1 : 0;
@@ -1636,8 +1636,8 @@ stuckData: value=12, 0=11, 1=12, 2=2, 3=2
     final Layout.Field F = s.fullButOne();
 
     s.clearProgram();
-    s.isEmpty(e);
-    s.isFull (f);
+    s.iIsEmpty(e);
+    s.iIsFull (f);
     s.runProgram();
     ok(e, "empty: value=0");
     ok(f, "full: value=1");
@@ -1645,9 +1645,9 @@ stuckData: value=12, 0=11, 1=12, 2=2, 3=2
 
     s.clearProgram();
     s.iPop();
-    s.isEmpty     (e);
-    s.isFull      (f);
-    s.isFullButOne(F);
+    s.iIsEmpty     (e);
+    s.iIsFull      (f);
+    s.iIsFullButOne(F);
     s.runProgram();
     ok(e, "empty: value=0");
     ok(f, "full: value=0");
@@ -1655,9 +1655,9 @@ stuckData: value=12, 0=11, 1=12, 2=2, 3=2
 
     s.clearProgram();
     s.iPop(); s.iPop(); s.iPop();
-    s.isEmpty     (e);
-    s.isFull      (f);
-    s.isFullButOne(F);
+    s.iIsEmpty     (e);
+    s.iIsFull      (f);
+    s.iIsFullButOne(F);
     s.runProgram();
     ok(e, "empty: value=1");
     ok(f, "full: value=0");

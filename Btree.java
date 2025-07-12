@@ -778,13 +778,13 @@ stucks         array  %d
   private void iMergeLeavesIntoRoot(Layout.Field success)                       // Merge two leaves into the root
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Root and left, right children
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
-    success.iZero();                                                            // Assume failure
 
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
          {void action()
-           {copyStuckFromRoot(p);                                               // Load root
+           {success.zero();                                                     // Assume failure
+            copyStuckFromRoot(p);                                               // Load root
             if (p.stuckSize.value != 1) L.P.Goto(end);                          // Wrong number of entries in root
            };
          };
@@ -795,10 +795,7 @@ stucks         array  %d
            };
          };
         new IsLeaf(li)                                                          // Check that the children are leaves
-         {void Branch()                                                         // Children are not leaves
-           {L.P.iGoto(end);
-           }
-          void Leaf()
+         {void Leaf()
            {L.P.new Instruction()                                               // Check that the root has one entry and thus two children
              {void action()
                {copyStuckFrom(l, li);                                           // Load left  leaf from btree
@@ -817,47 +814,54 @@ stucks         array  %d
      };
    }
 
-  private void iMergeLeavesNotTop                                                // Merge the two consecutive leaves of a branch that is not the root. Neither of the leaves is the topmost leaf.
+  private void iMergeLeavesNotTop                                               // Merge the two consecutive leaves of a branch that is not the root. Neither of the leaves is the topmost leaf.
    (Layout.Field Parent, Layout.Field LeftLeaf, Layout.Field success)
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field li = index(), ri = index();                              // Btree indexes of left and right children of parent that we want to merge
-    success.iZero();                                                            // Assume failure
-    iCopyStuckFrom(p, Parent);                                                  // Load parent
 
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
          {void action()
-           {if (p.stuckSize.value < 2) L.P.Goto(end);
-           };
-         };
-
-        p.stuckData.iRead    (LeftLeaf); li.iMove(p.stuckData);                 // Get the btree index of the left child leaf
-        p.stuckData.iReadNext(LeftLeaf); ri.iMove(p.stuckData);                 // Get the btree index of the right child leaf
-
-        new IsLeaf(li)                                                          // Check that the children are leaves
-         {void Branch()                                                         // Children are not leaves
-           {L.P.iGoto(end);
+           {success.zero();                                                     // Assume failure
+            copyStuckFrom(p, Parent);                                           // Load parent
+            if (p.stuckSize.value < 2) L.P.Goto(end);
            }
          };
-        iCopyStuckFrom(l, li);                                                  // Load left  leaf from btree
-        iCopyStuckFrom(r, ri);                                                  // Load right leaf from btree
-        l.iMerge(r, success);                                                    // Merge leaves into left child
 
-        L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
-         {void Then()
-           {p.removeElementAt(LeftLeaf);                                        // Remove the left child
-            p.stuckData.iMove(li); p.setDataAt(LeftLeaf);                       // Replace the right child with the left child
-             iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
-             iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
-            iFree(ri);                                                          // Free right leaf as it is no longer in use
+        L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {p.stuckData.read    (LeftLeaf); li.move(p.stuckData);               // Get the btree index of the left child leaf
+            p.stuckData.readNext(LeftLeaf); ri.move(p.stuckData);               // Get the btree index of the right child leaf
+           }
+         };
+
+        new IsLeaf(li)                                                          // Check that the children are leaves
+         {void Leaf()
+           {L.P.new Instruction()                                               // Check that the parent has a child at the specified index
+             {void action()
+               {copyStuckFrom(l, li);                                           // Load left  leaf from btree
+                copyStuckFrom(r, ri);                                           // Load right leaf from btree
+                l.merge(r, success);                                            // Merge leaves into left child
+               }
+             };
+
+            L.P.new If(success)                                                 // Modify the parent only if the merge succeeded
+             {void Then()
+               {p.iRemoveElementAt(LeftLeaf);                                   // Remove the left child
+                p.stuckData.iMove(li); p.iSetDataAt(LeftLeaf);                  // Replace the right child with the left child
+                iSaveStuckInto(l, li);                                          // Save the modified left child back into the tree
+                iSaveStuckInto(p, Parent);                                      // Save the modified root back into the tree
+                iFree(ri);                                                      // Free right leaf as it is no longer in use
+               }
+             };
            }
          };
        }
      };
    }
 
-  private void iMergeLeavesAtTop(Layout.Field Parent, Layout.Field success)      // Merge the top most two leaves of a branch that is not the root
+  private void iMergeLeavesAtTop(Layout.Field Parent, Layout.Field success)     // Merge the top most two leaves of a branch that is not the root
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
@@ -881,7 +885,7 @@ stucks         array  %d
          };
         iCopyStuckFrom(l, li);                                                  // Load left  leaf from btree
         iCopyStuckFrom(r, ri);                                                  // Load right leaf from btree
-        l.iMerge(r, success);                                                    // Merge leaves into left child
+        l.iMerge(r, success);                                                   // Merge leaves into left child
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
            {p.stuckSize.iDec();                                                 // The left child is now topmost - we know this is ok because the parent has at elast one entry
@@ -894,7 +898,7 @@ stucks         array  %d
      };
    }
 
-  private void iMergeBranchesIntoRoot(Layout.Field success)                      // Merge two branches into the root
+  private void iMergeBranchesIntoRoot(Layout.Field success)                     // Merge two branches into the root
    {final Stuck p = stuck(), l = stuck(),  r  = stuck();                        // Root and left, right children
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
     final Layout.Field k   = p.key();                                           // Splitting key
@@ -918,7 +922,7 @@ stucks         array  %d
          };
         iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
         iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
-        p.iMergeButOne(l, k, r, success);                                        // Merge left branch, splitting key, right branch into root
+        p.iMergeButOne(l, k, r, success);                                       // Merge left branch, splitting key, right branch into root
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
            {iSaveStuckIntoRoot(p);                                              // Save the modified root back into the tree
@@ -957,12 +961,12 @@ stucks         array  %d
         iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
         iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
         p.stuckKeys.iRead(LeftBranch);                                          // Key associated with left child branch
-        l.iMergeButOne(p.stuckKeys, r, success);                                 // Merge branches into left child
+        l.iMergeButOne(p.stuckKeys, r, success);                                // Merge branches into left child
 
         L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
          {void Then()
-           {p.removeElementAt(LeftBranch);                                      // Remove the left child
-            p.stuckData.iMove(li); p.setDataAt(LeftBranch);                     // Replace the right child with the left child
+           {p.iRemoveElementAt(LeftBranch);                                     // Remove the left child
+            p.stuckData.iMove(li); p.iSetDataAt(LeftBranch);                    // Replace the right child with the left child
              iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
              iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
             iFree(ri);                                                          // Free right branch as it is no longer in use
@@ -972,7 +976,7 @@ stucks         array  %d
      };
    }
 
-  private void iMergeBranchesAtTop(Layout.Field Parent, Layout.Field success)    // Merge the top most two child branches of a branch that is not the root
+  private void iMergeBranchesAtTop(Layout.Field Parent, Layout.Field success)   // Merge the top most two child branches of a branch that is not the root
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
@@ -1287,7 +1291,7 @@ stucks         array  %d
         iCopyStuckFrom(S, index);                                               // Copy the stuck that should contain the key
         L.P.new If (found)                                                      // Found the key in the leaf so remove it
          {void Then()
-           {S.removeElementAt(stuckIndex);                                      // Remove the key
+           {S.iRemoveElementAt(stuckIndex);                                      // Remove the key
              iSaveStuckInto(S, index);                                          // Save modified stuck back into btree
             stuckKeys.iMove(Key);                                               // Reload key
             merge();                                                            // Merge along key path

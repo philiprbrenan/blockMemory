@@ -491,22 +491,19 @@ stucks         array  %d
 
 //D1 Split                                                                      // Split nodes in half to increase the number of nodes in the tree
 
-  private void splitRootLeaf()                                                  // Split a full root leaf
+  private void iSplitRootLeaf()                                                 // Split a full root leaf
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
     final Layout.Field isFull = isFull();
     final Layout.Field cl = index(), cr = index();                              // Indexes of left and right children
     final Layout.Field pl = p.key(), pr = p.key(), plr = p.key();               // Parent key must be smaller than anything in right child yet greater than or equal to anything in the left child
 
-    iCopyStuckFromRoot(p);                                                      // Load leaf root stuck from btree
-
-    p.iIsFull(isFull);                                                          // Check whether the leaf root stuck is full
-    L.P.new If(isFull)
-     {void Else()                                                               // The leaf root stuck is not full so it cannot be split
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("A root leaf must be full before it can be split");
-           }
-         };
+    L.P.new Instruction()
+     {void action()
+       {copyStuckFromRoot(p);                                                   // Load leaf root stuck from btree
+        p.isFull(isFull);                                                       // Check whether the leaf root stuck is full
+        if (isFull.value == 0)
+         {L.P.stopProgram("A root leaf must be full before it can be split");
+         }
        }
      };
 
@@ -524,7 +521,7 @@ stucks         array  %d
     iSaveStuckIntoRoot(p); iSetRootAsBranch();                                  // Save the root stuck back into the btree and mark it as a branch
    }
 
-  private void splitRootBranch()                                                // Split a full root branch
+  private void iSplitRootBranch()                                                // Split a full root branch
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
     final Layout.Field isFullButOne = isFullButOne();
     final Layout.Field           cl = index(), cr = index();                    // Indexes of left and right children
@@ -1180,7 +1177,7 @@ stucks         array  %d
         isRootLeaf(isLeaf);                                                     // Failed to insert because the root is a leaf and must therefore be full
         L.P.new If (isLeaf)                                                     // Root is a leaf
          {void Then()
-           {splitRootLeaf();                                                    // Split the leaf root to make room
+           {iSplitRootLeaf();                                                    // Split the leaf root to make room
             stuckKeys.iMove(Key); stuckData.iMove(Data);                        // Key, data pair to be inserted
             findAndInsert(found);                                               // Splitting a leaf root will make more space in the tree
             L.P.iGoto(end);                                                     // Direct insertion succeeded
@@ -1189,7 +1186,7 @@ stucks         array  %d
         isRootBranchFull(fullButOne);                                           // Root is a full branch so split it
         L.P.new If (fullButOne)
          {void Then()
-           {splitRootBranch();                                                  // Split the branch root to make room
+           {iSplitRootBranch();                                                  // Split the branch root to make room
             L.P.iGoto(start);                                                   // Restart descent to make sure we are on the right path
            }
          };
@@ -1742,7 +1739,7 @@ stuckData: value=41, 0=11, 1=21, 2=31, 3=41
 """);
 
     b.clearProgram();
-    b.splitRootLeaf();
+    b.iSplitRootLeaf();
     b.runProgram();
     ok(b.dump(), """
 Btree
@@ -1779,7 +1776,7 @@ stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 """);
 
     b.clearProgram();
-    b.splitRootBranch();
+    b.iSplitRootBranch();
     b.runProgram();
     //stop(b.dump());
     ok(b.dump(), """

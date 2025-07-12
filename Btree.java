@@ -130,8 +130,11 @@ stucks         array  %d
      };
    }
 
-  private void iAllocateLeaf  (Layout.Field ref) {iAllocate(ref, true);}         // Allocate a stuck, set a ref to the allocated node and mark it a leaf
-  private void iAllocateBranch(Layout.Field ref) {iAllocate(ref, false);}        // Allocate a stuck, set a ref to the allocated node and mark it a branch
+  private void  allocateLeaf  (Layout.Field ref) { allocate(ref, true);}        // Allocate a stuck, set a ref to the allocated node and mark it a leaf
+  private void  allocateBranch(Layout.Field ref) { allocate(ref, false);}       // Allocate a stuck, set a ref to the allocated node and mark it a branch
+
+  private void iAllocateLeaf  (Layout.Field ref) {iAllocate(ref, true);}        // Allocate a stuck, set a ref to the allocated node and mark it a leaf
+  private void iAllocateBranch(Layout.Field ref) {iAllocate(ref, false);}       // Allocate a stuck, set a ref to the allocated node and mark it a branch
 
   private void free(Layout.Field ref)                                           // Free the indicated stuck to make it available for reuse
    {if (ref.value == 0)                                                         // The root stuck cannot be freed
@@ -504,24 +507,23 @@ stucks         array  %d
         if (isFull.value == 0)
          {L.P.stopProgram("A root leaf must be full before it can be split");
          }
+        p.splitIntoTwo(l, r, maxStuckSize / 2);                                 // Split the leaf root in two down the middle
+        allocateLeaf(cl); saveStuckInto(l, cl);                                 // Allocate and save left leaf
+        allocateLeaf(cr); saveStuckInto(r, cr);                                 // Allocate and save right leaf
+
+        l.lastElement();  pl.move(l.stuckKeys);                                 // Last element of left child
+        r.firstElement(); pr.move(r.stuckKeys);                                 // First element of right child
+        plr.value = (pl.value + pr.value) / 2;                                  // Mid point key
+        p.clear();                                                              // Clear the root so we can add the left and right children to it.
+                                                                                // Update root with new children
+        p.stuckKeys.move(plr); p.stuckData.move(cl); p.push();                  // Add reference to left child
+        p.stuckData.move(cr);  p.setPastLastElement();                          // Add reference to right child
+        saveStuckIntoRoot(p);  setRootAsBranch();                               // Save the root stuck back into the btree and mark it as a branch
        }
      };
-
-    p.iSplitIntoTwo(l, r, maxStuckSize / 2);                                    // Split the leaf root in two down the middle
-    iAllocateLeaf(cl);  iSaveStuckInto(l, cl);                                  // Allocate and save left leaf
-    iAllocateLeaf(cr);  iSaveStuckInto(r, cr);                                  // Allocate and save right leaf
-                                                                                // Update root with new children
-    l.iLastElement();  pl.iMove(l.stuckKeys);                                   // Last element of left child
-    r.iFirstElement(); pr.iMove(r.stuckKeys);                                   // First element of right child
-    plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
-
-    p.iClear();                                                                  // Clear the root so we can add the left and right children to it.
-    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                   // Add reference to left child
-                            p.stuckData.iMove(cr); p.iSetPastLastElement();     // Add reference to right child
-    iSaveStuckIntoRoot(p); iSetRootAsBranch();                                  // Save the root stuck back into the btree and mark it as a branch
    }
 
-  private void iSplitRootBranch()                                                // Split a full root branch
+  private void iSplitRootBranch()                                               // Split a full root branch
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Parent == root, left, right stucks
     final Layout.Field isFullButOne = isFullButOne();
     final Layout.Field           cl = index(), cr = index();                    // Indexes of left and right children

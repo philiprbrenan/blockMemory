@@ -171,16 +171,20 @@ Stuck        array  %d
      };
    }
 
+  void pop()                                                                    // Pop a key, data pair from the stack
+   {if (!stuckSize.asBoolean())
+     {L.stopProgram("Cannot pop an empty stuck");
+      return;
+     }
+    stuckSize.dec();
+    stuckKeys.read(stuckSize);
+    stuckData.read(stuckSize);
+   }
+
   void iPop()                                                                   // Pop a key, data pair from the stack
    {L.P.new Instruction()
      {void action()
-       {if (!stuckSize.asBoolean())
-         {L.stopProgram("Cannot pop an empty stuck");
-          return;
-         }
-        stuckSize.dec();
-        stuckKeys.read(stuckSize);
-        stuckData.read(stuckSize);
+       {pop();
        }
      };
    }
@@ -398,13 +402,17 @@ Stuck        array  %d
    }
 
   void setPastLastData()                                                        // Set the data element beyond the last valid element
+   {if (stuckSize.value >= maxStuckSize)
+     {L.stopProgram("Cannot set the data element beyond the last element because the stuck is full");
+      return;
+     }
+    stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
+   }
+
+  void iSetPastLastData()                                                        // Set the data element beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= maxStuckSize)
-         {L.stopProgram("Cannot set the data element beyond the last element because the stuck is full");
-          return;
-         }
-        stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
+       {setPastLastData();
        }
      };
    }
@@ -1699,7 +1707,7 @@ stuckData: value=12, 0=11, 1=4, 2=2, 3=2
 """);
 
     s.clearProgram();
-    s.setPastLastData();
+    s.iSetPastLastData();
     s.runProgram();
     //stop(s);
     ok(s, """

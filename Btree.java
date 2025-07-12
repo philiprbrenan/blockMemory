@@ -244,10 +244,14 @@ stucks         array  %d
   void iSetBranch(Layout.Field i) {stuckIsLeaf.iZero(i);}                       // Set a stuck in the btree to be a branch
 
   void isLeaf(Layout.Field index, Layout.Field isLeaf)                          // Is leaf at indicated index
+   {stuckIsLeaf.read(index);
+    isLeaf.move(stuckIsLeaf);
+   }
+
+  void iIsLeaf(Layout.Field index, Layout.Field isLeaf)                         // Is leaf at indicated index
    {L.P.new Instruction()
      {void action()
-       {stuckIsLeaf.read(index);
-        isLeaf.move(stuckIsLeaf);
+       {isLeaf(index, isLeaf);
        }
      };
    }
@@ -476,7 +480,7 @@ stucks         array  %d
 
     copyStuckFromRoot(p);                                                       // Load leaf root stuck from btree
 
-    p.isFull(isFull);                                                           // Check whether the leaf root stuck is full
+    p.iIsFull(isFull);                                                           // Check whether the leaf root stuck is full
     L.P.new If(isFull)
      {void Else()                                                               // The leaf root stuck is not full so it cannot be split
        {L.P.new Instruction()
@@ -509,7 +513,7 @@ stucks         array  %d
 
     copyStuckFromRoot(p);                                                       // Load branch root stuck from btree
 
-    p.isFullButOne(isFullButOne);                                               // Check whether the branch root stuck is full
+    p.iIsFullButOne(isFullButOne);                                               // Check whether the branch root stuck is full
     L.P.new If(isFullButOne)
      {void Else()                                                               // The branch root stuck is not full so it cannot be split
        {L.P.new Instruction()
@@ -540,23 +544,21 @@ stucks         array  %d
     final Layout.Field cl = index(), cr = index();                              // Btree indexes of child and left and right children of child
     final Layout.Field ck = p.key(), pl = p.key(), pr = p.key(), plr = p.key(); // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
 
-    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
-    p.stuckKeys.iRead(stuckIndex); ck.iMove(p.stuckKeys);                       // Key of child
-    p.stuckData.iRead(stuckIndex); cr.iMove(p.stuckData);                       // Reference to child
-    iCopyStuckFrom(c, p.stuckData);                                              // Load child
+    L.P.new Instruction()
+     {void action()
+       {copyStuckFrom(p, parentIndex);                                          // Load parent stuck from btree
+        p.stuckKeys.read(stuckIndex); ck.move(p.stuckKeys);                     // Key of child
+        p.stuckData.read(stuckIndex); cr.move(p.stuckData);                     // Reference to child
+        copyStuckFrom(c, p.stuckData);                                          // Load child
+        isLeaf(parentIndex, isLeaf);                                            // The parent stuck must be a branch
 
-    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
-    L.P.new If(isLeaf)
-     {void Then()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Parent must be a branch");
-           }
+        if (isLeaf.value > 0)
+         {L.P.stopProgram("Parent must be a branch");
          };
        }
      };
 
-    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    p.iIsFullButOne(isFullButOne);                                               // The parent stuck may not be full
     L.P.new If(isFullButOne)
      {void Then()
        {L.P.new Instruction()
@@ -567,7 +569,7 @@ stucks         array  %d
        }
      };
 
-    isLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
+    iIsLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
     L.P.new If(isLeaf)
      {void Else()
        {L.P.new Instruction()
@@ -578,7 +580,7 @@ stucks         array  %d
        }
      };
 
-    c.isFull(isFull);                                                           // The child stuck must be a leaf
+    c.iIsFull(isFull);                                                           // The child stuck must be a leaf
     L.P.new If(isFull)
      {void Else()
        {L.P.new Instruction()
@@ -613,9 +615,9 @@ stucks         array  %d
     iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
     p.pastLastElement();                                                        // Key of child
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
-    iCopyStuckFrom(c, p.stuckData);                                              // Load child from btree
+    iCopyStuckFrom(c, p.stuckData);                                             // Load child from btree
 
-    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
+    iIsLeaf(parentIndex, isLeaf);                                               // The parent stuck must be a branch
     L.P.new If(isLeaf)
      {void Then()
        {L.P.new Instruction()
@@ -626,7 +628,7 @@ stucks         array  %d
        }
      };
 
-    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    p.iIsFullButOne(isFullButOne);                                               // The parent stuck may not be full
     L.P.new If(isFullButOne)
      {void Then()
        {L.P.new Instruction()
@@ -637,7 +639,7 @@ stucks         array  %d
        }
      };
 
-    isLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
+    iIsLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
     L.P.new If(isLeaf)
      {void Else()
        {L.P.new Instruction()
@@ -648,7 +650,7 @@ stucks         array  %d
        }
      };
 
-    c.isFull(isFull);                                                           // The child stuck must be a leaf
+    c.iIsFull(isFull);                                                           // The child stuck must be a leaf
     L.P.new If(isFull)
      {void Else()
        {L.P.new Instruction()
@@ -687,12 +689,12 @@ stucks         array  %d
     final Layout.Field ck           = p.key();                                  // Key of child in parent, splitting key which must be smaller than anything in right child of child yet greater than or equal to anything in the left child of child
     final Layout.Field key          = p.key();                                  // The central key
 
-    iCopyStuckFrom(p, parentIndex);                                              // Load parent stuck from btree
+    iCopyStuckFrom(p, parentIndex);                                             // Load parent stuck from btree
     p.stuckKeys.iRead(stuckIndex); ck.iMove(p.stuckKeys);                       // Key of child
     p.stuckData.iRead(stuckIndex); cr.iMove(p.stuckData);                       // Reference to child
-    iCopyStuckFrom(c, p.stuckData);                                              // Load child
+    iCopyStuckFrom(c, p.stuckData);                                             // Load child
 
-    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
+    iIsLeaf(parentIndex, isLeaf);                                               // The parent stuck must be a branch
     L.P.new If(isLeaf)
      {void Then()
        {L.P.new Instruction()
@@ -703,7 +705,7 @@ stucks         array  %d
        }
      };
 
-    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    p.iIsFullButOne(isFullButOne);                                               // The parent stuck may not be full
     L.P.new If(isFullButOne)
      {void Then()
        {L.P.new Instruction()
@@ -714,7 +716,7 @@ stucks         array  %d
        }
      };
 
-    isLeaf(cr, isLeaf);                                                         // The child stuck must be a branch
+    iIsLeaf(cr, isLeaf);                                                         // The child stuck must be a branch
     L.P.new If(isLeaf)
      {void Then()
        {L.P.new Instruction()
@@ -725,7 +727,7 @@ stucks         array  %d
        }
      };
 
-    c.isFullButOne(isFullButOne);                                               // The child stuck must be a leaf
+    c.iIsFullButOne(isFullButOne);                                               // The child stuck must be a leaf
     L.P.new If(isFullButOne)
      {void Else()
        {L.P.new Instruction()
@@ -758,7 +760,7 @@ stucks         array  %d
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
     iCopyStuckFrom(c, p.stuckData);                                              // Load child from btree
 
-    isLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
+    iIsLeaf(parentIndex, isLeaf);                                                // The parent stuck must be a branch
     L.P.new If(isLeaf)
      {void Then()
        {L.P.new Instruction()
@@ -769,7 +771,7 @@ stucks         array  %d
        }
      };
 
-    p.isFullButOne(isFullButOne);                                               // The parent stuck may not be full
+    p.iIsFullButOne(isFullButOne);                                               // The parent stuck may not be full
     L.P.new If(isFullButOne)
      {void Then()
        {L.P.new Instruction()
@@ -780,7 +782,7 @@ stucks         array  %d
        }
      };
 
-    isLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
+    iIsLeaf(cr, isLeaf);                                                         // The child stuck must be a leaf
     L.P.new If(isLeaf)
      {void Then()
        {L.P.new Instruction()
@@ -791,7 +793,7 @@ stucks         array  %d
        }
      };
 
-    c.isFullButOne(isFullButOne);                                               // The child stuck must be a leaf
+    c.iIsFullButOne(isFullButOne);                                               // The child stuck must be a leaf
     L.P.new If(isFullButOne)
      {void Else()
        {L.P.new Instruction()
@@ -1115,7 +1117,7 @@ stucks         array  %d
            }
          };
 
-        S.isFull(full);                                                         // Check whether the stuck is full
+        S.iIsFull(full);                                                         // Check whether the stuck is full
         L.P.new If (full)
          {void Else()                                                           // Leaf is not full so we can insert immediately
            {S.search_le(Found, stuckIndex);
@@ -1187,7 +1189,7 @@ stucks         array  %d
 
             new IsLeaf(s)                                                       // Child is a leaf or a branch
              {void Leaf()                                                       // At a leaf - search for exact match
-               {S.isFull(full);
+               {S.iIsFull(full);
 
                 L.P.new If (full)
                  {void Then()                                                   // Child branch is full
@@ -1206,7 +1208,7 @@ stucks         array  %d
                 L.P.Goto(end);                                                  // Successfully found the key
                }
               void Branch()                                                     // Child is a branch
-               {S.isFullButOne(fullButOne);
+               {S.iIsFullButOne(fullButOne);
                 L.P.new If (fullButOne)
                  {void Then()                                                   // Child branch is full
                    {L.P.new If (found)
@@ -1691,13 +1693,13 @@ stuckData: value=6, 0=4, 1=5, 2=6, 3=0
 
     b.clearProgram();
     index.iZero();
-    b.isLeaf(index, isLeaf);
+    b.iIsLeaf(index, isLeaf);
     b.runProgram();
     ok(isLeaf, "isLeaf: value=0");
 
     b.clearProgram();
     index.iOne();
-    b.isLeaf(index, isLeaf);
+    b.iIsLeaf(index, isLeaf);
     b.runProgram();
     ok(isLeaf, "isLeaf: value=1");
    }

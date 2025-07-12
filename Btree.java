@@ -775,7 +775,7 @@ stucks         array  %d
 
 //D1 Merge                                                                      // Merge two nodes
 
-  private void iMergeLeavesIntoRoot(Layout.Field success)                        // Merge two leaves into the root
+  private void iMergeLeavesIntoRoot(Layout.Field success)                       // Merge two leaves into the root
    {final Stuck p = stuck(), l = stuck(), r = stuck();                          // Root and left, right children
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
     success.iZero();                                                            // Assume failure

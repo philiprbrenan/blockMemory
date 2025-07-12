@@ -950,14 +950,14 @@ stucks         array  %d
    (Layout.Field Parent, Layout.Field LeftBranch, Layout.Field success)         // Merge the two consecutive child branches of a branch that is not the root. Neither of the child branches is the topmost leaf.
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field li = index(), ri = index();                              // Btree indexes of left and right children of parent that we want to merge
-    success.iZero();                                                            // Assume failure
-    iCopyStuckFrom(p, Parent);                                                  // Load parent
 
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
          {void action()
-           {if (p.stuckSize.value < 2)
+           {success.zero();                                                     // Assume failure
+            copyStuckFrom(p, Parent);                                           // Load parent
+            if (p.stuckSize.value < 2)
              {L.P.Goto(end);
              }
            };
@@ -998,40 +998,44 @@ stucks         array  %d
    {final Stuck p = stuck(), l = stuck(), r  = stuck();                         // Parent, left and right children
     final Layout.Field ls = p.index(),    rs = p.index();                       // Indices in stuck of left and right children
     final Layout.Field li = index(),      ri = index();                         // Btree indexes of left and right children of parent that we want to merge
-    success.iZero();                                                            // Assume failure
-    iCopyStuckFrom(p, Parent);                                                  // Load parent
 
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
          {void action()
-           {if (p.stuckSize.value == 0)
+           {success.zero();                                                     // Assume failure
+            copyStuckFrom(p, Parent);                                           // Load parent
+
+            if (p.stuckSize.value == 0)
              {L.P.Goto(end);
              }
            };
          };
 
-        ls.iMove(p.stuckSize); ls.iDec();                                       // Index of left branch known to be valid as the parent contains at least one entry resulting in two children
-        rs.iMove(p.stuckSize);                                                  // Index of right branch
-        p.stuckData.iRead(ls); li.iMove(p.stuckData);                           // Get the btree index of the left branch branch
-        p.stuckData.iRead(rs); ri.iMove(p.stuckData);                           // Get the btree index of the right branch branch
-
-        new IsLeaf(li)                                                          // Check that the children are branches
-         {void Leaf()                                                           // Children are branches
-           {L.P.iGoto(end);
+        L.P.new Instruction()                                                   // Check that the parent has a child at the specified index
+         {void action()
+           {ls.move(p.stuckSize); ls.dec();                                     // Index of left branch known to be valid as the parent contains at least one entry resulting in two children
+            rs.move(p.stuckSize);                                               // Index of right branch
+            p.stuckData.read(ls); li.move(p.stuckData);                         // Get the btree index of the left branch branch
+            p.stuckData.read(rs); ri.move(p.stuckData);                         // Get the btree index of the right branch branch
            }
          };
-        iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
-        iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
-        p.iPop();                                                               // Key associated with left child branch
-        l.iMergeButOne(p.stuckKeys, r, success);                                 // Merge leaves into left child
-        L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
-         {void Then()
-           {p.stuckData.iMove(li);                                              // Index of left branch that now contains the combined branches
-            p.setPastLastData();                                                // Make newly combined left branch top most
-             iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
-             iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
-            iFree(ri);                                                          // Free right branch as it is no longer in use
+
+        new IsLeaf(li)                                                          // Check that the children are branches
+         {void Branch()                                                           // Children are branches
+           {iCopyStuckFrom(l, li);                                                  // Load left  branch from btree
+            iCopyStuckFrom(r, ri);                                                  // Load right branch from btree
+            p.iPop();                                                               // Key associated with left child branch
+            l.iMergeButOne(p.stuckKeys, r, success);                                 // Merge leaves into left child
+            L.P.new If(success)                                                     // Modify the parent only if the merge succeeded
+             {void Then()
+               {p.stuckData.iMove(li);                                              // Index of left branch that now contains the combined branches
+                p.setPastLastData();                                                // Make newly combined left branch top most
+                 iSaveStuckInto(l, li);                                             // Save the modified left child back into the tree
+                 iSaveStuckInto(p, Parent);                                         // Save the modified root back into the tree
+                iFree(ri);                                                          // Free right branch as it is no longer in use
+               }
+             };
            }
          };
        }

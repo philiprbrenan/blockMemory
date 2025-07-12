@@ -522,35 +522,39 @@ Stuck        array  %d
      };
    }
 
-  void iSplitIntoThree(Stuck Left, Stuck Right, int Copy)                        // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
+  void splitIntoThree(Stuck Left, Stuck Right, int Copy)                        // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
+   {if (Copy >= stuckSize.value)
+     {L.P.stopProgram("Cannot copy beyond end of stuck");
+      return;
+     }
+    if (Left.maxStuckSize  <  Copy)
+     {L.P.stopProgram("Left stuck too small");
+      return;
+     }
+    if (Right.maxStuckSize <  Copy)
+     {L.P.stopProgram("Right stuck too small");
+      return;
+     }
+
+    for (int i = 0; i < Copy; ++i)                                          // Copy to left
+     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
+      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     }
+    Left.stuckSize.value = Copy;                                            // New size of left
+    Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
+
+    for (int i = 0; i < Copy; ++i)                                          // Copy to right
+     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
+      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+     }
+    Right.stuckSize.value = Copy;                                               // New size of right
+    Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+   }
+
+  void iSplitIntoThree(Stuck Left, Stuck Right, int Copy)                       // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
    {L.P.new Instruction()
      {void action()
-       {if (Copy >= stuckSize.value)
-         {L.P.stopProgram("Cannot copy beyond end of stuck");
-          return;
-         }
-        if (Left.maxStuckSize  <  Copy)
-         {L.P.stopProgram("Left stuck too small");
-          return;
-         }
-        if (Right.maxStuckSize <  Copy)
-         {L.P.stopProgram("Right stuck too small");
-          return;
-         }
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to left
-         {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-          Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
-         }
-        Left.stuckSize.value = Copy;                                            // New size of left
-        Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
-
-        for (int i = 0; i < Copy; ++i)                                          // Copy to right
-         {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-          Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
-         }
-        Right.stuckSize.value = Copy;                                           // New size of right
-        Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+       {splitIntoThree(Left, Right, Copy);
        }
      };
    }

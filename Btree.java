@@ -615,7 +615,7 @@ stucks         array  %d
      };
    }
 
-  private void splitLeafAtTop(Layout.Field parentIndex)                         // Split a full leaf that is not the root and is the last child of its parent branch which is not full
+  private void iSplitLeafAtTop(Layout.Field parentIndex)                        // Split a full leaf that is not the root and is the last child of its parent branch which is not full
    {final Stuck p = stuck(), c = stuck(), l = stuck();                          // Parent which must be a branch which is not full, child at index which must be a full leaf, left and right splits of leaf
     final Layout.Field isFull       = isFull();
     final Layout.Field isFullButOne = isFullButOne();
@@ -649,36 +649,26 @@ stucks         array  %d
          };
        }
      };
-
-    iIsLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
-    L.P.new If(isLeaf)
-     {void Else()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Child must be a leaf");
-           }
-         };
-       }
-     };
-
-    c.iIsFull(isFull);                                                          // The child stuck must be a leaf
-    L.P.new If(isFull)
-     {void Else()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Child leaf must be full");
-           }
-         };
-       }
-     };
-
-    c.iSplitLow(l, maxStuckSize / 2);                                            // Split the leaf in two down the middle copying out the lower half
-    iAllocateLeaf(cl); iSaveStuckInto(l, cl);                                   // Allocate and save left leaf
-                       iSaveStuckInto(c, cr);                                   // Allocate and save left leaf
                                                                                 // Update root with new children
     L.P.new Instruction()
      {void action()                                                             // Compute mid point key
-       {l.lastElement();  pl.move(l.stuckKeys);                                 // Last element of left child
+       {
+        isLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
+        if (!isLeaf.asBoolean())
+         {L.P.stopProgram("Child must be a leaf");
+         }
+
+        c.isFull(isFull);                                                          // The child stuck must be a leaf
+        if (!isFull.asBoolean())
+         {L.P.stopProgram("Child leaf must be full");
+         }
+
+        c.splitLow(l, maxStuckSize / 2);                                        // Split the leaf in two down the middle copying out the lower half
+        allocateLeaf(cl); saveStuckInto(l, cl);                                 // Allocate and save left leaf
+                          saveStuckInto(c, cr);                                 // Allocate and save left leaf
+
+
+        l.lastElement();  pl.move(l.stuckKeys);                                 // Last element of left child
         c.firstElement(); pr.move(c.stuckKeys);                                 // First element of right child
         plr.value = (pl.value + pr.value) / 2;                                  // Mid point key which is always greater than or equal to the left high key and less than the right low key
         p.stuckKeys.move(plr); p.stuckData.move(cl); p.push();                  // Add reference to left child
@@ -1208,7 +1198,7 @@ stucks         array  %d
                        {iSplitLeafNotTop(p, stuckIndex);                         // Split the child leaf known not to be top
                        }
                       void Else()
-                       {splitLeafAtTop(p);                                      // Split the child leaf known to be top
+                       {iSplitLeafAtTop(p);                                      // Split the child leaf known to be top
                        }
                      };
                    }
@@ -1892,7 +1882,7 @@ stuckData: value=4, 0=1, 1=2, 2=3, 3=4
 
     b.clearProgram();
     R.iZero();
-    b.splitLeafAtTop(R);
+    b.iSplitLeafAtTop(R);
     b.runProgram();
     //stop(b.dump());
     ok(b.dump(), """

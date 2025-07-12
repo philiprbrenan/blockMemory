@@ -579,32 +579,20 @@ stucks         array  %d
         if (isLeaf.value > 0)
          {L.P.stopProgram("Parent must be a branch");
          };
+        p.isFullButOne(isFullButOne);                                           // The parent stuck may not be full
+
+        if (isFullButOne.asBoolean())
+         {L.P.stopProgram("Parent must not be full");
+         }
+        isLeaf(cr, isLeaf);                                                     // The child stuck must be a leaf
+
+        if (!isLeaf.asBoolean())
+         {L.P.stopProgram("Child must be a leaf");
+         }
+        c.isFull(isFull);                                                       // The child leaf stuck must be full
        }
      };
 
-    p.iIsFullButOne(isFullButOne);                                              // The parent stuck may not be full
-    L.P.new If(isFullButOne)
-     {void Then()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Parent must not be full");
-           }
-         };
-       }
-     };
-
-    iIsLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
-    L.P.new If(isLeaf)
-     {void Else()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Child must be a leaf");
-           }
-         };
-       }
-     };
-
-    c.iIsFull(isFull);                                                          // The child stuck must be a leaf
     L.P.new If(isFull)
      {void Else()
        {L.P.new Instruction()
@@ -701,7 +689,7 @@ stucks         array  %d
        }
      };
 
-     iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
+    iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
    }
 
   private void splitBranchNotTop                                                // Split a full branch that is not the root and is not the last child of its parent branch which is not full

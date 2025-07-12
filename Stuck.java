@@ -263,7 +263,7 @@ Stuck        array  %d
      };
    }
 
-  void pastLastElement()                                                        // Get the key, data pair beyond the last valid element
+  void iPastLastElement()                                                       // Get the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
        {if (stuckSize.value > maxStuckSize - 1)
@@ -1552,7 +1552,7 @@ stuckData: value=6, 0=2, 1=4, 2=6, 3=8
 """);
 
     s.clearProgram();
-    s.pastLastElement();
+    s.iPastLastElement();
     s.runProgram();
     ok(s, """
 stuckSize: value=3
@@ -1572,7 +1572,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.pastLastElement();
+    s.iPastLastElement();
     s.runProgram();
     ok(s.L.P.rc, "Cannot get the element beyond the last element because the stuck is full");
 

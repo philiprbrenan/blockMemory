@@ -1342,9 +1342,13 @@ stucks         array  %d
         iCopyStuckFrom(S, index);                                               // Copy the stuck that should contain the key
         L.P.new If (found)                                                      // Found the key in the leaf so remove it
          {void Then()
-           {S.iRemoveElementAt(stuckIndex);                                     // Remove the key
-            iSaveStuckInto(S, index);                                           // Save modified stuck back into btree
-            stuckKeys.iMove(Key);                                               // Reload key
+           {L.P.new Instruction()
+             {void action()
+               {S.removeElementAt(stuckIndex);                                  // Remove the key
+                saveStuckInto(S, index);                                        // Save modified stuck back into btree
+                stuckKeys.move(Key);                                            // Reload key
+               }
+             };
             merge();                                                            // Merge along key path
            }
          };

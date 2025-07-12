@@ -145,7 +145,13 @@ Stuck        array  %d
 
 //D1 Actions                                                                    // Actions on the stuck
 
-  void clear() {stuckSize.iZero();}                                             // Clear the stuck by making it appear empty
+  void iClear()
+   {L.P.new Instruction()
+     {void action()
+       {stuckSize.zero();
+       }
+     };
+   }                                             // Clear the stuck by making it appear empty
 
   void push()                                                                   // Push a new key, data pair on the stack
    {if (stuckSize.value >= maxStuckSize)
@@ -479,7 +485,7 @@ Stuck        array  %d
 
 // Split                                                                        // Split a stuck in various ways
 
-  void splitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
+  void iSplitIntoTwo(Stuck Left, Stuck Right, int Copy)                          // Copy the first key, data pairs into the left stuck, the remainder into the right stuck.  The original source stuck is not modifiedr
    {L.P.new Instruction()
      {void action()
        {if (Copy > stuckSize.value)
@@ -797,7 +803,7 @@ stuckData: value=8, 0=2, 1=4, 2=6, 3=8
   protected static void test_clear()
    {final Stuck s = test_push();
 
-    s.clear();
+    s.iClear();
     s.runProgram();
     ok(s, """
 stuckSize: value=0
@@ -1306,24 +1312,24 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.splitIntoTwo(L, R, 6);
+    s.iSplitIntoTwo(L, R, 6);
     s.runProgram();
     ok(s.L.P.rc, "Cannot copy beyond end of stuck");
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.splitIntoTwo(S, R, 3);
+    s.iSplitIntoTwo(S, R, 3);
     s.runProgram();
     ok(s.L.P.rc, "Left stuck too small");
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.splitIntoTwo(L, S, 1);
+    s.iSplitIntoTwo(L, S, 1);
     s.runProgram();
     ok(s.L.P.rc, "Right stuck too small");
 
     s.clearProgram();
-    s.splitIntoTwo(L, R, 2);
+    s.iSplitIntoTwo(L, R, 2);
     s.runProgram();
 
     ok(L, """
@@ -1581,7 +1587,7 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
 """);
 
     s.clearProgram();
-    s.clear();
+    s.iClear();
     s.L.P.supressErrorMessagePrint = true;
     s.iFirstElement();
     s.runProgram();

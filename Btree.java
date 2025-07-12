@@ -887,14 +887,14 @@ stucks         array  %d
          {void Leaf()                                                           // Children are leaves
            {L.P.new Instruction()
              {void action()
-               {copyStuckFrom(l, li);                                                  // Load left  leaf from btree
-                copyStuckFrom(r, ri);                                                  // Load right leaf from btree
-                l.merge(r, success);                                                   // Merge leaves into left child
-                if (success.asBoolean())                                               // Modify the parent only if the merge succeeded
-                 {p.stuckSize.dec();                                                 // The left child is now topmost - we know this is ok because the parent has at elast one entry
-                  saveStuckInto(l, li);                                             // Save the modified left child back into the tree
-                  saveStuckInto(p, Parent);                                         // Save the modified root back into the tree
-                  free(ri);                                                          // Free right leaf as it is no longer in use
+               {copyStuckFrom(l, li);                                           // Load left  leaf from btree
+                copyStuckFrom(r, ri);                                           // Load right leaf from btree
+                l.merge(r, success);                                            // Merge leaves into left child
+                if (success.asBoolean())                                        // Modify the parent only if the merge succeeded
+                 {p.stuckSize.dec();                                            // The left child is now topmost - we know this is ok because the parent has at elast one entry
+                  saveStuckInto(l, li);                                         // Save the modified left child back into the tree
+                  saveStuckInto(p, Parent);                                     // Save the modified root back into the tree
+                  free(ri);                                                     // Free right leaf as it is no longer in use
                  }
                }
              };

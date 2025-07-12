@@ -1166,12 +1166,20 @@ stucks         array  %d
     final Layout.Field isLeaf     = isLeaf();
     final Layout.Field fullButOne = S.fullButOne();
 
-    Key.iMove(stuckKeys); Data.iMove(stuckData);                                // Save key and data to be inserted,  It is convenient for the caller to be able to use the predeclared fields but theya re overwrittne by subsequqnt activity and so they have to ba saved immediately.
+    L.P.new Instruction()
+     {void action()
+       {Key.move(stuckKeys); Data.move(stuckData);                              // Save key and data to be inserted,  It is convenient for the caller to be able to use the predeclared fields but theya re overwrittne by subsequqnt activity and so they have to ba saved immediately.
+       }
+     };
 
     L.P.new Block()                                                             // The block is left as soon as possible
      {void code()
-       {stuckKeys.iMove(Key);
-        stuckData.iMove(Data);
+       {L.P.new Instruction()
+         {void action()
+           {stuckKeys.move(Key);
+            stuckData.move(Data);
+           }
+         };
         findAndInsert(found);                                                   // Try direct insertion with no modifications to the shape of the tree
         L.P.iGoNotZero(end, found);                                             // Direct insertion succeeded
         isRootLeaf(isLeaf);                                                     // Failed to insert because the root is a leaf and must therefore be full

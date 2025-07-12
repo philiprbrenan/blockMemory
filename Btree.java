@@ -628,37 +628,27 @@ stucks         array  %d
     cr.iMove(p.stuckData);                                                      // Reference to child in btree
     iCopyStuckFrom(c, p.stuckData);                                             // Load child from btree
 
-    iIsLeaf(parentIndex, isLeaf);                                               // The parent stuck must be a branch
-    L.P.new If(isLeaf)
-     {void Then()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Parent must be a branch");
-           }
-         };
-       }
-     };
 
-    p.iIsFullButOne(isFullButOne);                                              // The parent stuck may not be full
-    L.P.new If(isFullButOne)
-     {void Then()
-       {L.P.new Instruction()
-         {void action()
-           {L.P.stopProgram("Parent must not be full");
-           }
-         };
-       }
-     };
-                                                                                // Update root with new children
     L.P.new Instruction()
      {void action()                                                             // Compute mid point key
        {
-        isLeaf(cr, isLeaf);                                                        // The child stuck must be a leaf
+
+        isLeaf(parentIndex, isLeaf);                                            // The parent stuck must be a branch
+        if (isLeaf.asBoolean())
+         {L.P.stopProgram("Parent must be a branch");
+         }
+
+        p.isFullButOne(isFullButOne);                                           // The parent stuck may not be full
+        if (isFullButOne.asBoolean())
+         {L.P.stopProgram("Parent must not be full");
+         }
+                                                                                // Update root with new children
+        isLeaf(cr, isLeaf);                                                     // The child stuck must be a leaf
         if (!isLeaf.asBoolean())
          {L.P.stopProgram("Child must be a leaf");
          }
 
-        c.isFull(isFull);                                                          // The child stuck must be a leaf
+        c.isFull(isFull);                                                       // The child stuck must be a leaf
         if (!isFull.asBoolean())
          {L.P.stopProgram("Child leaf must be full");
          }

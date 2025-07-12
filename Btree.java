@@ -780,12 +780,12 @@ stucks         array  %d
     final Layout.Field li  = index(), ri = index();                             // Btree indexes of left and right children of root
     success.iZero();                                                            // Assume failure
 
-    iCopyStuckFromRoot(p);                                                      // Load root
     L.P.new Block()
      {void code()
        {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
          {void action()
-           {if (p.stuckSize.value != 1) L.P.Goto(end);                          // Wrong number of entries in root
+           {copyStuckFromRoot(p);                                               // Load root
+            if (p.stuckSize.value != 1) L.P.Goto(end);                          // Wrong number of entries in root
            };
          };
         L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
@@ -799,18 +799,16 @@ stucks         array  %d
            {L.P.iGoto(end);
            }
           void Leaf()
-           {L.P.new Instruction()                                                   // Check that the root has one entry and thus two children
+           {L.P.new Instruction()                                               // Check that the root has one entry and thus two children
              {void action()
-               {copyStuckFrom(l, li);                                               // Load left  leaf from btree
-                copyStuckFrom(r, ri);                                               // Load right leaf from btree
-               }
-             };
-            p.iMerge(l, r, success);                                                // Merge leaves into root
-            L.P.new If(success)                                                     // Modify the root only if the merge succeeded
-             {void Then()
-               {iSaveStuckIntoRoot(p);                                              // Save the modified root back into the tree
-                iSetRootAsLeaf();                                                   // Set the root to be a leaf
-                iFree(li); iFree(ri);                                               // Free left and right leaves as they are no longer needed
+               {copyStuckFrom(l, li);                                           // Load left  leaf from btree
+                copyStuckFrom(r, ri);                                           // Load right leaf from btree
+                p.merge(l, r, success);                                         // Merge leaves into root
+                if (success.asBoolean())                                        // Modify the root only if the merge succeeded
+                 {saveStuckIntoRoot(p);                                         // Save the modified root back into the tree
+                  setRootAsLeaf();                                              // Set the root to be a leaf
+                  free(li); free(ri);                                           // Free left and right leaves as they are no longer needed
+                 }
                }
              };
            }

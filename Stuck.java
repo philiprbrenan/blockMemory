@@ -691,7 +691,7 @@ Stuck        array  %d
 
 //D1 Merge                                                                      // Merge stucks in various weays
 
-  void merge(Stuck source, Layout.Field success)                                // Concatenate the indicated stuck on to the end of the current one
+  void iMerge(Stuck source, Layout.Field success)                                // Concatenate the indicated stuck on to the end of the current one
    {L.P.new Instruction()
      {void action()
        {final int sourceSize = source.stuckSize.value;
@@ -710,7 +710,7 @@ Stuck        array  %d
      };
    }
 
-  void merge(Stuck Left, Stuck Right, Layout.Field success)                     // Replace the current stuck with the concatenation of the left and right stucks
+  void iMerge(Stuck Left, Stuck Right, Layout.Field success)                    // Replace the current stuck with the concatenation of the left and right stucks
    {L.P.new Instruction()
      {void action()
        {final int leftSize  = Left .stuckSize.value;
@@ -733,7 +733,7 @@ Stuck        array  %d
      };
    }
 
-  void mergeButOne(Layout.Field Key, Stuck source, Layout.Field success)        // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
+  void iMergeButOne(Layout.Field Key, Stuck source, Layout.Field success)        // Concatenate the indicated stuck on to the end of the current one with the key inserted over the past last data element separating the two
    {L.P.new Instruction()
      {void action()
        {final int sourceSize = source.stuckSize.value;
@@ -755,7 +755,7 @@ Stuck        array  %d
      };
    }
 
-  void mergeButOne(Stuck Left, Layout.Field Key, Stuck Right, Layout.Field success) // Concatenate the left and right stucks separated by the key over th past last data element of the left stuck into the target
+  void iMergeButOne(Stuck Left, Layout.Field Key, Stuck Right, Layout.Field success) // Concatenate the left and right stucks separated by the key over th past last data element of the left stuck into the target
    {L.P.new Instruction()
      {void action()
        {final int leftSize  = Left .stuckSize.value;
@@ -1246,7 +1246,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.merge(t, success);
+    s.iMerge(t, success);
     s.runProgram();
     ok(success, "success: value=0");
 
@@ -1255,7 +1255,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
     s.iPop();
     t.iPop();
     t.iPop();
-    s.merge(t, success);
+    s.iMerge(t, success);
     s.runProgram();
     ok(success, "success: value=1");
     ok(s, """
@@ -1266,14 +1266,14 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
 
     m.clearProgram();
     m.L.P.supressErrorMessagePrint = true;
-    m.merge(s, t, success);
+    m.iMerge(s, t, success);
     m.runProgram();
     ok(success, "success: value=0");
 
     m.clearProgram();
     s.iPop();
     s.iPop();
-    m.merge(s, t, success);
+    m.iMerge(s, t, success);
     m.runProgram();
     ok(success, "success: value=1");
     ok(m, """
@@ -1298,14 +1298,14 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.mergeButOne(k, t, success);
+    s.iMergeButOne(k, t, success);
     s.runProgram();
     ok(success, "success: value=0");
 
     s.clearProgram();
     s.iPop(); s.iPop(); s.iPop();
     t.iPop(); t.iPop(); t.iPop();
-    s.mergeButOne(k, t, success);
+    s.iMergeButOne(k, t, success);
     s.runProgram();
     ok(success, "success: value=1");
     ok(s, """
@@ -1316,13 +1316,13 @@ stuckData: value=4, 0=2, 1=4, 2=2, 3=4
 
     m.clearProgram();
     m.L.P.supressErrorMessagePrint = true;
-    m.mergeButOne(s, k, t, success);
+    m.iMergeButOne(s, k, t, success);
     m.runProgram();
     ok(success, "success: value=0");
 
     m.clearProgram();
     s.iPop(); s.iPop();
-    m.mergeButOne(s, k, t, success);
+    m.iMergeButOne(s, k, t, success);
     m.runProgram();
     ok(success, "success: value=1");
     ok(m, """

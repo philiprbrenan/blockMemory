@@ -205,12 +205,19 @@ Stuck        array  %d
    }
 
   void firstElement()                                                           // Get the first key, data pair
+   {if (stuckSize.value == 0)
+     {L.stopProgram("Cannot get the first element because the stuck is empty");
+      return;
+     }
+
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[0]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[0]);
+   }
+
+  void iFirstElement()                                                          // Get the first key, data pair
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
-         {L.stopProgram("Cannot get the first element because the stuck is empty");
-          return;
-         }
+       {firstElement();
 
         stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[0]);
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[0]);
@@ -219,15 +226,19 @@ Stuck        array  %d
    }
 
   void lastElement()                                                            // Get the last key, data pair
+   {if (stuckSize.value == 0)
+     {L.stopProgram("Cannot get the last element because the stuck is empty");
+      return;
+     }
+
+    stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value-1]);
+    stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value-1]);
+   }
+
+  void iLastElement()                                                           // Get the last key, data pair
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value == 0)
-         {L.stopProgram("Cannot get the last element because the stuck is empty");
-          return;
-         }
-
-        stuckKeys.value = stuckKeys.getIntFromBits(stuckKeys.memory[stuckSize.value-1]);
-        stuckData.value = stuckData.getIntFromBits(stuckData.memory[stuckSize.value-1]);
+       {lastElement();
        }
      };
    }
@@ -329,15 +340,19 @@ Stuck        array  %d
    }
 
   void setPastLastElement()                                                     // Set the key, data pair beyond the last valid element
+   {if (stuckSize.value >= maxStuckSize)
+     {L.stopProgram("Cannot set the element beyond the last element because the stuck is full");
+      return;
+     }
+
+    stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value], stuckKeys.value);
+    stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
+   }
+
+  void iSetPastLastElement()                                                    // Set the key, data pair beyond the last valid element
    {L.P.new Instruction()
      {void action()
-       {if (stuckSize.value >= maxStuckSize)
-         {L.stopProgram("Cannot set the element beyond the last element because the stuck is full");
-          return;
-         }
-
-        stuckKeys.setBitsFromInt(stuckKeys.memory[stuckSize.value], stuckKeys.value);
-        stuckData.setBitsFromInt(stuckData.memory[stuckSize.value], stuckData.value);
+       {setPastLastElement();
        }
      };
    }
@@ -1144,7 +1159,7 @@ stuckData: value=2, 0=8, 1=8, 2=8, 3=8
     s.clearProgram(); k.iWrite(2); d.iWrite(3); s.iPush(); s.runProgram();
     s.clearProgram(); k.iWrite(4); d.iWrite(5); s.iPush(); s.runProgram();
     s.clearProgram(); k.iWrite(6); d.iWrite(7); s.iPush(); s.runProgram();
-    s.clearProgram(); k.iWrite(8); d.iWrite(9); s.setPastLastElement(); s.runProgram();
+    s.clearProgram(); k.iWrite(8); d.iWrite(9); s.iSetPastLastElement(); s.runProgram();
 
     Layout.Field found = s.found();
     Layout.Field index = s.index();
@@ -1470,7 +1485,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 
     s.clearProgram();
-    s.firstElement();
+    s.iFirstElement();
     s.runProgram();
     ok(s, """
 stuckSize: value=4
@@ -1480,7 +1495,7 @@ stuckData: value=2, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.iPop();
-    s.lastElement();
+    s.iLastElement();
     s.runProgram();
     ok(s, """
 stuckSize: value=3
@@ -1515,7 +1530,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.setPastLastElement();
+    s.iSetPastLastElement();
     s.runProgram();
     ok(s.L.P.rc, "Cannot set the element beyond the last element because the stuck is full");
 
@@ -1545,7 +1560,7 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=8
     s.clearProgram();
     s.stuckKeys.iWrite(2);
     s.stuckData.iWrite(2);
-    s.setPastLastElement();
+    s.iSetPastLastElement();
     s.runProgram();
     ok(s, """
 stuckSize: value=3
@@ -1556,13 +1571,13 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     s.clearProgram();
     s.clear();
     s.L.P.supressErrorMessagePrint = true;
-    s.firstElement();
+    s.iFirstElement();
     s.runProgram();
     ok(s.L.P.rc, "Cannot get the first element because the stuck is empty");
 
     s.clearProgram();
     s.L.P.supressErrorMessagePrint = true;
-    s.lastElement();
+    s.iLastElement();
     s.runProgram();
     ok(s.L.P.rc, "Cannot get the last element because the stuck is empty");
 
@@ -1581,7 +1596,7 @@ stuckData: value=2, 0=2, 1=4, 2=2, 3=2
     s.clearProgram();
     s.stuckKeys.iWrite(11);
     s.stuckData.iWrite(11);
-    s.setPastLastElement();
+    s.iSetPastLastElement();
     s.runProgram();
     //stop(s);
     ok(s, """

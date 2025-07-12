@@ -510,15 +510,15 @@ stucks         array  %d
        }
      };
 
-    p.splitIntoTwo(l, r, maxStuckSize / 2);                                     // Split the leaf root in two down the middle
-    iAllocateLeaf(cl);  iSaveStuckInto(l, cl);                                   // Allocate and save left leaf
-    iAllocateLeaf(cr);  iSaveStuckInto(r, cr);                                   // Allocate and save right leaf
+    p.iSplitIntoTwo(l, r, maxStuckSize / 2);                                    // Split the leaf root in two down the middle
+    iAllocateLeaf(cl);  iSaveStuckInto(l, cl);                                  // Allocate and save left leaf
+    iAllocateLeaf(cr);  iSaveStuckInto(r, cr);                                  // Allocate and save right leaf
                                                                                 // Update root with new children
     l.iLastElement();  pl.iMove(l.stuckKeys);                                   // Last element of left child
     r.iFirstElement(); pr.iMove(r.stuckKeys);                                   // First element of right child
     plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
 
-    p.clear();                                                                  // Clear the root so we can add the left and right children to it.
+    p.iClear();                                                                  // Clear the root so we can add the left and right children to it.
     p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                   // Add reference to left child
                             p.stuckData.iMove(cr); p.iSetPastLastElement();     // Add reference to right child
     iSaveStuckIntoRoot(p); iSetRootAsBranch();                                  // Save the root stuck back into the btree and mark it as a branch
@@ -550,7 +550,7 @@ stucks         array  %d
     p.stuckKeys.iRead(midPoint);                                                // Get splitting key
     p.stuckData.iMove(cl);                                                      // Refence to left child stuck
 
-    p.clear();                                                                  // Clear the root so we can add the left and right children to it.
+    p.iClear();                                                                  // Clear the root so we can add the left and right children to it.
     p.iPush();                                                                  // Add reference to left child
     p.stuckData.iMove(cr); p.iSetPastLastElement();                             // Add reference to right child as top element past the end of the stuck
     iSaveStuckIntoRoot(p);                                                      // Save the root stuck back into the btree and mark it as a branch

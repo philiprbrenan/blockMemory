@@ -615,7 +615,7 @@ stucks         array  %d
        }
      };
 
-    c.splitLow(l, maxStuckSize / 2);                                            // Split the leaf in two down the middle copying out the lower half
+    c.iSplitLow(l, maxStuckSize / 2);                                           // Split the leaf in two down the middle copying out the lower half
     iAllocateLeaf(cl);  iSaveStuckInto(l, cl);                                  // Allocate and save left leaf
                         iSaveStuckInto(c, cr);                                  // Allocate and save left leaf
                                                                                 // Update root with new children
@@ -685,7 +685,7 @@ stucks         array  %d
        }
      };
 
-    c.splitLow(l, maxStuckSize / 2);                                            // Split the leaf in two down the middle copying out the lower half
+    c.iSplitLow(l, maxStuckSize / 2);                                            // Split the leaf in two down the middle copying out the lower half
     iAllocateLeaf(cl); iSaveStuckInto(l, cl);                                   // Allocate and save left leaf
                        iSaveStuckInto(c, cr);                                   // Allocate and save left leaf
                                                                                 // Update root with new children
@@ -762,7 +762,7 @@ stucks         array  %d
        }
      };
 
-    c.splitLowButOne(l, (maxStuckSize-1) / 2, key);                             // Split the leaf in two down the middle copying out the lower half
+    c.iSplitLowButOne(l, (maxStuckSize-1) / 2, key);                            // Split the leaf in two down the middle copying out the lower half
 
     iAllocateBranch(cl); iSaveStuckInto(l, cl);                                 // Allocate and save left leaf
                          iSaveStuckInto(c, cr);                                 // Allocate and save left leaf
@@ -828,13 +828,13 @@ stucks         array  %d
        }
      };
 
-    c.splitLowButOne(l, (maxStuckSize-1) / 2, center);                          // Split the leaf in two down the middle copying out the lower half
+    c.iSplitLowButOne(l, (maxStuckSize-1) / 2, center);                         // Split the leaf in two down the middle copying out the lower half
     iAllocateBranch(cl); iSaveStuckInto(l, cl);                                 // Allocate and save left leaf
                          iSaveStuckInto(c, cr);                                 // Allocate and save left leaf
                                                                                 // Update root with new children
     p.stuckKeys.iMove(center); p.stuckData.iMove(cl); p.iPush();                // Add reference to left child
     p.stuckKeys.iZero();       p.stuckData.iMove(cr); p.iSetPastLastElement();  // Add reference to not split top child on the right
-     iSaveStuckInto(p, parentIndex);                                            // Save the parent stuck back into the btree
+    iSaveStuckInto(p, parentIndex);                                             // Save the parent stuck back into the btree
    }
 
 //D1 Merge                                                                      // Merge two nodes

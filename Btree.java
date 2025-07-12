@@ -485,13 +485,13 @@ stucks         array  %d
     allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
     allocateLeaf(cr); saveStuckInto(r, cr);                                     // Allocate and save right leaf
                                                                                 // Update root with new children
-    l.lastElement();  pl.iMove(l.stuckKeys);                                    // Last element of left child
-    r.firstElement(); pr.iMove(r.stuckKeys);                                    // First element of right child
+    l.iLastElement();  pl.iMove(l.stuckKeys);                                   // Last element of left child
+    r.iFirstElement(); pr.iMove(r.stuckKeys);                                   // First element of right child
     plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
 
     p.clear();                                                                  // Clear the root so we can add the left and right children to it.
-    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                    // Add reference to left child
-                            p.stuckData.iMove(cr); p.setPastLastElement();      // Add reference to right child
+    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                   // Add reference to left child
+                            p.stuckData.iMove(cr); p.iSetPastLastElement();     // Add reference to right child
     saveStuckIntoRoot(p); iSetRootAsBranch();                                   // Save the root stuck back into the btree and mark it as a branch
    }
 
@@ -522,8 +522,8 @@ stucks         array  %d
     p.stuckData.iMove(cl);                                                      // Refence to left child stuck
 
     p.clear();                                                                  // Clear the root so we can add the left and right children to it.
-    p.iPush();                                                                   // Add reference to left child
-    p.stuckData.iMove(cr); p.setPastLastElement();                              // Add reference to right child as top element past the end of the stuck
+    p.iPush();                                                                  // Add reference to left child
+    p.stuckData.iMove(cr); p.iSetPastLastElement();                             // Add reference to right child as top element past the end of the stuck
     saveStuckIntoRoot(p);                                                       // Save the root stuck back into the btree and mark it as a branch
    }
 
@@ -587,8 +587,8 @@ stucks         array  %d
     allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
                       saveStuckInto(c, cr);                                     // Allocate and save left leaf
                                                                                 // Update root with new children
-    l.lastElement();   pl.iMove(l.stuckKeys);                                   // Last element of left child
-    c.firstElement();  pr.iMove(c.stuckKeys);                                   // First element of right child
+    l.iLastElement();   pl.iMove(l.stuckKeys);                                  // Last element of left child
+    c.iFirstElement();  pr.iMove(c.stuckKeys);                                  // First element of right child
     plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
 
     p.stuckKeys.iMove(plr); p.stuckData.iMove(cl);
@@ -657,12 +657,18 @@ stucks         array  %d
     allocateLeaf(cl); saveStuckInto(l, cl);                                     // Allocate and save left leaf
                       saveStuckInto(c, cr);                                     // Allocate and save left leaf
                                                                                 // Update root with new children
-    l.lastElement();   pl.iMove(l.stuckKeys);                                   // Last element of left child
-    c.firstElement();  pr.iMove(c.stuckKeys);                                   // First element of right child
-    plr.iAdd(pl, pr); plr.iHalf();                                              // Mid point key
+    L.P.new Instruction()
+     {void action()                                                             // Compute mid point key
+       {l.lastElement();  pl.move(l.stuckKeys);                                 // Last element of left child
+        c.firstElement(); pr.move(c.stuckKeys);                                 // First element of right child
+        plr.value = (pl.value + pr.value) / 2;                                  // Mid point key which is always greater than or equal to the left high key and less than the right low key
+        p.stuckKeys.move(plr); p.stuckData.move(cl); p.push();                  // Add reference to left child
+        p.stuckKeys.zero();
+        p.stuckData.move(cr);
+        p.setPastLastElement();                                                 // Add reference to not split top child on the right
+       }
+     };
 
-    p.stuckKeys.iMove(plr); p.stuckData.iMove(cl); p.iPush();                    // Add reference to left child
-    p.stuckKeys.iZero();    p.stuckData.iMove(cr); p.setPastLastElement();      // Add reference to not split top child on the right
     saveStuckInto(p, parentIndex);                                              // Save the parent stuck back into the btree
    }
 
@@ -794,8 +800,8 @@ stucks         array  %d
     allocateBranch(cl); saveStuckInto(l, cl);                                   // Allocate and save left leaf
                         saveStuckInto(c, cr);                                   // Allocate and save left leaf
                                                                                 // Update root with new children
-    p.stuckKeys.iMove(center); p.stuckData.iMove(cl); p.iPush();                 // Add reference to left child
-    p.stuckKeys.iZero();       p.stuckData.iMove(cr); p.setPastLastElement();   // Add reference to not split top child on the right
+    p.stuckKeys.iMove(center); p.stuckData.iMove(cl); p.iPush();                // Add reference to left child
+    p.stuckKeys.iZero();       p.stuckData.iMove(cr); p.iSetPastLastElement();  // Add reference to not split top child on the right
     saveStuckInto(p, parentIndex);                                              // Save the parent stuck back into the btree
    }
 
@@ -1451,7 +1457,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     Z.stuckKeys.iWrite(10); Z.stuckData.iWrite(s.value); Z.iPush();
     Z.stuckKeys.iWrite(20); Z.stuckData.iWrite(t.value); Z.iPush();
     Z.stuckKeys.iWrite(30); Z.stuckData.iWrite(x.value); Z.iPush();
-    Z.stuckKeys.iWrite(0);  Z.stuckData.iWrite(y.value); Z.setPastLastElement();
+    Z.stuckKeys.iWrite(0);  Z.stuckData.iWrite(y.value); Z.iSetPastLastElement();
     b.runProgram();
 
     b.clearProgram();
@@ -1461,7 +1467,7 @@ stuckData: value=0, 0=0, 1=0, 2=0, 3=0
     b.saveStuckInto(Y, y);   b.iSetLeaf(y);
     b.saveStuckIntoRoot(Z);  b.iSetRootAsBranch();
     b.runProgram();
-//stop(b.dump());
+  //stop(b.dump());
     ok(b.dump(), """
 Btree
 Stuck:  0   size: 3   free: 0   next:  0  leaf: 0
@@ -1781,10 +1787,10 @@ stuckData: value=0, 0=31, 1=0, 2=0, 3=0
 
     b.L.P.maxSteps = 500;
 
-    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.iPush();              b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();              b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.setPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.iPush();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.iSetPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
@@ -1841,8 +1847,8 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.setPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.iSetPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
@@ -1901,13 +1907,13 @@ stuckData: value=2, 0=1, 1=2, 2=0, 3=0
 
     b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(1); r.iPush();               b.runProgram();
     b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.setPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(0); r.iSetPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
 
     b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(2); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(3); l.iPush(); b.runProgram();
     b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(4); l.iPush(); b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(5); l.setPastLastElement(); b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(5); l.iSetPastLastElement(); b.runProgram();
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                     b.iSetRootAsBranch();
@@ -1959,15 +1965,15 @@ stuckData: value=3, 0=2, 1=3, 2=0, 3=0
 
     b.L.P.maxSteps = 500;
 
-    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.iPush();              b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();              b.runProgram();
-    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.setPastLastElement(); b.runProgram();
-    b.clearProgram(); b.saveStuckIntoRoot(r);                                                b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(10); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(20); r.stuckData.iWrite(0); r.iPush();               b.runProgram();
+    b.clearProgram(); r.stuckKeys.iWrite(30); r.stuckData.iWrite(1); r.iSetPastLastElement(); b.runProgram();
+    b.clearProgram(); b.saveStuckIntoRoot(r);                                                 b.runProgram();
 
-    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush();               b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush();               b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.iPush();               b.runProgram();
-    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.setPastLastElement();  b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(1); l.stuckData.iWrite(1); l.iPush();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(2); l.stuckData.iWrite(2); l.iPush();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(3); l.stuckData.iWrite(3); l.iPush();                b.runProgram();
+    b.clearProgram(); l.stuckKeys.iWrite(4); l.stuckData.iWrite(4); l.iSetPastLastElement();  b.runProgram();
 
     b.clearProgram();
     b.saveStuckIntoRoot(r);                       b.iSetRootAsBranch();

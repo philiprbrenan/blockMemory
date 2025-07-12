@@ -346,10 +346,14 @@ class Layout extends Test                                                       
        };
      }
 
+    void half()                                                                 // Divide the value of a field by two
+     {value >>>= 1;
+     }
+
     void iHalf()                                                                // Divide the value of a field by two
      {P.new Instruction()
        {void action()
-         {value >>>= 1;
+         {half();
          }
        };
      }

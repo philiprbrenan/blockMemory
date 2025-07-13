@@ -1059,7 +1059,6 @@ B array 4
 
   protected static void newTests()                                              // Tests being worked on
    {oldTests();
-    //test_move();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

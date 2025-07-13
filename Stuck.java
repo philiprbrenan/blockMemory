@@ -477,9 +477,10 @@ Stuck        array  %d
 //D2 Search                                                                     // Search for a matching key in the stuck
 
   void search_eq(Layout.Field Found, Layout.Field Index)                        // Search for an equal key.
-   {for (int i = 0; i < stuckSize.value; ++i)                                   // Check each key
-     {final int k = stuckKeys.getIntFromBits(stuckKeys.memory[i]);              // Key being checked
-      if (stuckKeys.value == k)                                                 // Search key versus current key
+   {final int K = stuckKeys.value;                                              // Key being sought
+    for (int i = 0; i < stuckSize.value; ++i)                                   // Check each key
+     {stuckKeys.read(i);                                                        // Key being checked
+      if (K == stuckKeys.value)                                                 // Search key versus current key
        {Found.value = 1; Index.value = i;
         stuckData.read(i);
         return;
@@ -502,9 +503,11 @@ Stuck        array  %d
       return;
      }
 
+    final int K = stuckKeys.value;                                              // Key being sought
+
     for (int i = 0; i < stuckSize.value; ++i)                                   // Check each key not including the last
-     {final int k = stuckKeys.getIntFromBits(stuckKeys.memory[i]);
-      if (stuckKeys.value <= k)                                                 // Found a matching key
+     {stuckKeys.read(i);
+      if (K <= stuckKeys.value)                                                 // Found a matching key
        {Found.value = 1; Index.value = i;
         stuckKeys.read(i);
         stuckData.read(i);
@@ -646,7 +649,7 @@ Stuck        array  %d
     Left.stuckData.move(Copy, stuckData, Copy);
     Left.stuckSize.value = Copy;                                                // New size of left
 
-    One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
+    stuckKeys.read(Copy); One.move(stuckKeys);                                  // Central key
 
     for (int i = 0; i < Copy; ++i)                                              // Move down right
      {stuckKeys.move(i, stuckKeys, Copy + i+1);
@@ -702,7 +705,7 @@ Stuck        array  %d
      }
 
     stuckSize.value = Copy;                                                     // New size of left
-    One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
+    stuckKeys.read(Copy); One.move(stuckKeys);                                  // Central key
 
     for (int i = 0; i < Copy; ++i)                                              // Copy to right
      {Right.stuckKeys.move(i, stuckKeys, Copy + i + 1);
@@ -1539,7 +1542,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     ok(R, """
 stuckSize: value=1
-stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
+stuckKeys: value=2, 0=3, 1=2, 2=3, 3=4
 stuckData: value=0, 0=6, 1=8, 2=6, 3=8
 """);
    }
@@ -1562,7 +1565,7 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     ok(L, """
 stuckSize: value=1
-stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
+stuckKeys: value=2, 0=1, 1=2, 2=3, 3=4
 stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 """);
 

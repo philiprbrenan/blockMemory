@@ -161,16 +161,33 @@ class Layout extends Test                                                       
       return i;
      }
 
+    String vConvolute(Field...j)                                                // Convolute the dimensions of this field with the supplied top level vars acting as array indices to locat the index of an element in an array
+     {String s = ""+j[0].value;                                                 // Current value of var
+      final int J = j.length;
+      for (int c = 1; c < J; c++)                                               // Each dimension beyond the first one contributes to the indexs.  The first dimension determines the size but not the location of an element in the array
+       {final int    d = dimensions.elementAt(c).rep();
+        final Field  f = j[c];
+        final int    v = f.value;
+        s = "("+s+") * "+d+" + "+v;                                             // Move up one dimension
+       }
+      return s;
+     }
+
 //D2 Read                                                                       // Read values from memory
 
     void read(int index)                                                        // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {value = getIntFromBits(memory[index]);
      }
 
+    String readV(int index)                                                     // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
+     {return name+"_value = "+name+"_memory["+index+"];";
+     }
+
     void iRead(int index)                                                       // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.read(index);}
+       {void   action () {f.read(index);}
+        String verilog() {return f.readV(index);}
        };
      }
 
@@ -179,10 +196,16 @@ class Layout extends Test                                                       
       value = getIntFromBits(memory[index]);
      }
 
+    String readV(Field...Indices)                                               // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
+     {final String index = vConvolute(Indices);
+      return name+"_value = "+name+"_memory["+index+"];";
+     }
+
     void iRead(Field...Indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.read(Indices);}
+       {void   action () {f.read(Indices);}
+        String verilog() {return f.readV(Indices);}
        };
      }
 
@@ -191,9 +214,17 @@ class Layout extends Test                                                       
       value = getIntFromBits(memory[index+1]);
      }
 
+    String readNextV(Field...Indices)                                           // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
+     {final String index = vConvolute(Indices);
+      return name+"_value = "+name+"_memory["+index+"+1];";
+     }
+
     void iReadNext(Field...Indices)                                             // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
      {final Field f = checkVar();
-      P.new Instruction() {void action() {readNext(Indices);}};
+      P.new Instruction()
+       {void   action () {readNext(Indices);}
+        String verilog() {return readNextV(Indices);}
+       };
      }
 
 //D2 Write                                                                      // Write values into memory
@@ -209,12 +240,16 @@ class Layout extends Test                                                       
       f.value = f.getIntFromBits(b);                                            // So the value matches what would actually be written into memory
      }
 
+    String writeV(int Value)
+     {final Field f = this;
+      return f.name+"_value = "+Value+";";
+     }
+
     void iWrite(int Value)                                                      // Create an instruction that sets the value of this field but does not modify the memory backing the field
      {final Field  f = checkVar();
       P.new Instruction()
-       {void action()
-         {f.write(Value);
-         }
+       {void   action () {f.write(Value);}
+        String verilog() {return f.writeV(Value);}
        };
      }
 
@@ -229,12 +264,15 @@ class Layout extends Test                                                       
       f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
      }
 
+    String writeV(int Value, int Index)                                            // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
+     {return name+"_memory["+Index+"] = "+Value+";";
+     }
+
     void iWrite(int Value, int Index)                                           // Create an instruction that sets the value of this field and updates the constant indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       P.new Instruction()
-       {void action()
-         {f.write(Value, Index);
-         }
+       {void   action () {f.write(Value, Index);}
+        String verilog() {return f.writeV(Value, Index);}
        };
      }
 
@@ -250,12 +288,17 @@ class Layout extends Test                                                       
       f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
      }
 
+    String writeV(Field...Indices)                                              // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
+     {final Field f = this;
+      final String index = vConvolute(Indices);
+      return f.name+"_value = "+f.name+"_memory["+index+"];";
+     }
+
     void iWrite(Field...Indices)                                                // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
      {final Field f = checkVar();
       P.new Instruction()
-       {void action()
-         {write(Indices);
-         }
+       {void   action () {f.write(Indices);}
+        String verilog() {return f.writeV(Indices);}
        };
      }
 
@@ -269,33 +312,42 @@ class Layout extends Test                                                       
        {P.stopProgram("Value too big to be written into array");
         return;
        }
-      final int index = convolute(Indices);
+      final int index = f.convolute(Indices);                                   // Convolute the indices
       final BitSet b  = f.memory[index];                                        // Bit set in memory holding value at this index
       f.setBitsFromInt(b, Value);
       f.value = f.getIntFromBits(b);                                            // So the value matches what is actually in memory
      }
 
+    String constantV(int Value, Field...Indices)                                // Create an instruction to set an array element to a constant
+     {final Field f = this;
+      final String index = vConvolute(Indices);
+      return f.name+"_memory["+index+"] = "+value+";";
+     }
+
     void iConstant(int Value, Field...Indices)                                  // Create an instruction to set an array element to a constant
      {final Field f = checkVar();
       P.new Instruction()
-       {void action()
-         {f.constant(Value, Indices);
-         }
+       {void   action () {       f.constant(Value, Indices);}
+        String verilog() {return f.constantV(Value, Indices);}
        };
      }
 
-    void one  (Field...indices) { constant(1, indices);}                        // Create an instruction to set a field to one
-    void zero (Field...indices) { constant(0, indices);}                        // Create an instruction to set a field to zero
+    void one     (Field...indices) {        constant(1, indices);}              // Create an instruction to set a field to one
+    void zero    (Field...indices) {        constant(0, indices);}              // Create an instruction to set a field to zero
+    String vOne  (Field...indices) {return constantV(1, indices);}              // Create an instruction to set a field to one
+    String vZero (Field...indices) {return constantV(0, indices);}              // Create an instruction to set a field to zero
 
     void iOne (Field...indices) {iConstant(1, indices);}                        // Create an instruction to set a field to one
     void iZero(Field...indices) {iConstant(0, indices);}                        // Create an instruction to set a field to zero
 
 //D2 Move                                                                       // Instructions that copy data from one memory location to another
 
-    void move (Field Source) {value = Source.value;}                            // Copy the source value to the target. To write into backing memory as well call iWrite() as well
+    void    move(Field Source) {value = Source.value;}                          // Copy the source value to the target. To write into backing memory as well call iWrite() as well
+    String moveV(Field Source) {return name+"_value = "+Source.name+"_value;";}
+
     void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write into backing memory as well call iWrite() as well
 
-    void move (int TargetIndex, Field Source)                                   // Copy the indexed source memory into the indexed target memory
+    void move(int TargetIndex, Field Source)                                    // Copy the indexed source memory into the indexed target memory
      {setBitsFromInt(memory[TargetIndex], Source.value);
      }
 
@@ -309,30 +361,38 @@ class Layout extends Test                                                       
      {memory[TargetIndex] = (BitSet)Source.memory[SourceIndex].clone();
      }
 
+    String moveV(int TargetIndex, Field Source, int SourceIndex)                // Copy the indexed source memory into the indexed target memory
+     {return name+"_memory["+TargetIndex+"] = "+Source.name + "_memory["+SourceIndex+"];";
+     }
+
     void iMove(int TargetIndex, Field Source, int SourceIndex)                  // Copy the indexed source memory into the indexed target memory
      {P.new Instruction()
-       {void action() {move(TargetIndex, Source, SourceIndex);}
+       {void   action () {        move(TargetIndex, Source, SourceIndex);}
+        String verilog() {return moveV(TargetIndex, Source, SourceIndex);}
        };
      }
 
 //D2 Instructions                                                               // Instructions that can be executed against memory
 
-    void dec() {value--;}                                                       // Decrement the value of this field
+    void    dec() {value--;}                                                    // Decrement the value of this field
+    String decV() {return name+"_value = "+name+"_value - 1;";}                 // Decrement the value of this field
 
     void iDec()                                                                 // Decrement the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.dec();}
+       {void   action () {       f. dec();}
+        String verilog() {return f.decV();}
        };
      }
 
-    void inc()                                                                 // Increment the value of this field
-     {value++;}
+    void   inc () {value++;}                                                    // Increment the value of this field
+    String incV() {return name+"_value = "+name+"_value + 1;";}                 // Decrement the value of this field
 
     void iInc()                                                                 // Increment the value of this field
      {final Field f = checkVar();
       P.new Instruction()
-       {void action() {f.inc();}
+       {void action()    {       f.inc();}
+        String verilog() {return f.incV();}
        };
      }
 
@@ -486,7 +546,8 @@ class Layout extends Test                                                       
 
       Instruction() {P.code.push(this);}                                        // Add the instruction to the code
 
-      abstract void action();                                                   // Override this method to specify what the instruction does
+      abstract void action();                                                   // Override this method to specify what the instruction does using Java code
+      String verilog() {return " /* verilog code needed */";}                   // Override this method to specify what the instruction does using Verilog code
      }
 
     void clearProgram()                                                         // Clear the code associated with a program so we can create a new program

@@ -27,18 +27,18 @@ class Btree extends Test                                                        
   Btree(int Size, int MaxStuckSize, int BitsPerKey, int BitsPerData)            // Create the Btree
    {if (MaxStuckSize % 2 == 1) stop("The stuck size must be even, not:", MaxStuckSize);
     if (MaxStuckSize < 4)      stop("The stuck size must be greater than equal to 4, not:", MaxStuckSize);
-    size             = Size;                                                    // The maximum number of entries in the btree.
-    maxStuckSize     = MaxStuckSize;                                            // The maximum number of entries in the stuck.
-    bitsPerKey       = BitsPerKey;                                              // The number of bits needed to define a key
-    bitsPerData      = BitsPerData;                                             // The number of bits needed to define a data field
-    L                = layout();                                                // Layout of the btree
-    freeStart   = L.locateFieldByName("freeStart");                             // Start of free chain. Initially all sticks are on the free chain except the root stuck
-    stuckIsLeaf = L.locateFieldByName("stuckIsLeaf");                           // Whether the stuck is a leaf
-    stuckIsFree = L.locateFieldByName("stuckIsFree");                           // Whether the stuck is on the free chain
-    freeNext    = L.locateFieldByName("freeNext");                              // Next element refernce on free chain
-    stuckSize   = L.locateFieldByName("stuckSize");                             // Current size of stuck up to the maximum size
-    stuckKeys   = L.locateFieldByName("stuckKeys");                             // Keys field
-    stuckData   = L.locateFieldByName("stuckData");                             // Data field
+    size         = Size;                                                        // The maximum number of entries in the btree.
+    maxStuckSize = MaxStuckSize;                                                // The maximum number of entries in the stuck.
+    bitsPerKey   = BitsPerKey;                                                  // The number of bits needed to define a key
+    bitsPerData  = BitsPerData;                                                 // The number of bits needed to define a data field
+    L            = layout();                                                    // Layout of the btree
+    freeStart    = L.locateFieldByName("freeStart");                            // Start of free chain. Initially all sticks are on the free chain except the root stuck
+    stuckIsLeaf  = L.locateFieldByName("stuckIsLeaf");                          // Whether the stuck is a leaf
+    stuckIsFree  = L.locateFieldByName("stuckIsFree");                          // Whether the stuck is on the free chain
+    freeNext     = L.locateFieldByName("freeNext");                             // Next element refernce on free chain
+    stuckSize    = L.locateFieldByName("stuckSize");                            // Current size of stuck up to the maximum size
+    stuckKeys    = L.locateFieldByName("stuckKeys");                            // Keys field
+    stuckData    = L.locateFieldByName("stuckData");                            // Data field
 
     iCreateFreeChain();                                                         // Create the free chain
    }
@@ -66,14 +66,14 @@ stucks         array  %d
     return v;
    }
 
-  Layout.Field index()           {return variable("index", logTwo(size)+1);}    // Create an index for a stuck in a btree
-  Layout.Field isLeaf()          {return variable("isLeaf",       1);}          // Create a bit for is leaf
-  Layout.Field isFull()          {return variable("isFull",       1);}          // Create a bit for is full
-  Layout.Field isFullButOne()    {return variable("isFullButOne", 1);}          // Create a bit for is full but one
-  Layout.Field within()          {return variable("within",       1);}          // Create a bit for is within the body of the stuck and not at the top
-  Layout.Field found()           {return variable("found",        1);}          // Create a bit for whether a key has been found
-  Layout.Field leafFull()        {return variable("leafFull",     1);}          // Create a bit for a leaf is full
-  Layout.Field branchFull()      {return variable("branchFull",   1);}          // Create a bit for a branch is full
+  Layout.Field index()        {return variable("index", logTwo(size)+1);}       // Create an index for a stuck in a btree
+  Layout.Field isLeaf()       {return variable("isLeaf",             1);}       // Create a bit for is leaf
+  Layout.Field isFull()       {return variable("isFull",             1);}       // Create a bit for is full
+  Layout.Field isFullButOne() {return variable("isFullButOne",       1);}       // Create a bit for is full but one
+  Layout.Field within()       {return variable("within",             1);}       // Create a bit for is within the body of the stuck and not at the top
+  Layout.Field found()        {return variable("found",              1);}       // Create a bit for whether a key has been found
+  Layout.Field leafFull()     {return variable("leafFull",           1);}       // Create a bit for a leaf is full
+  Layout.Field branchFull()   {return variable("branchFull",         1);}       // Create a bit for a branch is full
 
   void runProgram()                      {L.runProgram();}
   void clearProgram()                    {L.clearProgram();}
@@ -116,9 +116,9 @@ stucks         array  %d
     index.move(freeStart);                                                      // Head of free chain gives allocated stuck
     ref  .move(freeStart);                     ;                                // Head of free chain gives allocated stuck
     stuckIsFree.zero(index);                                                    // Show as in use
-    freeNext.read(index);                                                       // Locate next stuck on free chain to become new first stuck on free chain
+    freeNext .read(index);                                                      // Locate next stuck on free chain to become new first stuck on free chain
     freeStart.move(freeNext);                                                   // Next stuck on free chain becomes head of free chain
-    freeNext.zero(index);                                                       // Clear the next field from the current stuck
+    freeNext .zero(index);                                                      // Clear the next field from the current stuck
     if (leaf) setLeaf(ref); else setBranch(ref);
    }
 
@@ -522,7 +522,7 @@ stucks         array  %d
   private void iSplitRootLeaf()                                                 // Split a full root leaf
    {L.P.new Instruction()
      {void action()
-       {splitRootLeaf();                                                        //
+       {splitRootLeaf();
        }
      };
    }
@@ -1300,6 +1300,7 @@ stucks         array  %d
             s.zero();                                                           // Start at the root and step down through the tree along the path of the key merging on each side of the key as we go
            }
          };
+
         new IsLeaf(s)                                                           // Root is a leaf or a branch
          {void Leaf()                                                           // Root is a leaf - nothing to merge
            {L.P.iGoto(end);

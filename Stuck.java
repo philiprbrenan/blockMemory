@@ -60,8 +60,8 @@ Stuck        array  %d
     stuckKeys.value = Source.stuckKeys.value;
     stuckData.value = Source.stuckData.value;
     for (int i = 0; i < maxStuckSize; i++)
-     {stuckKeys.memory[i] = (BitSet)Source.stuckKeys.memory[i].clone();
-      stuckData.memory[i] = (BitSet)Source.stuckData.memory[i].clone();
+     {stuckKeys.move(i, Source.stuckKeys, i);
+      stuckData.move(i, Source.stuckData, i);
      }
    }
 
@@ -198,8 +198,8 @@ Stuck        array  %d
          }
 
         for (int i = maxStuckSize; i > 1; --i)
-         {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
-          stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
+         {stuckKeys.move(i-1, stuckKeys, i-2);
+          stuckData.move(i-1, stuckData, i-2);
          }
         stuckKeys.setBitsFromInt(stuckKeys.memory[0], stuckKeys.value);
         stuckData.setBitsFromInt(stuckData.memory[0], stuckData.value);
@@ -220,8 +220,8 @@ Stuck        array  %d
         stuckData.value = stuckData.getIntFromBits(stuckData.memory[0]);
 
         for (int i = 1; i < stuckSize.value; ++i)
-         {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i].clone();
-          stuckData.memory[i-1] = (BitSet)stuckData.memory[i].clone();
+         {stuckKeys.move(i-1, stuckKeys, i);
+          stuckData.move(i-1, stuckData, i);
          }
         stuckSize.dec();
        }
@@ -432,8 +432,8 @@ Stuck        array  %d
      }
 
     for (int i = maxStuckSize; i > Index.value+1; --i)
-     {stuckKeys.memory[i-1] = (BitSet)stuckKeys.memory[i-2].clone();
-      stuckData.memory[i-1] = (BitSet)stuckData.memory[i-2].clone();
+     {stuckKeys.move(i-1, stuckKeys, i-2);
+      stuckData.move(i-1, stuckData, i-2);
      }
 
     stuckKeys.setBitsFromInt(stuckKeys.memory[Index.value], stuckKeys.value);
@@ -463,8 +463,8 @@ Stuck        array  %d
     stuckData.value = stuckData.getIntFromBits(stuckData.memory[Index.value]);
 
     for (int i = Index.value; i < maxStuckSize-1; ++i)
-     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i+1].clone();
-      stuckData.memory[i] = (BitSet)stuckData.memory[i+1].clone();
+     {stuckKeys.move(i, stuckKeys, i+1);
+      stuckData.move(i, stuckData, i+1);
      }
     stuckSize.dec();
    }
@@ -544,14 +544,14 @@ Stuck        array  %d
      }
 
     for (int i = 0; i < Copy; ++i)                                              // Copy to left
-     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     {Left.stuckKeys.move(i, stuckKeys, i);
+      Left.stuckData.move(i, stuckData, i);
      }
     Left.stuckSize.value = Copy;                                                // New size of left
 
     for (int i = 0; i < stuckSize.value - Copy; ++i)                            // Copy to right
-     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     {Right.stuckKeys.move(i, stuckKeys, Copy + i);
+      Right.stuckData.move(i, stuckData, Copy + i);
      }
     Right.stuckSize.value = stuckSize.value - Copy;                             // New size of right
    }
@@ -579,18 +579,18 @@ Stuck        array  %d
      }
 
     for (int i = 0; i < Copy; ++i)                                          // Copy to left
-     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     {Left.stuckKeys.move(i, stuckKeys, i);
+      Left.stuckData.move(i, stuckData, i);
      }
-    Left.stuckSize.value = Copy;                                            // New size of left
-    Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
+    Left.stuckSize.value = Copy;                                                // New size of left
+    Left.stuckData.move(Copy, stuckData, Copy);
 
-    for (int i = 0; i < Copy; ++i)                                          // Copy to right
-     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+    for (int i = 0; i < Copy; ++i)                                              // Copy to right
+     {Right.stuckKeys.move(i, stuckKeys, Copy + i + 1);
+      Right.stuckData.move(i, stuckData, Copy + i + 1);
      }
     Right.stuckSize.value = Copy;                                               // New size of right
-    Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+    Right.stuckData.move(Copy, stuckData, 2*Copy+1);
    }
 
   void iSplitIntoThree(Stuck Left, Stuck Right, int Copy)                       // Copy the specified number of key, data pairs into the left stuck, skip one pair, then copy the specified number onto into the right stuck
@@ -612,14 +612,14 @@ Stuck        array  %d
      }
 
     for (int i = 0; i < Copy; ++i)                                          // Copy to left
-     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     {Left.stuckKeys.move(i, stuckKeys, i);
+      Left.stuckData.move(i, stuckData, i);
      }
     Left.stuckSize.value = Copy;                                            // New size of left
 
     for (int i = 0; i < Copy; ++i)                                          // Move down right
-     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-      stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     {stuckKeys.move(i, stuckKeys, Copy + i);
+      stuckData.move(i, stuckData, Copy + i);
      }
     stuckSize.value = Copy;                                                 // New size of right
    }
@@ -643,19 +643,19 @@ Stuck        array  %d
      }
 
     for (int i = 0; i < Copy; ++i)                                              // Copy to left
-     {Left.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[i].clone();
-      Left.stuckData.memory[i] = (BitSet)stuckData.memory[i].clone();
+     {Left.stuckKeys.move(i, stuckKeys, i);
+      Left.stuckData.move(i, stuckData, i);
      }
-    Left.stuckData.memory[Copy] = (BitSet)stuckData.memory[Copy].clone();
+    Left.stuckData.move(Copy, stuckData, Copy);
     Left.stuckSize.value = Copy;                                                // New size of left
 
     One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
 
     for (int i = 0; i < Copy; ++i)                                              // Move down right
-     {stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-      stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+     {stuckKeys.move(i, stuckKeys, Copy + i+1);
+      stuckData.move(i, stuckData, Copy + i+1);
      }
-    stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+    stuckData.move(Copy, stuckData, 2*Copy+1);
     stuckSize.value = Copy;                                                     // New size of right
    }
 
@@ -680,8 +680,8 @@ Stuck        array  %d
     stuckSize.value = Copy;                                                     // New size of left
 
     for (int i = 0; i < Copy; ++i)                                              // Copy to right
-     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i].clone();
-      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i].clone();
+     {Right.stuckKeys.move(i, stuckKeys, Copy + i);
+      Right.stuckData.move(i, stuckData, Copy + i);
      }
     Right.stuckSize.value = Copy;                                               // New size of right
    }
@@ -708,10 +708,10 @@ Stuck        array  %d
     One.value = stuckKeys.getIntFromBits(stuckKeys.memory[Copy]);               // Central key
 
     for (int i = 0; i < Copy; ++i)                                              // Copy to right
-     {Right.stuckKeys.memory[i] = (BitSet)stuckKeys.memory[Copy + i+1].clone();
-      Right.stuckData.memory[i] = (BitSet)stuckData.memory[Copy + i+1].clone();
+     {Right.stuckKeys.move(i, stuckKeys, Copy + i + 1);
+      Right.stuckData.move(i, stuckData, Copy + i + 1);
      }
-    Right.stuckData.memory[Copy] = (BitSet)stuckData.memory[2*Copy+1].clone();
+    Right.stuckData.move(Copy, stuckData, 2*Copy+1);
     Right.stuckSize.value = Copy;                                               // New size of right
    }
 
@@ -733,8 +733,8 @@ Stuck        array  %d
       return;
      }
     for (int i = 0; i < sourceSize; ++i)                                    // Concatenate each key, data pair
-     {stuckKeys.memory[targetSize+i] = (BitSet)source.stuckKeys.memory[i].clone();
-      stuckData.memory[targetSize+i] = (BitSet)source.stuckData.memory[i].clone();
+     {stuckKeys.move(targetSize+i, source.stuckKeys, i);
+      stuckData.move(targetSize+i, source.stuckData, i);
      }
     stuckSize.value += sourceSize;                                          // New size of target
     success.value = 1;
@@ -756,12 +756,12 @@ Stuck        array  %d
       return;
      }
     for (int i = 0; i < leftSize; ++i)                                          // Copy in left
-     {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
-      stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
+     {stuckKeys.move(i, Left.stuckKeys, i);
+      stuckData.move(i, Left.stuckData, i);
      }
     for (int i = 0; i < rightSize; ++i)                                         // Copy in right
-     {stuckKeys.memory[leftSize+i] = (BitSet)Right.stuckKeys.memory[i].clone();
-      stuckData.memory[leftSize+i] = (BitSet)Right.stuckData.memory[i].clone();
+     {stuckKeys.move(leftSize+i, Right.stuckKeys, i);
+      stuckData.move(leftSize+i, Right.stuckData, i);
      }
     stuckSize.value = leftSize + rightSize;                                     // New size of target
     success.value = 1;
@@ -784,11 +784,10 @@ Stuck        array  %d
      }
     stuckKeys.setBitsFromInt(stuckKeys.memory[targetSize], Key.value);          // Add key over past last data element
     for (int i = 0; i < sourceSize; ++i)                                        // Concatenate each key, data pair from source
-     {stuckKeys.memory[targetSize+i+1] = (BitSet)source.stuckKeys.memory[i].clone();
-      stuckData.memory[targetSize+i+1] = (BitSet)source.stuckData.memory[i].clone();
+     {stuckKeys.move(targetSize+i+1, source.stuckKeys, i);
+      stuckData.move(targetSize+i+1, source.stuckData, i);
      }
-    stuckData.memory[targetSize+sourceSize+1] =                                 // Past last data element from source
-     (BitSet)source.stuckData.memory[sourceSize].clone();
+    stuckData.move(targetSize+sourceSize+1, source.stuckData, sourceSize);      // Past last data element from source
     stuckSize.value += sourceSize + 1;                                          // New size of target
     success.value = 1;
    }
@@ -810,18 +809,18 @@ Stuck        array  %d
       return;
      }
     for (int i = 0; i < leftSize; ++i)                                      // Concatenate each key, data pair from source
-     {stuckKeys.memory[i] = (BitSet)Left.stuckKeys.memory[i].clone();
-      stuckData.memory[i] = (BitSet)Left.stuckData.memory[i].clone();
+     {stuckKeys.move(i, Left.stuckKeys, i);
+      stuckData.move(i, Left.stuckData, i);
      }
     stuckKeys.setBitsFromInt(stuckKeys.memory[leftSize], Key.value);        // Place key over past last data element from left
-    stuckData.memory[leftSize] = (BitSet)Left.stuckData.memory[leftSize].clone();
+    stuckData.move(leftSize, Left.stuckData, leftSize);
 
     for (int i = 0; i < rightSize; ++i)                                     // Concatenate each key, data pair from right
-     {stuckKeys.memory[leftSize+i+1] = (BitSet)Right.stuckKeys.memory[i].clone();
-      stuckData.memory[leftSize+i+1] = (BitSet)Right.stuckData.memory[i].clone();
+     {stuckKeys.move(leftSize+i+1, Right.stuckKeys, i);
+      stuckData.move(leftSize+i+1, Right.stuckData, i);
      }
-    stuckData.memory[leftSize+rightSize+1] =                                // Past last data element from source
-     (BitSet)Right.stuckData.memory[rightSize].clone();
+    stuckData.move(leftSize+rightSize+1, Right.stuckData, rightSize);           // Past last data element from source
+
     stuckSize.value = leftSize + rightSize + 1;                             // New size of target
     success.one();
    }
@@ -1330,8 +1329,8 @@ stuckData: value=6, 0=2, 1=4, 2=2, 3=4
     ok(success, "success: value=1");
     ok(m, """
 stuckSize: value=4
-stuckKeys: value=0, 0=1, 1=2, 2=1, 3=2
-stuckData: value=0, 0=2, 1=4, 2=2, 3=4
+stuckKeys: value=3, 0=1, 1=2, 2=1, 3=2
+stuckData: value=6, 0=2, 1=4, 2=2, 3=4
 """);
    }
 
@@ -1379,8 +1378,8 @@ stuckData: value=4, 0=2, 1=4, 2=2, 3=4
     ok(success, "success: value=1");
     ok(m, """
 stuckSize: value=3
-stuckKeys: value=0, 0=1, 1=11, 2=1, 3=4
-stuckData: value=0, 0=2, 1=4, 2=2, 3=4
+stuckKeys: value=2, 0=1, 1=11, 2=1, 3=4
+stuckData: value=4, 0=2, 1=4, 2=2, 3=4
 """);
    }
 
@@ -1450,14 +1449,14 @@ stuckData: value=0, 0=2, 1=4, 2=6, 3=8
 
     ok(L, """
 stuckSize: value=1
-stuckKeys: value=0, 0=1, 1=2, 2=3, 3=4
-stuckData: value=0, 0=2, 1=4, 2=6, 3=8
+stuckKeys: value=4, 0=1, 1=2, 2=3, 3=4
+stuckData: value=8, 0=2, 1=4, 2=6, 3=8
 """);
 
     ok(R, """
 stuckSize: value=1
-stuckKeys: value=0, 0=3, 1=2, 2=3, 3=4
-stuckData: value=0, 0=6, 1=8, 2=6, 3=8
+stuckKeys: value=4, 0=3, 1=2, 2=3, 3=4
+stuckData: value=8, 0=6, 1=8, 2=6, 3=8
 """);
    }
 

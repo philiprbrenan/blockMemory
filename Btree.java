@@ -1180,13 +1180,21 @@ stucks         array  %d
             stuckData.move(Data);
            }
          };
+
         findAndInsert(found);                                                   // Try direct insertion with no modifications to the shape of the tree
         L.P.iGoNotZero(end, found);                                             // Direct insertion succeeded
+
         isRootLeaf(isLeaf);                                                     // Failed to insert because the root is a leaf and must therefore be full
         L.P.new If (isLeaf)                                                     // Root is a leaf
          {void Then()
-           {iSplitRootLeaf();                                                   // Split the leaf root to make room
-            stuckKeys.iMove(Key); stuckData.iMove(Data);                        // Key, data pair to be inserted
+           {L.P.new Instruction()
+             {void action()
+               {splitRootLeaf();                                                // Split the leaf root to make room
+                stuckKeys.move(Key);                                            // Key, data pair to be inserted
+                stuckData.move(Data);
+               }
+             };
+
             findAndInsert(found);                                               // Splitting a leaf root will make more space in the tree
             L.P.iGoto(end);                                                     // Direct insertion succeeded
            }
@@ -1196,8 +1204,8 @@ stucks         array  %d
          {void Then()
            {L.P.new Instruction()
              {void action()
-               {splitRootBranch();                                                 // Split the branch root to make room
-                L.P.Goto(start);                                                   // Restart descent to make sure we are on the right path
+               {splitRootBranch();                                              // Split the branch root to make room
+                L.P.Goto(start);                                                // Restart descent to make sure we are on the right path
                }
              };
            }

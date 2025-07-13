@@ -290,21 +290,32 @@ class Layout extends Test                                                       
     void iOne (Field...indices) {iConstant(1, indices);}                        // Create an instruction to set a field to one
     void iZero(Field...indices) {iConstant(0, indices);}                        // Create an instruction to set a field to zero
 
-//D2 Instructions                                                               // Instructions that can be executed against memory
+//D2 Move                                                                       // Instructions that copy data from one memory location to another
 
     void move (Field Source) {value = Source.value;}                            // Copy the source value to the target. To write into backing memory as well call iWrite() as well
     void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write into backing memory as well call iWrite() as well
 
+    void move (int TargetIndex, Field Source)                                   // Copy the indexed source memory into the indexed target memory
+     {setBitsFromInt(memory[TargetIndex], Source.value);
+     }
+
+    void iMove(int TargetIndex, Field Source)                                   // Copy the indexed source memory into the indexed target memory
+     {P.new Instruction()
+       {void action() {move(TargetIndex, Source);}
+       };
+     }
+
     void move (int TargetIndex, Field Source, int SourceIndex)                  // Copy the indexed source memory into the indexed target memory
      {memory[TargetIndex] = (BitSet)Source.memory[SourceIndex].clone();
-      value = Source.value;
      }
 
     void iMove(int TargetIndex, Field Source, int SourceIndex)                  // Copy the indexed source memory into the indexed target memory
      {P.new Instruction()
-       {void action() {iMove(TargetIndex, Source, SourceIndex);}
+       {void action() {move(TargetIndex, Source, SourceIndex);}
        };
      }
+
+//D2 Instructions                                                               // Instructions that can be executed against memory
 
     void dec() {value--;}                                                       // Decrement the value of this field
 
@@ -1019,10 +1030,15 @@ B array 4
     l.runProgram();
     ok(a, "a: value=3, 0=0, 1=1, 2=2, 3=3");
     ok(b, "b: value=0, 0=0, 1=0, 2=0, 3=0");
+
     l.clearProgram(); b.move(1, a, 2); l.runProgram();
-    ok(b, "b: value=3, 0=0, 1=2, 2=0, 3=0");
+    ok(b, "b: value=0, 0=0, 1=2, 2=0, 3=0");
     l.clearProgram(); a.move(0, b, 1); l.runProgram();
     ok(a, "a: value=3, 0=2, 1=1, 2=2, 3=3");
+
+    b.value = 9; l.clearProgram(); a.move(1, b); l.runProgram();
+    ok(b, "b: value=9, 0=0, 1=2, 2=0, 3=0");
+    ok(a, "a: value=3, 0=2, 1=9, 2=2, 3=3");
    }
 
   protected static void oldTests()                                              // Tests thought to be in good shape

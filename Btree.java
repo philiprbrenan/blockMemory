@@ -300,7 +300,7 @@ stucks         array  %d
      };
    }
 
-  void iIsRootBranchFull(Layout.Field isFullButOne)                              // Is the root assumed to be a root full?
+  void iIsRootBranchFull(Layout.Field isFullButOne)                             // Is the root assumed to be a root full?
    {L.P.new Instruction()
      {void action()
        {final Layout.Field i = index();

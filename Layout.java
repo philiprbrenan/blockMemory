@@ -295,6 +295,17 @@ class Layout extends Test                                                       
     void move (Field Source) {value = Source.value;}                            // Copy the source value to the target. To write into backing memory as well call iWrite() as well
     void iMove(Field Source) {iAdd(Source);}                                    // Copy the source value to the target. To write into backing memory as well call iWrite() as well
 
+    void move (int TargetIndex, Field Source, int SourceIndex)                  // Copy the indexed source memory into the indexed target memory
+     {memory[TargetIndex] = (BitSet)Source.memory[SourceIndex].clone();
+      value = Source.value;
+     }
+
+    void iMove(int TargetIndex, Field Source, int SourceIndex)                  // Copy the indexed source memory into the indexed target memory
+     {P.new Instruction()
+       {void action() {iMove(TargetIndex, Source, SourceIndex);}
+       };
+     }
+
     void dec() {value--;}                                                       // Decrement the value of this field
 
     void iDec()                                                                 // Decrement the value of this field
@@ -991,6 +1002,29 @@ a var 4
     ok(a, "a: value=1");
    }
 
+  protected static void test_move()
+   {Layout l = new Layout("""
+A array 4
+    a var 4
+B array 4
+    b var 4
+""");
+
+    Field A = l.locateFieldByName("A");
+    Field a = l.locateFieldByName("a");
+    Field b = l.locateFieldByName("b");
+
+    l.clearProgram();
+    for   (int i = 0; i < A.rep; i++) a.iWrite(i, i);
+    l.runProgram();
+    ok(a, "a: value=3, 0=0, 1=1, 2=2, 3=3");
+    ok(b, "b: value=0, 0=0, 1=0, 2=0, 3=0");
+    l.clearProgram(); b.move(1, a, 2); l.runProgram();
+    ok(b, "b: value=3, 0=0, 1=2, 2=0, 3=0");
+    l.clearProgram(); a.move(0, b, 1); l.runProgram();
+    ok(a, "a: value=3, 0=2, 1=1, 2=2, 3=3");
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
@@ -1004,10 +1038,12 @@ a var 4
     test_stop();
     test_variable();
     test_stackProgram();
+    test_move();
    }
 
   protected static void newTests()                                              // Tests being worked on
    {oldTests();
+    //test_move();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

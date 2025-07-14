@@ -421,15 +421,13 @@ class Layout extends Test                                                       
        };
      }
 
-    void half()                                                                 // Divide the value of a field by two
-     {value >>>= 1;
-     }
+    void   half()  {value >>>= 1;}                                              // Divide the value of a field by two
+    String halfV() {return name+"_value = "+name+"_value >>> + 1;";}            // Divide the value of a field by two
 
     void iHalf()                                                                // Divide the value of a field by two
      {P.new Instruction()
-       {void action()
-         {half();
-         }
+       {void   action () {       half();}
+        String verilog() {return halfV();}
        };
      }
    }

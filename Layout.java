@@ -22,7 +22,7 @@ class Layout extends Test                                                       
     allocateMemory();                                                           // Allocate memory for all fields
    }
 
-//D1 Fields                                                                     // Describe a field in a memory layout
+//D2 Fields                                                                     // Describe a field in a memory layout
 
   class Field                                                                   // The fields in the layout
    {final Layout  layout;                                                       // Containing layout
@@ -161,7 +161,7 @@ class Layout extends Test                                                       
       return i;
      }
 
-    String vConvolute(Field...j)                                                // Convolute the dimensions of this field with the supplied top level vars acting as array indices to locat the index of an element in an array
+    String convoluteV(Field...j)                                                // Convolute the dimensions of this field with the supplied top level vars acting as array indices to locat the index of an element in an array
      {String s = ""+j[0].value;                                                 // Current value of var
       final int J = j.length;
       for (int c = 1; c < J; c++)                                               // Each dimension beyond the first one contributes to the indexs.  The first dimension determines the size but not the location of an element in the array
@@ -173,13 +173,13 @@ class Layout extends Test                                                       
       return s;
      }
 
-//D2 Read                                                                       // Read values from memory
+//D3 Read                                                                       // Read values from memory
 
     void read(int index)                                                        // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {value = getIntFromBits(memory[index]);
      }
 
-    String readV(int index)                                                     // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
+    String readV(String index)                                                  // Create an instruction that loads the value of this field from the constant indexed element of the memory associated with this field
      {return name+"_value = "+name+"_memory["+index+"];";
      }
 
@@ -187,19 +187,12 @@ class Layout extends Test                                                       
      {final Field f = checkVar();
       P.new Instruction()
        {void   action () {f.read(index);}
-        String verilog() {return f.readV(index);}
+        String verilog() {return f.readV(""+index);}
        };
      }
 
-    void read(Field...Indices)                                                  // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
-     {final int index = convolute(Indices);
-      value = getIntFromBits(memory[index]);
-     }
-
-    String readV(Field...Indices)                                               // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
-     {final String index = vConvolute(Indices);
-      return name+"_value = "+name+"_memory["+index+"];";
-     }
+    void read(Field...Indices)     {read(convolute(Indices));}                  // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
+    String readV(Field...Indices)  {return readV(convoluteV(Indices));}         // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
 
     void iRead(Field...Indices)                                                 // Create an instruction that loads the value of this field from the variably indexed element of the memory associated with this field
      {final Field f = checkVar();
@@ -215,7 +208,7 @@ class Layout extends Test                                                       
      }
 
     String readNextV(Field...Indices)                                           // Create an instruction that loads the value of this field from the one plus variably indexed element of the memory associated with this field
-     {final String index = vConvolute(Indices);
+     {final String index = convoluteV(Indices);
       return name+"_value = "+name+"_memory["+index+"+1];";
      }
 
@@ -227,7 +220,7 @@ class Layout extends Test                                                       
        };
      }
 
-//D2 Write                                                                      // Write values into memory
+//D3 Write                                                                      // Write values into memory
 
     void write(int Value)
      {final Field f = this;
@@ -290,7 +283,7 @@ class Layout extends Test                                                       
 
     String writeV(Field...Indices)                                              // Create an instruction that sets the value of this field and updates the variable indexed element of the memory associated with this field with the same value
      {final Field f = this;
-      final String index = vConvolute(Indices);
+      final String index = convoluteV(Indices);
       return f.name+"_value = "+f.name+"_memory["+index+"];";
      }
 
@@ -320,7 +313,7 @@ class Layout extends Test                                                       
 
     String constantV(int Value, Field...Indices)                                // Create an instruction to set an array element to a constant
      {final Field f = this;
-      final String index = vConvolute(Indices);
+      final String index = convoluteV(Indices);
       return f.name+"_memory["+index+"] = "+value+";";
      }
 
@@ -340,7 +333,7 @@ class Layout extends Test                                                       
     void iOne (Field...indices) {iConstant(1, indices);}                        // Create an instruction to set a field to one
     void iZero(Field...indices) {iConstant(0, indices);}                        // Create an instruction to set a field to zero
 
-//D2 Move                                                                       // Instructions that copy data from one memory location to another
+//D3 Move                                                                       // Instructions that copy data from one memory location to another
 
     void    move(Field Source) {value = Source.value;}                          // Copy the source value to the target. To write into backing memory as well call iWrite() as well
     String moveV(Field Source) {return name+"_value = "+Source.name+"_value;";}
@@ -372,7 +365,7 @@ class Layout extends Test                                                       
        };
      }
 
-//D2 Instructions                                                               // Instructions that can be executed against memory
+//D3 Arithmetic                                                                 // Instructions that do arithmetic
 
     void    dec() {value--;}                                                    // Decrement the value of this field
     String decV() {return name+"_value = "+name+"_value - 1;";}                 // Decrement the value of this field
@@ -400,21 +393,23 @@ class Layout extends Test                                                       
      {final Field t = checkVar();
       switch(Source.length)
        {case 0: P.new Instruction()
-         {void action() {t.value = 0;}
+         {void   action () {t.value = 0;}
+          String verilog() {return t.name+"_value = 0;";}
          };
         break;
         case 1: P.new Instruction()
-         {void action() {t.value = Source[0].value;}
+         {void   action () {t.value = Source[0].value;}
+          String verilog() {return t.name+"_value = "+Source[0].name+"_value;";}
          };
         break;
         case 2: P.new Instruction()
-         {void action() {t.value = Source[0].value + Source[1].value;}
+         {void   action () {t.value = Source[0].value + Source[1].value;}
+          String verilog() {return t.name+"_value = "+Source[0].name+"_value"+" + "+Source[1].name+"_value;";}
          };
         break;
         default: P.new Instruction()
          {void action()
            {t.value = 0; for(Field s : Source) t.value += s.value;
-
            }
          };
         break;
@@ -439,49 +434,47 @@ class Layout extends Test                                                       
     final Stack<Label>          labels = new Stack<>();                         // Labels into the code
     int                       maxSteps = 200;                                   // Maximum number of steps to execute
     int                             pc = 0;                                     // The index of the next instruction to be executed
-    int                            cpc = 0;                                     // The index of the current instruction being executed
+    Integer                     nextPc = null;                                  // The next program counter requested
     String                          rc = null;                                  // The result of executing the program.  If null then no problems were detected
     boolean   supressErrorMessagePrint = false;                                 // Do not print error message from iStop() during testing if true
 
-//D2 Conditional Programming                                                    // Conditional changes to the flow of execution of a program modifying the memory layout
+//D3 Conditional Programming                                                    // Conditional changes to the flow of execution of a program modifying the memory layout
 
     class Label                                                                 // Labels label instructions in the code
-     {int offset;                                                               // Offset in code of this label
-      Label()    {set();}                                                       // Initially at the current end of the code
-      void set() {offset = P.code.size(); P.labels.push(this);}                 // Track all labels created
+     {final int number;                                                         // Label number
+      int offset;                                                               // Offset in code of this label
+      Label()    {set(); number = P.labels.size(); P.labels.push(this);}        // Initially at the current end of the code
+      void set() {offset = P.code.size();}                                      // Track all labels created
      }
 
     void Goto     (Label label)                                                 // Goto a label unconditionally
-     {pc = label.offset;
+     {nextPc = label.offset;
      }
     void GoNotZero(Label label, Field condition)                                // Go to a specified label if the value of a field is not zero
-     {if (condition.asBoolean()) pc = label.offset;
+     {if (condition.asBoolean()) nextPc = label.offset;
      }
     void GoZero   (Label label, Field condition)                                // Go to a specified label if the value of a field is zero
-     {if (!condition.asBoolean()) pc = label.offset;
+     {if (!condition.asBoolean()) nextPc = label.offset;
      }
 
     void iGoto(Label label)                                                     // Goto a label unconditionally
      {P.new Instruction()
-       {void   action()
-         {Goto(label);
-         }
+       {void   action () {Goto(label);}
+        String verilog() {return "program_pc = program_label["+label.number+"];";}
        };
      }
 
     void iGoNotZero(Label label, Field condition)                               // Go to a specified label if the value of a field is not zero
      {P.new Instruction()
-       {void action()
-         {GoNotZero(label, condition);
-         }
+       {void action() {GoNotZero(label, condition);}
+        String verilog() {return "if (condition) program_pc = program_label["+label.number+"];";}
        };
      }
 
     void iGoZero(Label label, Field condition)                                  // Go to a specified label if the value of a field is zero
      {P.new Instruction()
-       {void action()
-         {GoZero(label, condition);
-         }
+       {void action() {GoZero(label, condition);}
+        String verilog() {return "if (!condition) program_pc = program_label["+label.number+"];";}
        };
      }
 
@@ -514,7 +507,7 @@ class Layout extends Test                                                       
       final Field loop      = variable("loop",      Integer.SIZE);
       final Field condition = variable("condition", 1);
 
-      For(int count)
+      For(Layout.Field count)
        {P.new Instruction()
          {void action()
            {loop.value = 0;
@@ -524,7 +517,7 @@ class Layout extends Test                                                       
         start.set();
         P.new Instruction()
          {void action()
-           {condition.value = loop.value < count ? 1 : 0;
+           {condition.value = loop.value < count.value ? 1 : 0;
            }
          };
 
@@ -537,7 +530,7 @@ class Layout extends Test                                                       
       void code() {};
      }
 
-//D1 Execute                                                                    // Execute instructions in a program to modify the memory described by the layout
+//D3 Execute                                                                    // Execute instructions in a program to modify the memory described by the layout
 
     abstract class Instruction                                                  // Instructions used to manipulate the fields
      {final String traceBack = traceBack();                                     // Line at which this instruction was created
@@ -559,13 +552,13 @@ class Layout extends Test                                                       
       int  i = 0;
       final int size = code.size();                                             // Programs must not add instrructions to the code
       for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
-       {cpc = pc;
-        code.elementAt(cpc).action();
+       {nextPc = null;
+        code.elementAt(pc).action();
         if (code.size() != size)
-         {stopProgram("Additional instructions being defined inside an instruction at instruction: "+cpc);
+         {stopProgram("Additional instructions being defined inside an instruction at instruction: "+pc);
           return;
          }
-        if (pc == cpc) pc++;
+        if (nextPc != null) pc = nextPc; else pc++;                             // Interpret next program counter
        }
       if (pc < code.size()) stop("Out of steps after :", i);
      }
@@ -573,7 +566,7 @@ class Layout extends Test                                                       
     void stopProgram(final String message)                                      // Halt program execution with a message
      {rc = message;                                                             // Use the message as a result code
       if (!supressErrorMessagePrint)
-       {say(message, code.elementAt(cpc).traceBack);                            // Write the supplied message
+       {say(message, code.elementAt(pc).traceBack);                            // Write the supplied message
        }
       pc = code.size();                                                         // Halt the program
      }
@@ -582,6 +575,15 @@ class Layout extends Test                                                       
      {P.new Instruction()
        {void action() {stopProgram(message);}
        };
+     }
+
+//D2 Verilog                                                                    // Generate Verilog
+
+    protected void generateVerilog()                                            // Generate verilog
+     {final int N = code.size();
+      for (int i = 0; i < N; i++)
+       {say(code.elementAt(i).verilog());
+       }
      }
    }
 
@@ -596,7 +598,7 @@ class Layout extends Test                                                       
     return p;
    }
 
-//D1 Parsing                                                                    // Parse the source description of a memory layout
+//D2 Parsing                                                                    // Parse the source description of a memory layout
 
   Field locateFieldByName(String name) {return names.get(name);}                // Locate a field by name
   Field onlyField()                                                             // Retrieve the only field in a layout
@@ -727,7 +729,7 @@ class Layout extends Test                                                       
     return joinStringBuilders(S, "\n")+"\n";
    }
 
-//D1 Tests                                                                      // Test memory layouts
+//D2 Tests                                                                      // Test memory layouts
 
   protected static void test_parse()
    {Layout l = new Layout("""
@@ -1004,17 +1006,19 @@ d var 4
   protected static void test_for()
    {Layout       l = new Layout();
     Layout.Field i = l.variable("index", 4);
+    Layout.Field j = l.variable("loop", 4);
 
-    for (int j = 0; j < 8; ++j)
+    for (int J = 0; J < 8; ++J)
      {l.clearProgram();
       i.iWrite(0);
+      j.iWrite(J);
       l.P.new For(j)
        {void code()
-         {i.iInc();                                                                                //
-         }                                                                                //
+         {i.iInc();
+         }
        };
       l.runProgram();
-      ok(i, "index: value="+j);
+      ok(i, "index: value="+J);
      }
    }
 
@@ -1100,6 +1104,37 @@ B array 4
     ok(a, "a: value=3, 0=2, 1=9, 2=2, 3=3");
    }
 
+  protected static void test_verilog()
+   {Layout l = new Layout("""
+a var 16
+b var 16
+c var 16
+N var 16
+""");
+
+    Field a = l.locateFieldByName("a");
+    Field b = l.locateFieldByName("b");
+    Field c = l.locateFieldByName("c");
+    Field N = l.locateFieldByName("N");
+
+    l.clearProgram();
+    N.iWrite(10);
+    a.iWrite(0);
+    b.iWrite(1);
+    l.P.new For(N)
+     {void code()
+       {c.iAdd(a, b);
+        a.iMove(b);
+        b.iMove(c);
+       }
+     };
+    l.runProgram();
+    ok(a, "a: value=55");
+    ok(b, "b: value=89");
+    ok(c, "c: value=89");
+    l.P.generateVerilog();
+   }
+
   protected static void oldTests()                                              // Tests thought to be in good shape
    {test_parse();
     test_parse_top();
@@ -1114,10 +1149,12 @@ B array 4
     test_variable();
     test_stackProgram();
     test_move();
+    test_verilog();
    }
 
   protected static void newTests()                                              // Tests being worked on
    {oldTests();
+    //test_verilog();
    }
 
   public static void main(String[] args)                                        // Test if called as a program

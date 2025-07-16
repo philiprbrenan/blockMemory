@@ -21,7 +21,8 @@ my @ext       = qw(.java .pl);                                                  
 say STDERR timeStamp,  " push to github $repo";
 
 push my @files, searchDirectoryTreesForMatchingFiles($home, @ext);              # Files to upload
-        @files = changedFiles $shaFile,  @files;                                # Filter out files that have not changed
+        @files = grep {!/experiments/}  @files;                                 # Filter out experimental files
+        @files = changedFiles $shaFile, @files;                                 # Filter out files that have not changed
 
 if (!@files)                                                                    # No new files
  {say "Everything up to date";

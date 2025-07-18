@@ -1,4 +1,4 @@
-# Test 2025-07-16 at 23:10:14
+# Test 2025-07-18 at 12:35:10
 
 name: Test
 run-name: blockMemory
@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        task: [Layout, MM]
+        task: [Layout, Stuck]
 
     steps:
     - uses: actions/checkout@v4
@@ -51,8 +51,8 @@ jobs:
         java -cp Classes com/AppaApps/Silicon/Layout
 
 
-    - name: Test MM
-      if: matrix.task == 'MM'
+    - name: Test Stuck
+      if: matrix.task == 'Stuck'
       run: |
-        java -cp Classes com/AppaApps/Silicon/MM
+        java -cp Classes com/AppaApps/Silicon/Stuck
 

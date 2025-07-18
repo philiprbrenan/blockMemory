@@ -1029,6 +1029,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
   1       0  Stuck               0  array      4          stuckKeys, stuckData
   2       2    stuckKeys         3  var        4   Stuck                        4
   3       2    stuckData         6  var        4   Stuck                        4
+  0       0  stuckIndex          2  var        3
 """);
 
     s.clearProgram(); index.iWrite(1); s.iElementAt(index); s.runProgram();
@@ -1039,6 +1040,7 @@ stuckData: value=8, 0=8, 1=8, 2=8, 3=8
   1       0  Stuck               0  array      4          stuckKeys, stuckData
   2       2    stuckKeys         2  var        4   Stuck                        4
   3       2    stuckData         4  var        4   Stuck                        4
+  0       0  stuckIndex          1  var        3
 """);
 
     s.clearProgram();

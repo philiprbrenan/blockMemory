@@ -9,6 +9,7 @@ import java.util.*;
 class Layout extends Test                                                       // Descriobe and manipulate the memory containing the btree
  {final String                source;                                           // The source string we are going to parse into fields  describing the memory layout
   final Stack<Field>          fields = new Stack<>();                           // Each field parsed from the input string
+  final Stack<Layout>        layouts = new Stack<>();                           // Sub layouts that are used to manipulate this layout but are nor part of its permanent state
   final TreeMap<String,Field>  names = new TreeMap<>();                         // Names of each field
   Program                          P = new Program();                           // The code that manipulates the fields
 
@@ -550,17 +551,21 @@ class Layout extends Test                                                       
     void runProgram()                                                           // Run the program code
      {rc = null;                                                                // Clear the return code
       int  i = 0;
-      final int size = code.size();                                             // Programs must not add instrructions to the code
-      for (i = pc = 0; pc < code.size() && i < maxSteps; ++i)
-       {nextPc = null;
-        code.elementAt(pc).action();
-        if (code.size() != size)
-         {stopProgram("Additional instructions being defined inside an instruction at instruction: "+pc);
-          return;
-         }
-        if (nextPc != null) pc = nextPc; else pc++;                             // Interpret next program counter
+      for (i = pc = 0; pc >= 0 && pc < code.size() && i < maxSteps; ++i)         // Execute as long as the program counter is valid and we have not executed too many steps
+       {stepProgram();
        }
-      if (pc < code.size()) stop("Out of steps after :", i);
+      if (pc >= 0 && pc < code.size()) stop("Out of steps after :", i);         // Program counter is still valid, but we ran out of steps
+     }
+
+    void stepProgram()                                                          // Execute one step in the program
+     {nextPc = null;                                                            // The executed instruction can optionally set this variable to change the execution flow
+      final int size = code.size();                                             // Programs must not add instrructions to the code
+      code.elementAt(pc).action();
+      if (code.size() != size)                                                  // It is too easy to add an instruction inside an instruction but doing so makes code very hard to debug so this if clause alerts us if such a thing happens
+       {stopProgram("Additional instructions being defined inside an instruction at instruction: "+pc);
+        return;
+       }
+      if (nextPc != null) pc = nextPc; else pc++;                               // Interpret next program counter as either a redirection or continuation of flow
      }
 
     void stopProgram(final String message)                                      // Halt program execution with a message
@@ -684,16 +689,42 @@ class Layout extends Test                                                       
      }
    }
 
-  Layout.Field variable(String name, int size)                                  // Create a variable
+  Layout.Field variable(String name, int size)                                  // Create a temporary variable to help manipulate the content of the main layout.
    {final Layout l = new Layout(String.format("""
 %s var %d
 """, name, size));
 
-    l.P = P;
-    return l.onlyField();
+    layouts.push(l);                                                            // Track this as a sublayout of the main layout
+    l.P = P;                                                                    // Use the same progam as the main layout
+    return l.onlyField();                                                       // Return a description of the variable
    }
 
 //D2 Printing                                                                   // Print the results if parsing a memory layout
+
+  private void printFields(Stack<StringBuilder> S)                              // Print the fields of the input lines
+   {for (int i = 0; i < fields.size(); i++)
+     {final Field  f = fields.elementAt(i);
+      final String c = f.cmd;
+      final String C = f.children();
+      final String D = f.dimensions();
+      final int    d = f.indent;
+      final String n = " ".repeat(d)+f.name;
+      final String p = f.parent != null ? f.getParent().name : "";
+      final String r = f.rep    != null ? String.format("%8d", f.rep)              : "";
+      final String v = String.format("%8d", f.value);
+      final String s = String.format
+       ("%4d  %11d  %-32s  %-8s  %-8s  %8s  %8s  %-32s  %-32s",
+        i,    d,    n,    v, c,     r,   p,   C,     D);
+      S.push(new StringBuilder(s));
+     }
+   }
+
+  private void printVariables(Stack<StringBuilder> S)                           // Print any variables attached to this layout
+   {for (Layout l : layouts)
+     {l.printFields(S);
+      l.printVariables(S);
+     }
+   }
 
   public String toString()                                                      // Print the fields of the input lines
    {final Stack<StringBuilder> S = new Stack<>();                               // Print of fields
@@ -710,21 +741,9 @@ class Layout extends Test                                                       
 "Dimension");
     S.push(new StringBuilder(t));
 
-    for (int i = 0; i < fields.size(); i++)
-     {final Field  f = fields.elementAt(i);
-      final String c = f.cmd;
-      final String C = f.children();
-      final String D = f.dimensions();
-      final int    d = f.indent;
-      final String n = " ".repeat(d)+f.name;
-      final String p = f.parent != null ? f.getParent().name : "";
-      final String r = f.rep    != null ? String.format("%8d", f.rep)              : "";
-      final String v = String.format("%8d", f.value);
-      final String s = String.format
-       ("%4d  %11d  %-32s  %-8s  %-8s  %8s  %8s  %-32s  %-32s",
-        i,    d,    n,    v, c,     r,   p,   C,     D);
-      S.push(new StringBuilder(s));
-     }
+    printFields(S);
+    printVariables(S);
+
     squeezeVerticalSpaces(S);
     return joinStringBuilders(S, "\n")+"\n";
    }
@@ -1043,14 +1062,17 @@ a var 4
    }
 
   protected static void test_variable()
-   {final Layout l = new Layout();
+   {final Layout l = new Layout("""
+A var 4
+""");
     Layout.Field a = l.variable("a", 4);
     a.iWrite(2);
     l.P.runProgram();
 
-    //stop(a.layout);
-    ok(a.layout, """
+    //stop(l);
+    ok(l, """
   #  Indent  Name  Value___  Command  Rep  Parent  Children  Dimension
+  0       0  A            0  var        4
   0       0  a            2  var        4
 """);
 
